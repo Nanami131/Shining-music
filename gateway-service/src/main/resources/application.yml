@@ -1,0 +1,41 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: gateway-service
+  cloud:
+    gateway:
+      routes:
+        - id: user-service
+          uri: http://localhost:8081 # user-service 的地址
+          predicates:
+            - Path=/api/user/**
+          filters:
+            - StripPrefix=1 # 去掉 /api 前缀
+        - id: music-service
+          uri: http://localhost:8082
+          predicates:
+            - Path=/api/music/**
+          filters:
+            - StripPrefix=1
+        - id: forum-service
+          uri: http://localhost:8083
+          predicates:
+            - Path=/api/forum/**
+          filters:
+            - StripPrefix=1
+        - id: recommendation-service
+          uri: http://localhost:8084
+          predicates:
+            - Path=/api/recommend/**
+          filters:
+            - StripPrefix=1
+      # 全局 CORS 配置
+      globalcors:
+        cors-configurations:
+          '[/**]':
+            allowedOrigins: "http://localhost:5173" # Vue 前端地址
+            allowedMethods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"]
+            allowedHeaders: ["*"]
+            allowCredentials: true
