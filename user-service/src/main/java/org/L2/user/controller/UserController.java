@@ -1,13 +1,78 @@
 package org.L2.user.controller;
 
 import org.L2.common.R;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.L2.user.UserApplication;
+import org.L2.user.application.dto.LoginRequest;
+import org.L2.user.application.dto.RegisterRequest;
+import org.L2.user.application.dto.ResetPasswordRequest;
+import org.L2.user.application.dto.UpdateProfileRequest;
+import org.L2.user.application.service.UserAppService;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/user")
 public class UserController {
+
+    @Autowired
+    private UserAppService userAppService;
+    /**
+     * 用户注册
+     * @param registerRequest 注册信息
+     * @return
+     */
+    @PostMapping("/register")
+    public R register(@RequestBody RegisterRequest registerRequest) {
+        return null;
+    }
+
+    /**
+     * 用户登录
+     * @param loginRequest 登录信息
+     * @return
+     */
+    @PostMapping("/login")
+    public R login(@RequestBody LoginRequest loginRequest) {
+        return null;
+    }
+
+    /**
+     * 修改密码
+     * @param newPassword 新密码
+     * @return
+     */
+    @PostMapping("/change-password")
+    public R changePassword(@RequestBody String newPassword) {
+        return null;
+    }
+
+    /**
+     * 找回密码
+     * @param resetPasswordRequest 找回密码信息
+     * @return
+     */
+    @PostMapping("/reset-password")
+    public R resetPassword(@RequestBody ResetPasswordRequest resetPasswordRequest) {
+        return null;
+    }
+
+    /**
+     * 更改个人资料
+     * @param updateProfileRequest 个人资料信息
+     * @return
+     */
+    @PostMapping("/update-profile")
+    public R updateProfile(@RequestBody UpdateProfileRequest updateProfileRequest) {
+        return null;
+    }
+
+
+
+    /**
+     * 项目初期测试前后端时使用的接口，已废弃
+     * @return
+     */
+    @Deprecated
     @GetMapping("/test")
     public R test() {
         return R.success("Test successful", "Hello from user-service!");
