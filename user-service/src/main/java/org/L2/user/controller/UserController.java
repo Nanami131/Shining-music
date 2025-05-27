@@ -23,7 +23,7 @@ public class UserController {
      */
     @PostMapping("/register")
     public R register(@RequestBody RegisterRequest registerRequest) {
-        return null;
+        return userAppService.register(registerRequest);
     }
 
     /**
@@ -33,7 +33,7 @@ public class UserController {
      */
     @PostMapping("/login")
     public R login(@RequestBody LoginRequest loginRequest) {
-        return null;
+        return userAppService.login(loginRequest);
     }
 
     /**
@@ -43,7 +43,7 @@ public class UserController {
      */
     @PostMapping("/change-password")
     public R changePassword(@RequestBody String newPassword) {
-        return null;
+        return userAppService.changePassword(newPassword);
     }
 
     /**
@@ -53,7 +53,7 @@ public class UserController {
      */
     @PostMapping("/reset-password")
     public R resetPassword(@RequestBody ResetPasswordRequest resetPasswordRequest) {
-        return null;
+        return userAppService.resetPassword(resetPasswordRequest);
     }
 
     /**
@@ -63,7 +63,7 @@ public class UserController {
      */
     @PostMapping("/update-profile")
     public R updateProfile(@RequestBody UpdateProfileRequest updateProfileRequest) {
-        return null;
+        return userAppService.updateProfile(updateProfileRequest);
     }
 
 

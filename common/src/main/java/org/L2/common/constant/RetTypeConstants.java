@@ -1,8 +1,8 @@
 package org.L2.common.constant;
 
-public enum RetTypeConstants {
-    RESULT_SUCCESS,
-    RESULT_WARNING,
-    RESULT_ERROR
+public class RetTypeConstants {
+    public static final String success="RESULT_SUCCESS";
+    public static final String error="RESULT_ERROR";
+    public static final String warning="RESULT_WARNING";
 
 }

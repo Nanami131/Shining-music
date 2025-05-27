@@ -36,3 +36,6 @@ build/
 
 ### Mac OS ###
 .DS_Store
+
+### Spring 配置文件 ###
+**/src/main/resources/application-secret.yml

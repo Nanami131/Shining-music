@@ -26,17 +26,21 @@ public class R {
     /**
      * 响应类型
      */
-    private RetTypeConstants type;
+    private String type;
 
     /**
      * 响应是否成功
      */
-    private Boolean success;
+    private Boolean passed;
 
     /**
      * 响应数据
      */
     private Object data;
+
+    private R() {
+        // 私有构造方法，禁止外部实例化
+    }
 
     /**
      * 创建一个成功的响应结果。
@@ -47,8 +51,8 @@ public class R {
         return new R()
                 .setCode(200)
                 .setMessage(message)
-                .setSuccess(true)
-                .setType(RetTypeConstants.RESULT_SUCCESS)
+                .setPassed(true)
+                .setType(RetTypeConstants.success)
                 .setData(null);
     }
 
@@ -67,8 +71,13 @@ public class R {
      * @param message 警告消息
      * @return R 实例
      */
-    public static R warning(String message) {
-        return error(message).setType(RetTypeConstants.RESULT_WARNING);
+    public static R warning(String message,int code) {
+        return new R()
+                .setCode(code)
+                .setMessage(message)
+                .setPassed(false)
+                .setType(RetTypeConstants.warning)
+                .setData(null);
     }
 
     /**
@@ -77,17 +86,12 @@ public class R {
      * @return R 实例
      */
     public static R error(String message) {
-        return success(message)
-                .setSuccess(false)
-                .setType(RetTypeConstants.RESULT_ERROR);
+        return new R()
+                .setCode(500) // 默认错误码
+                .setMessage(message)
+                .setPassed(false)
+                .setType(RetTypeConstants.error)
+                .setData(null);
     }
 
-    /**
-     * 创建一个严重错误响应结果。
-     * @param message 错误消息
-     * @return R 实例
-     */
-    public static R fatal(String message) {
-        return error(message).setCode(500);
-    }
 }
