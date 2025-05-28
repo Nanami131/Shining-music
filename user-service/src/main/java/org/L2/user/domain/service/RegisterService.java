@@ -27,12 +27,21 @@ public class RegisterService {
      * @return
      */
     @Transactional(rollbackFor = Exception.class)
-    public R register(User user) {
+    public R register(User user) throws Exception {
         if(user.getUsername() == null || "".equals(user.getUsername())) {
             return R.error("用户名为空");
         }
         if(user.getPassword() == null || "".equals(user.getPassword())) {
             return R.error("密码为空");
+        }
+        if(user.getEmail() == null && user.getPhone() == null){
+            return R.error("邮箱和手机号码不能均");
+        }
+        if(!isValidEmail(user.getEmail())) {
+            return R.error("邮箱格式不正确");
+        }
+        if(!isValidPhoneNumber(user.getPhone())){
+            return R.error("手机号码格式不正确");
         }
         List<User> query = userMapper.query(new User().setUsername(user.getUsername()));
         if(query!=null&&!query.isEmpty()){
@@ -40,7 +49,7 @@ public class RegisterService {
         }
 
         String salt = BCrypt.gensalt(); // 生成随机盐值
-        String hashedPassword = BCrypt.hashpw(user.getPassword(), salt);
+        String hashedPassword = BCrypt.hashpw(user.getPassword(), salt);//加密
 
         user.setSalt(salt)
             .setPassword(hashedPassword);
@@ -48,13 +57,17 @@ public class RegisterService {
         PasswordHistory passwordHistory = new PasswordHistory()
                 .setPassword(hashedPassword)
                 .setSalt(salt);
-        try {
-            return saveUserAndHistory(user,passwordHistory);
-        } catch (Exception e) {
-            return R.error("注册失败: " + e.getMessage());
-        }
+
+        return saveUserAndHistory(user,passwordHistory);
     }
 
+    /**
+     *  保存用户信息和密码历史记录
+     * @param user
+     * @param passwordHistory
+     * @return
+     * @throws Exception
+     */
     @Transactional(rollbackFor = Exception.class)
     public R saveUserAndHistory(User user, PasswordHistory passwordHistory) throws Exception {
         // 插入用户信息
@@ -64,5 +77,28 @@ public class RegisterService {
         passwordHistoryMapper.insert(passwordHistory.setUserId(id));
 
         return R.success("注册成功");
+    }
+
+    /**
+     *  校验中国大陆手机号
+     * @param phone
+     * @return
+     */
+    public static boolean isValidPhoneNumber(String phone) {
+        if (phone == null) return false;
+        // 中国大陆手机号：11位数字，以1开头，第二位是3,4,5,6,7,8,9
+        String phoneRegex = "^1[3-9]\\d{9}$";
+        return phone.matches(phoneRegex);
+    }
+
+    /**
+     *  校验邮箱
+     * @param email
+     * @return
+     */
+    public static boolean isValidEmail(String email) {
+        if (email == null) return false;
+        String emailRegex = "^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$";
+        return email.matches(emailRegex);
     }
 }

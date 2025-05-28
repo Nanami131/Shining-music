@@ -28,18 +28,31 @@ public class UserAppService {
             return R.error("请求参数为空");
         }
         User user = new User();
-        // 由于还没有配置手机和邮箱的验证码服务，所以暂时不扩展其他的登录方式
+        // 还没有配置手机和邮箱的验证码服务
         user.setUsername(registerRequest.getUsername())
-            .setPassword(registerRequest.getPassword());
+            .setPassword(registerRequest.getPassword())
+            .setEmail(registerRequest.getEmail())
+            .setPhone(registerRequest.getPhone());
 
-        return registerService.register(user);
+        try {
+            return registerService.register(user);
+        } catch (Exception e) {
+            return R.error("数据库操作失败"+e.getMessage());
+        }
     }
 
     public R login(LoginRequest loginRequest) {
         User user = new User();
+        // 由于还没有配置手机和邮箱的验证码服务，所以暂时不扩展其他的登录方式
         user.setUsername(loginRequest.getUsername())
-            .setPassword(loginRequest.getPassword());
-
+            .setPassword(loginRequest.getPassword())
+            .setEmail(loginRequest.getEmail())
+            .setPhone(loginRequest.getPhone());
+        R result=loginService.login(user);
+        if(){
+            jwtService.generateToken(user);
+        }
+        return result;
     }
 
     public R changePassword(String newPassword) {
@@ -48,13 +61,13 @@ public class UserAppService {
 
     public R resetPassword(ResetPasswordRequest resetPasswordRequest) {
         User user = new User();
-        user.setUsername(loginRequest.getUsername())
-            .setPassword(loginRequest.getPassword());
+        user.setUsername(resetPasswordRequest.getUsername())
+            .setPassword(resetPasswordRequest.getPassword());
     }
 
     public R updateProfile(UpdateProfileRequest updateProfileRequest) {
         User user = new User();
-        user.setUsername(loginRequest.getUsername())
-            .setPassword(loginRequest.getPassword());
+        BeanUtils.copyProperties(updateProfileRequest, user);
+
     }
 }
