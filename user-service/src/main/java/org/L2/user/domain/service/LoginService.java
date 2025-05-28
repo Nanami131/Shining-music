@@ -28,7 +28,7 @@ public class LoginService {
     public R loginWithPassword(User user, String password) {
         List<User> query = userMapper.query(user);
         if(query == null||query.isEmpty()) {
-            return R.error("不存在的用户");
+            return R.error("用户不存在");
         }
         String salt = query.get(0).getSalt();
         String realPassword = query.get(0).getPassword();

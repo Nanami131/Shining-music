@@ -6,7 +6,7 @@ import org.L2.user.domain.model.User;
 import org.L2.user.domain.service.JwtService;
 import org.L2.user.domain.service.LoginService;
 import org.L2.user.domain.service.RegisterService;
-import org.L2.user.infrastructure.mapper.UserMapper;
+import org.L2.user.domain.service.UserProfileService;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -19,9 +19,8 @@ public class UserAppService {
     private JwtService jwtService;
     @Autowired
     private RegisterService registerService;
-
     @Autowired
-    private UserMapper userMapper;
+    private UserProfileService userProfileService;
 
     public R register(RegisterRequest registerRequest) {
         if(registerRequest==null){
@@ -49,25 +48,26 @@ public class UserAppService {
             .setEmail(loginRequest.getEmail())
             .setPhone(loginRequest.getPhone());
         R result=loginService.login(user);
-        if(){
-            jwtService.generateToken(user);
+        if(result.getPassed()==false){
+            return result;
         }
+        // TODO:设置token
         return result;
     }
 
-    public R changePassword(String newPassword) {
-
-    }
-
     public R resetPassword(ResetPasswordRequest resetPasswordRequest) {
-        User user = new User();
-        user.setUsername(resetPasswordRequest.getUsername())
-            .setPassword(resetPasswordRequest.getPassword());
+        try {
+            return userProfileService.resetPassword(resetPasswordRequest.getId(),
+                               resetPasswordRequest.getNewPassword(),
+                               resetPasswordRequest.getOldPassword());
+        } catch (Exception e) {
+            return R.error("数据库操作失败"+e.getMessage());
+        }
     }
 
     public R updateProfile(UpdateProfileRequest updateProfileRequest) {
         User user = new User();
         BeanUtils.copyProperties(updateProfileRequest, user);
-
+        return userProfileService.updateUserProfile(user);
     }
 }

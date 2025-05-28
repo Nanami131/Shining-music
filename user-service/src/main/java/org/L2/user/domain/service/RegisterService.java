@@ -57,8 +57,8 @@ public class RegisterService {
         PasswordHistory passwordHistory = new PasswordHistory()
                 .setPassword(hashedPassword)
                 .setSalt(salt);
-
-        return saveUserAndHistory(user,passwordHistory);
+        // TODO： 默认头像、默认昵称等
+        return saveUserAndPassword(user,passwordHistory);
     }
 
     /**
@@ -69,7 +69,7 @@ public class RegisterService {
      * @throws Exception
      */
     @Transactional(rollbackFor = Exception.class)
-    public R saveUserAndHistory(User user, PasswordHistory passwordHistory) throws Exception {
+    public R saveUserAndPassword(User user, PasswordHistory passwordHistory) throws Exception {
         // 插入用户信息
         Long id=userMapper.insert(user);
 
