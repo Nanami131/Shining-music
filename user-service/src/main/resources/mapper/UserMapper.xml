@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="org.L2.user.mapper.UserMapper">
+    <resultMap id="UserResultMap" type="org.L2.user.domain.model.User">
+        <id property="id" column="id"/>
+        <result property="username" column="username"/>
+        <result property="password" column="password"/>
+        <result property="salt" column="salt"/>
+        <result property="phone" column="phone"/>
+        <result property="email" column="email"/>
+        <result property="avatarUrl" column="avatar_url"/>
+        <result property="signature" column="signature"/>
+        <result property="profile" column="profile"/>
+        <result property="role" column="role"/>
+        <result property="createdAt" column="created_at"/>
+        <result property="updatedAt" column="updated_at"/>
+    </resultMap>
+
+    <select id="selectById" resultMap="UserResultMap">
+        SELECT * FROM users WHERE id = #{id}
+    </select>
+
+    <insert id="insert" parameterType="org.L2.user.domain.model.User" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO users (username, password, salt, phone, email, avatar_url, signature, profile, role, created_at, updated_at)
+        VALUES (#{username}, #{password}, #{salt}, #{phone}, #{email}, #{avatarUrl}, #{signature}, #{profile}, #{role}, #{createdAt}, #{updatedAt})
+    </insert>
+
+    <update id="update" parameterType="org.L2.user.domain.model.User">
+        UPDATE users
+        SET username = #{username}, password = #{password}, salt = #{salt}, phone = #{phone}, email = #{email},
+            avatar_url = #{avatarUrl}, signature = #{signature}, profile = #{profile}, role = #{role}, created_at = #{createdAt}, updated_at = #{updatedAt}
+        WHERE id = #{id}
+    </update>
+
+    <delete id="deleteById">
+        DELETE FROM users WHERE id = #{id}
+    </delete>
+
+    <select id="query" resultMap="UserResultMap">
+        SELECT * FROM users
+        <where>
+            <if test="username != null">
+                AND username LIKE CONCAT('%', #{username}, '%')
+            </if>
+            <if test="phone != null">
+                AND phone = #{phone}
+            </if>
+            <if test="email != null">
+                AND email = #{email}
+            </if>
+            <if test="role != null">
+                AND role = #{role}
+            </if>
+            <if test="createdAt != null">
+                AND created_at >= #{createdAt}
+            </if>
+        </where>
+    </select>
+</mapper>

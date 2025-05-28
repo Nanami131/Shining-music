@@ -5,6 +5,7 @@ import org.L2.user.application.dto.*;
 import org.L2.user.domain.model.User;
 import org.L2.user.domain.service.JwtService;
 import org.L2.user.domain.service.LoginService;
+import org.L2.user.domain.service.RegisterService;
 import org.L2.user.infrastructure.mapper.UserMapper;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -16,6 +17,8 @@ public class UserAppService {
     private LoginService loginService;
     @Autowired
     private JwtService jwtService;
+    @Autowired
+    private RegisterService registerService;
 
     @Autowired
     private UserMapper userMapper;
@@ -24,31 +27,34 @@ public class UserAppService {
         if(registerRequest==null){
             return R.error("请求参数为空");
         }
-        R result=loginService.register(registerRequest);
-        if(result.getPassed()!=true){
-            return result;
-        }
-        User user=(User)result.getData();
-        try {
-            userMapper.save(user);
-        } catch (Exception e) {
-            return R.error("数据库操作失败");
-        }
-        UserDTO userDTO = new UserDTO();
-        BeanUtils.copyProperties(user, userDTO);
+        User user = new User();
+        // 由于还没有配置手机和邮箱的验证码服务，所以暂时不扩展其他的登录方式
+        user.setUsername(registerRequest.getUsername())
+            .setPassword(registerRequest.getPassword());
 
-        return R.success("注册成功",userDTO);
+        return registerService.register(user);
     }
 
     public R login(LoginRequest loginRequest) {
+        User user = new User();
+        user.setUsername(loginRequest.getUsername())
+            .setPassword(loginRequest.getPassword());
+
     }
 
     public R changePassword(String newPassword) {
+
     }
 
     public R resetPassword(ResetPasswordRequest resetPasswordRequest) {
+        User user = new User();
+        user.setUsername(loginRequest.getUsername())
+            .setPassword(loginRequest.getPassword());
     }
 
     public R updateProfile(UpdateProfileRequest updateProfileRequest) {
+        User user = new User();
+        user.setUsername(loginRequest.getUsername())
+            .setPassword(loginRequest.getPassword());
     }
 }
