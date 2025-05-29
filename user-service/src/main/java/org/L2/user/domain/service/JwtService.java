@@ -52,18 +52,6 @@ public class JwtService {
         return token;
     }
 
-    // 验证 JWT 是否有效
-    public Claims validateToken(String token) {
-        try {
-            return Jwts.parser()
-                    .setSigningKey(secret)
-                    .parseClaimsJws(token)
-                    .getBody();
-        } catch (Exception e) {
-            // 如果解析失败（例如签名错误、过期等），返回 null
-            return null;
-        }
-    }
 
     // 从 Redis 获取指定用户的 JWT
     public String getTokenFromRedis(String userId, String timestamp) {
