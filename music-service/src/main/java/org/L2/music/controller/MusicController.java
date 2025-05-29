@@ -49,16 +49,6 @@ public class MusicController {
     }
 
     /**
-     * 管理收藏（添加或移除歌曲到用户收藏歌单）
-     * @param favoriteRequest 收藏请求
-     * @return 收藏操作结果
-     */
-    @PostMapping("/favorite")
-    public R manageFavorite(@RequestBody FavoriteRequest favoriteRequest) {
-        return musicAppService.manageFavorite(favoriteRequest);
-    }
-
-    /**
      * 创建歌单
      * @param playlistRequest 歌单信息
      * @return 创建结果
@@ -86,6 +76,16 @@ public class MusicController {
     @PostMapping("/playlist/song")
     public R managePlaylistSong(@RequestBody PlaylistSongRequest playlistSongRequest) {
         return musicAppService.managePlaylistSong(playlistSongRequest);
+    }
+
+    /**
+     * 向歌单批量添加或移除歌曲
+     * @param playlistSongRequestList 歌单歌曲批量请求
+     * @return 操作结果
+     */
+    @PostMapping("/playlist/songs")
+    public R managePlaylistSong(@RequestBody PlaylistSongRequestList playlistSongRequestList) {
+        return musicAppService.managePlaylistSongList(playlistSongRequestList);
     }
 
     /**

@@ -25,8 +25,6 @@ public class UserProfileService {
     @Autowired
     private PasswordHistoryMapper passwordHistoryMapper;
     @Autowired
-    private StringRedisTemplate redisTemplate;
-    @Autowired
     private ObjectMapper objectMapper;
     @Autowired
     private StringRedisTemplate stringRedisTemplate;
@@ -38,7 +36,7 @@ public class UserProfileService {
             userMapper.update(user);
             if(user.getNickName()!=null||user.getSignature()!=null){
                 // 缓存需要更新
-                redisTemplate.delete("cache:userInfo:"+user.getId());
+                stringRedisTemplate.delete("cache:userInfo:"+user.getId());
             }
             return R.success("用户信息修改成功");
         } catch (Exception e) {

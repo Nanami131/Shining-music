@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="org.L2.music.infrastructure.mapper.SongMapper">
+    <resultMap id="SongResultMap" type="org.L2.music.domain.model.Song">
+        <id property="id" column="id"/>
+        <result property="title" column="title"/>
+        <result property="artistId" column="artist_id"/>
+        <result property="albumId" column="album_id"/>
+        <result property="fileUrl" column="file_url"/>
+        <result property="coverUrl" column="cover_url"/>
+        <result property="status" column="status"/>
+        <result property="createdAt" column="created_at"/>
+        <result property="updatedAt" column="updated_at"/>
+    </resultMap>
+
+    <select id="selectById" resultMap="SongResultMap">
+        SELECT * FROM songs WHERE id = #{id}
+    </select>
+
+    <insert id="insert" parameterType="org.L2.music.domain.model.Song" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO songs (title, artist_id, album_id, file_url, cover_url, status, created_at, updated_at)
+        VALUES (#{title}, #{artistId}, #{albumId}, #{fileUrl}, #{coverUrl}, #{status}, #{createdAt}, #{updatedAt})
+    </insert>
+
+    <update id="update" parameterType="org.L2.music.domain.model.Song">
+        UPDATE songs
+        SET title = #{title}, artist_id = #{artistId}, album_id = #{albumId},
+            file_url = #{fileUrl}, cover_url = #{coverUrl}, status = #{status},
+            created_at = #{createdAt}, updated_at = #{updatedAt}
+        WHERE id = #{id}
+    </update>
+
+    <delete id="deleteById">
+        DELETE FROM songs WHERE id = #{id}
+    </delete>
+
+    <select id="query" resultMap="SongResultMap">
+        SELECT * FROM songs
+        <where>
+            <if test="title != null">
+                AND title LIKE CONCAT('%', #{title}, '%')
+            </if>
+            <if test="artistId != null">
+                AND artist_id = #{artistId}
+            </if>
+            <if test="albumId != null">
+                AND album_id = #{albumId}
+            </if>
+            <if test="status != null">
+                AND status = #{status}
+            </if>
+            <if test="createdAt != null">
+                AND created_at >= #{createdAt}
+            </if>
+        </where>
+    </select>
+</mapper>

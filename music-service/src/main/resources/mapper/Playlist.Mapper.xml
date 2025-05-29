@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="org.L2.music.infrastructure.mapper.PlaylistMapper">
+    <resultMap id="PlaylistResultMap" type="org.L2.music.domain.model.Playlist">
+        <id property="id" column="id"/>
+        <result property="name" column="name"/>
+        <result property="description" column="description"/>
+        <result property="userId" column="user_id"/>
+        <result property="type" column="type"/>
+        <result property="visibility" column="visibility"/>
+        <result property="createdAt" column="created_at"/>
+        <result property="updatedAt" column="updated_at"/>
+    </resultMap>
+
+    <select id="selectById" resultMap="PlaylistResultMap">
+        SELECT * FROM playlists WHERE id = #{id}
+    </select>
+
+    <insert id="insert" parameterType="org.L2.music.domain.model.Playlist" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO playlists (name, description, user_id, type, visibility, created_at, updated_at)
+        VALUES (#{name}, #{description}, #{userId}, #{type}, #{visibility}, #{createdAt}, #{updatedAt})
+    </insert>
+
+    <update id="update" parameterType="org.L2.music.domain.model.Playlist">
+        UPDATE playlists
+        SET name = #{name}, description = #{description}, user_id = #{userId},
+            type = #{type}, visibility = #{visibility}, created_at = #{createdAt}, updated_at = #{updatedAt}
+        WHERE id = #{id}
+    </update>
+
+    <delete id="deleteById">
+        DELETE FROM playlists WHERE id = #{id}
+    </delete>
+
+    <select id="query" resultMap="PlaylistResultMap">
+        SELECT * FROM playlists
+        <where>
+            <if test="name != null">
+                AND name LIKE CONCAT('%', #{name}, '%')
+            </if>
+            <if test="userId != null">
+                AND user_id = #{userId}
+            </if>
+            <if test="type != null">
+                AND type = #{type}
+            </if>
+            <if test="visibility != null">
+                AND visibility = #{visibility}
+            </if>
+            <if test="createdAt != null">
+                AND created_at >= #{createdAt}
+            </if>
+        </where>
+    </select>
+</mapper>
