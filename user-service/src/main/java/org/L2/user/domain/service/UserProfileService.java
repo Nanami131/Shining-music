@@ -1,12 +1,17 @@
 package org.L2.user.domain.service;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.L2.common.R;
+import org.L2.user.application.dto.UserBaseDTO;
 import org.L2.user.domain.model.PasswordHistory;
 import org.L2.user.domain.model.User;
 import org.L2.user.infrastructure.mapper.PasswordHistoryMapper;
 import org.L2.user.infrastructure.mapper.UserMapper;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.security.crypto.bcrypt.BCrypt;
+
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -19,12 +24,22 @@ public class UserProfileService {
     private UserMapper userMapper;
     @Autowired
     private PasswordHistoryMapper passwordHistoryMapper;
+    @Autowired
+    private StringRedisTemplate redisTemplate;
+    @Autowired
+    private ObjectMapper objectMapper;
+    @Autowired
+    private StringRedisTemplate stringRedisTemplate;
 
     public R updateUserProfile(User user) {
         // 在这里再校验一次，这个接口只修改用户个性化信息
         user.setAvatarUrl("").setPassword("").setSalt("");
         try {
             userMapper.update(user);
+            if(user.getNickName()!=null||user.getSignature()!=null){
+                // 缓存需要更新
+                redisTemplate.delete("cache:userInfo:"+user.getId());
+            }
             return R.success("用户信息修改成功");
         } catch (Exception e) {
             return R.error("用户信息修改失败："+e.getMessage());
@@ -76,5 +91,38 @@ public class UserProfileService {
         passwordHistoryMapper.insert(passwordHistory.setUserId(id));
 
         return R.success("注册成功");
+    }
+
+    public R getUserBaseInfo(Long userId) {
+        String json = stringRedisTemplate.opsForValue().get("cache:userInfo:" + userId);
+        if(json!=null){
+            try {
+                User user = objectMapper.readValue(json, User.class);
+                return R.success("查询成功"+user);
+            } catch (JsonProcessingException e) {
+                // TODO:日志记录
+            }
+        }
+        List<User> query = userMapper.query(new User().setId(userId));
+        if(query == null||query.isEmpty()) {
+            return R.error("用户不存在");
+        }
+        User user = query.get(0);
+        try {
+            String jsonStr = objectMapper.writeValueAsString(user);
+            stringRedisTemplate.opsForValue().set("cache:userInfo:" + userId, jsonStr, 60*60*24);
+        } catch (JsonProcessingException e) {
+            // TODO:日志记录；缓存存入失败不影响返回
+        }
+        return R.success("查询成功"+user);
+    }
+
+    public R getUserDetailsInfo(Long userId) {
+        List<User> query = userMapper.query(new User().setId(userId));
+        if(query == null||query.isEmpty()) {
+            return R.error("用户不存在");
+        }
+        User user = query.get(0);
+        return R.success("查询成功"+user);
     }
 }

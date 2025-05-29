@@ -6,7 +6,7 @@ import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.SignatureAlgorithm;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.data.redis.core.RedisTemplate;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 
 import java.util.Date;
@@ -25,29 +25,21 @@ public class JwtService {
     @Value("${jwt.expiration}")
     private Long expiration;
 
-    // TODO
     @Autowired
-    private RedisTemplate<String, String> redisTemplate;
+    private StringRedisTemplate redisTemplate;
 
     // 生成 JWT 并存储到 Redis
     public String generateToken(User user) {
-        // 创建一个 Map 来存储 JWT 的自定义声明（claims）
-        // claims 是 JWT 的 payload 部分，包含用户相关信息
-        Map<String, Object> claims = new HashMap<>();
-        claims.put("userId", user.getId());
-        claims.put("username", user.getUsername());
-
         // 使用 jjwt 库生成 JWT
         String token = Jwts.builder()
-                .setClaims(claims)
-                .setSubject(user.getUsername())
+                .setSubject(user.getId().toString())
                 .setId(UUID.randomUUID().toString())
                 .setIssuedAt(new Date())
                 .setExpiration(new Date(System.currentTimeMillis() + expiration * 1000)) // 过期时间
                 .signWith(SignatureAlgorithm.HS512, secret) // 使用 HS512 算法和密钥签名
                 .compact();
 
-        String redisKey = "user-service:jwt:" + user.getId();
+        String redisKey = "jwt:login:" + user.getId();
         redisTemplate.opsForValue().set(redisKey, token, expiration, TimeUnit.SECONDS);
 
         return token;
@@ -68,13 +60,13 @@ public class JwtService {
 
     // 从 Redis 获取指定用户的 JWT
     public String getTokenFromRedis(String userId) {
-        String redisKey = "user-service:jwt:" + userId;
+        String redisKey = "jwt:login:" + userId;
         return redisTemplate.opsForValue().get(redisKey);
     }
 
     // 删除 Redis 中的 JWT
     public void removeTokenFromRedis(String userId) {
-        String redisKey = "user-service:jwt:" + userId;
+        String redisKey = "jwt:login:" + userId;
         redisTemplate.delete(redisKey);
     }
 }

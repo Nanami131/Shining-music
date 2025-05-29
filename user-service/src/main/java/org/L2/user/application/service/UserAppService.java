@@ -74,4 +74,24 @@ public class UserAppService {
         BeanUtils.copyProperties(updateProfileRequest, user);
         return userProfileService.updateUserProfile(user);
     }
+
+    public R getUserBaseInfo(Long userId) {
+        R result = userProfileService.getUserBaseInfo(userId);
+        if(result.getPassed()==false){
+            return result;
+        }
+        UserBaseDTO userBaseDTO = new UserBaseDTO();
+        BeanUtils.copyProperties(result.getData(),userBaseDTO);
+        return R.success("获取用户信息成功",userBaseDTO);
+    }
+
+    public R getUserDetailsInfo(Long userId) {
+        R result = userProfileService.getUserDetailsInfo(userId);
+        if(result.getPassed()==false){
+            return result;
+        }
+        UserDetailsDTO userDetailsDTO = new UserDetailsDTO();
+        BeanUtils.copyProperties(result.getData(),userDetailsDTO);
+        return R.success("获取用户详情成功",userDetailsDTO);
+    }
 }

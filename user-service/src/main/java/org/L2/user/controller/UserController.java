@@ -36,15 +36,15 @@ public class UserController {
         return userAppService.login(loginRequest);
     }
 
-    /**
-     * 修改密码
-     * @param newPassword 新密码
-     * @return
-     */
-    @PostMapping("/change-password")
-    public R changePassword(@RequestBody String newPassword) {
-        return userAppService.changePassword(newPassword);
-    }
+//    /**
+//     * 修改密码
+//     * @param newPassword 新密码
+//     * @return
+//     */
+//    @PostMapping("/change-password")
+//    public R changePassword(@RequestBody String newPassword) {
+//        return userAppService.changePassword(newPassword);
+//    }
 
     /**
      * 找回密码
@@ -57,6 +57,27 @@ public class UserController {
     }
 
     /**
+     * 获取用户基本信息
+     * @param userId 用户id
+     * @return
+     */
+    @GetMapping("/info")
+    public R getUserBaseInfo(@RequestBody Long userId) {
+        return userAppService.getUserBaseInfo(userId);
+    }
+
+    /**
+     * 获取用户详细信息
+     * @param userId 用户id
+     * @return
+     */
+    @GetMapping("/update-profile")
+    public R getUserDetailsInfo(@RequestBody Long userId) {
+        return userAppService.getUserDetailsInfo(userId);
+    }
+
+
+    /**
      * 更改个人资料
      * @param updateProfileRequest 个人资料信息
      * @return
@@ -65,9 +86,6 @@ public class UserController {
     public R updateProfile(@RequestBody UpdateProfileRequest updateProfileRequest) {
         return userAppService.updateProfile(updateProfileRequest);
     }
-
-
-
     /**
      * 项目初期测试前后端时使用的接口，已废弃
      * @return
