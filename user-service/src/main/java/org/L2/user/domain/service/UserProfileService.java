@@ -93,6 +93,11 @@ public class UserProfileService {
         return R.success("注册成功");
     }
 
+    /**
+     * 获取用户基本信息
+     * @param userId
+     * @return
+     */
     public R getUserBaseInfo(Long userId) {
         String json = stringRedisTemplate.opsForValue().get("cache:userInfo:" + userId);
         if(json!=null){
@@ -117,6 +122,11 @@ public class UserProfileService {
         return R.success("查询成功"+user);
     }
 
+    /**
+     * 获取用户详细信息
+     * @param userId
+     * @return
+     */
     public R getUserDetailsInfo(Long userId) {
         List<User> query = userMapper.query(new User().setId(userId));
         if(query == null||query.isEmpty()) {

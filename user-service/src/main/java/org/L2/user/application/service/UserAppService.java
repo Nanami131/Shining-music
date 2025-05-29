@@ -22,6 +22,11 @@ public class UserAppService {
     @Autowired
     private UserProfileService userProfileService;
 
+    /**
+     * 用户注册
+     * @param registerRequest
+     * @return
+     */
     public R register(RegisterRequest registerRequest) {
         if(registerRequest==null){
             return R.error("请求参数为空");
@@ -40,6 +45,11 @@ public class UserAppService {
         }
     }
 
+    /**
+     * 用户登录
+     * @param loginRequest
+     * @return
+     */
     public R login(LoginRequest loginRequest) {
         User user = new User();
         // 由于还没有配置手机和邮箱的验证码服务，所以暂时不扩展其他的登录方式
@@ -56,6 +66,13 @@ public class UserAppService {
         UserBaseDTO userBaseDTO = new UserBaseDTO();
         BeanUtils.copyProperties(user,userBaseDTO);
         // TODO:设置token
+        try {
+            String token = jwtService.generateToken(user.getId().toString());
+            userBaseDTO.setToken(token);
+        } catch (Exception e) {
+            return R.error("生成token失败"+e.getMessage());
+        }
+
         return R.success("登录成功",userBaseDTO);
     }
 
