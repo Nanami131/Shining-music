@@ -34,7 +34,7 @@ public class LoginService {
         String realPassword = query.get(0).getPassword();
         String hashedPassword = BCrypt.hashpw(password, salt);
         if(Objects.equals(hashedPassword, realPassword)){
-            return R.success("登录成功");
+            return R.success("登录成功",query.get(0));
         }
         return R.error("密码错误");
     }

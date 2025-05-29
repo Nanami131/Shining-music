@@ -51,8 +51,12 @@ public class UserAppService {
         if(result.getPassed()==false){
             return result;
         }
+        user=(User)result.getData();
+
+        UserBaseDTO userBaseDTO = new UserBaseDTO();
+        BeanUtils.copyProperties(user,userBaseDTO);
         // TODO:设置token
-        return result;
+        return R.success("登录成功",userBaseDTO);
     }
 
     public R resetPassword(ResetPasswordRequest resetPasswordRequest) {
