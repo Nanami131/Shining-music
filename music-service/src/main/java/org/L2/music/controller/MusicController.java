@@ -43,19 +43,19 @@ public class MusicController {
      * @param songId 歌曲ID
      * @return 歌曲详细信息
      */
-    @GetMapping("/info/{songId}")
+    @GetMapping("/details/{songId}")
     public R getSongInfo(@PathVariable Long songId) {
-        return musicAppService.getSongInfo(songId);
+        return musicAppService.getSongDetails(songId);
     }
 
     /**
      * 创建歌单
-     * @param playlistRequest 歌单信息
+     * @param playlistCreateRequest 歌单信息
      * @return 创建结果
      */
     @PostMapping("/playlist")
-    public R createPlaylist(@RequestBody PlaylistRequest playlistRequest) {
-        return musicAppService.createPlaylist(playlistRequest);
+    public R createPlaylist(@RequestBody PlaylistCreateRequest playlistCreateRequest) {
+        return musicAppService.createPlaylist(playlistCreateRequest);
     }
 
     /**

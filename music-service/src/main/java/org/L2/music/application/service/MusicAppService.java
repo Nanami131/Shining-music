@@ -2,10 +2,13 @@ package org.L2.music.application.service;
 
 
 import org.L2.common.R;
+import org.L2.music.application.dto.PlaylistCreateRequest;
 import org.L2.music.application.dto.PlaylistSongRequest;
 import org.L2.music.application.dto.PlaylistSongRequestList;
+import org.L2.music.domain.model.Playlist;
 import org.L2.music.domain.service.PlaylistService;
 import org.L2.music.domain.service.SongService;
+import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -35,11 +38,18 @@ public class MusicAppService {
         }
     }
 
-    public R getSongInfo(Long songId) {
-        try {
-            SongService.
-        } catch (Exception e) {
-            return R.error("获取信息失败"+e.getMessage());
-        }
+    public R getSongDetails(Long songId) {
+        return songService.getSongDetails(songId);
+    }
+
+    public R deletePlaylist(Long playlistId) {
+    }
+
+    public R createPlaylist(PlaylistCreateRequest playlistCreateRequest) {
+        Playlist playlist = new Playlist();
+        BeanUtils.copyProperties(playlistCreateRequest, playlist);
+        playlist.setUserId(playlistCreateRequest.getId());
+        playlist.setId(null);
+        return playlistService.createPlaylist(playlist);
     }
 }
