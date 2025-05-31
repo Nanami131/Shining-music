@@ -23,8 +23,15 @@
 
     <update id="update" parameterType="org.L2.music.domain.model.Playlist">
         UPDATE playlists
-        SET name = #{name}, description = #{description}, user_id = #{userId},
-            type = #{type}, visibility = #{visibility}, created_at = #{createdAt}, updated_at = #{updatedAt}
+        <set>
+            <if test="name != null and name != ''">name = #{name},</if>
+            <if test="description != null and description != ''">description = #{description},</if>
+            <if test="userId != null">user_id = #{userId},</if>
+            <if test="type != null and type != ''">type = #{type},</if>
+            <if test="visibility != null and visibility != ''">visibility = #{visibility},</if>
+            <if test="createdAt != null">created_at = #{createdAt},</if>
+            <if test="updatedAt != null">updated_at = #{updatedAt},</if>
+        </set>
         WHERE id = #{id}
     </update>
 

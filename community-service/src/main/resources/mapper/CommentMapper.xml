@@ -25,11 +25,19 @@
 
     <update id="update" parameterType="org.L2.community.domain.model.Comment">
         UPDATE comments
-        SET user_id = #{userId}, content = #{content}, target_type = #{targetType}, target_id = #{targetId},
-            parent_comment_id = #{parentCommentId}, likes = #{likes}, status = #{status}, created_at = #{createdAt}, updated_at = #{updatedAt}
+        <set>
+            <if test="userId != null">user_id = #{userId},</if>
+            <if test="content != null and content != ''">content = #{content},</if>
+            <if test="targetType != null and targetType != ''">target_type = #{targetType},</if>
+            <if test="targetId != null">target_id = #{targetId},</if>
+            <if test="parentCommentId != null">parent_comment_id = #{parentCommentId},</if>
+            <if test="likes != null">likes = #{likes},</if>
+            <if test="status != null and status != ''">status = #{status},</if>
+            <if test="createdAt != null">created_at = #{createdAt},</if>
+            <if test="updatedAt != null">updated_at = #{updatedAt},</if>
+        </set>
         WHERE id = #{id}
     </update>
-
     <delete id="deleteById">
         DELETE FROM comments WHERE id = #{id}
     </delete>

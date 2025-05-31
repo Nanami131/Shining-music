@@ -52,20 +52,27 @@ public class UserProfileService {
         }
         String salt = query.get(0).getSalt();
         String realPassword = query.get(0).getPassword();
+        oldPassword = BCrypt.hashpw(oldPassword, salt);
         if(!Objects.equals(realPassword,oldPassword)) {
             return R.error("旧密码错误");
         }
+
+
         List<PasswordHistory> passwordHistories = passwordHistoryMapper.queryByUserId(id);
-        for(PasswordHistory historyPassword:passwordHistories) {
-            if(Objects.equals(historyPassword.getPassword(),newPassword)){
+        for(int i=0;i<passwordHistories.size();i++) {
+            if(Objects.equals(passwordHistories.get(i).getPassword(),BCrypt.hashpw(newPassword, passwordHistories.get(i).getSalt()))){
+                // 应该用旧的盐值加密，然后判断是否新密码是否和旧密码相同
                 return R.error("新密码不能与旧密码相同");
             }
         }
-        // 新密码没有问题，开始加盐加密
+
+        // 新密码没有问题
         String newSalt = BCrypt.gensalt(); // 生成随机盐值
         String hashedPassword = BCrypt.hashpw(newPassword, newSalt);//加密
+
         User user=new User().setSalt(newSalt)
-             .setPassword(hashedPassword);
+             .setPassword(hashedPassword)
+             .setId(id);
 
         PasswordHistory passwordHistory = new PasswordHistory()
             .setPassword(hashedPassword)
@@ -82,13 +89,13 @@ public class UserProfileService {
      */
     @Transactional(rollbackFor = Exception.class)
     public R saveUserAndPassword(User user, PasswordHistory passwordHistory) throws Exception {
-        // 插入用户信息
-        Long id=userMapper.insert(user);
+        // 更新用户密码
+        userMapper.update(user);
 
         // 插入密码历史记录
-        passwordHistoryMapper.insert(passwordHistory.setUserId(id));
+        passwordHistoryMapper.insert(passwordHistory.setUserId(user.getId()));
 
-        return R.success("注册成功");
+        return R.success("重置密码成功");
     }
 
     /**

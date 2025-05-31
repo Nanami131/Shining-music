@@ -27,17 +27,17 @@ public class LoginInterceptor implements HandlerInterceptor {
         String jwtToken = token.substring("Bearer ".length());
 
         try {
-//            String userId = JwtUtil.getUserIdFromToken(jwtToken);
-//            if (userId == null) {
-//                response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "无效的 Token");
-//                return false;
-//            }
-//            String storedToken = redisTemplate.opsForValue().get("token:" + userId);
-//
-//            if (storedToken == null || !storedToken.equals(jwtToken)) {
-//                response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Token 已失效或不存在");
-//                return false;
-//            }
+            String userId = JwtUtil.getUserIdFromToken(jwtToken);
+            if (userId == null) {
+                response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "无效的 Token");
+                return false;
+            }
+            String storedToken = redisTemplate.opsForValue().get("token:" + userId);
+
+            if (storedToken == null || !storedToken.equals(jwtToken)) {
+                response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Token 已失效或不存在");
+                return false;
+            }
 
             // 刷新 Token 有效期到 24 小时
             redisTemplate.expire("token:" + userId, 24, TimeUnit.HOURS);

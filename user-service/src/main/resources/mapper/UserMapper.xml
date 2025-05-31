@@ -27,8 +27,19 @@
 
     <update id="update" parameterType="org.L2.user.domain.model.User">
         UPDATE users
-        SET username = #{username}, password = #{password}, salt = #{salt}, phone = #{phone}, email = #{email},
-            avatar_url = #{avatarUrl}, signature = #{signature}, profile = #{profile}, role = #{role}, created_at = #{createdAt}, updated_at = #{updatedAt}
+        <set>
+            <if test="username != null and username != ''">username = #{username},</if>
+            <if test="password != null and password != ''">password = #{password},</if>
+            <if test="salt != null and salt != ''">salt = #{salt},</if>
+            <if test="phone != null and phone != ''">phone = #{phone},</if>
+            <if test="email != null and email != ''">email = #{email},</if>
+            <if test="avatarUrl != null and avatarUrl != ''">avatar_url = #{avatarUrl},</if>
+            <if test="signature != null and signature != ''">signature = #{signature},</if>
+            <if test="profile != null and profile != ''">profile = #{profile},</if>
+            <if test="role != null and role != ''">role = #{role},</if>
+            <if test="createdAt != null">created_at = #{createdAt},</if>
+            <if test="updatedAt != null">updated_at = #{updatedAt},</if>
+        </set>
         WHERE id = #{id}
     </update>
 
