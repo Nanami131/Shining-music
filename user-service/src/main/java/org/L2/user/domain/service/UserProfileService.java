@@ -106,7 +106,6 @@ public class UserProfileService {
     public R getUserBaseInfo(Long userId) {
         String json = stringRedisTemplate.opsForValue().get("cache:userInfo:" + userId);
         if(json!=null){
-            System.out.println(json);
             try {
                 User user = objectMapper.readValue(json, User.class);
                 return R.success("查询成功",user);

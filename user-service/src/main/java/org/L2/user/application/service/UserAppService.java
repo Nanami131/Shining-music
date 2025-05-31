@@ -95,6 +95,7 @@ public class UserAppService {
     public R getUserBaseInfo(Long userId) {
         R result = userProfileService.getUserBaseInfo(userId);
         if(result.getPassed()==false){
+            System.out.println("1");
             return result;
         }
         UserBaseDTO userBaseDTO = new UserBaseDTO();
