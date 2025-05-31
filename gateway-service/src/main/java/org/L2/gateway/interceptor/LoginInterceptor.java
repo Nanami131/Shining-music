@@ -33,7 +33,6 @@ public class LoginInterceptor implements GlobalFilter, Ordered {
         if (token == null || !token.startsWith("Bearer ")) {
             return unauthorizedResponse(exchange, "未登录或登录已失效");
         }
-
         String jwtToken = token.substring("Bearer ".length());
         try {
             Claims claims = Jwts.parser()
@@ -46,14 +45,13 @@ public class LoginInterceptor implements GlobalFilter, Ordered {
             if (userId == null) {
                 return unauthorizedResponse(exchange, "无效的 Token");
             }
-
             String storedToken = redisTemplate.opsForValue().get("jwt:" + userId+":"+timestamp);
             if (storedToken == null || !storedToken.equals(jwtToken)) {
                 return unauthorizedResponse(exchange, "Token 已失效或不存在");
             }
             // 刷新 Token 有效期到 24 小时
             // 令牌设计的过期时间是一个月
-            redisTemplate.expire("token:" + userId, 24, TimeUnit.HOURS);
+            redisTemplate.expire("jwt:" + userId + ":" + timestamp, 24, TimeUnit.HOURS);
 
             return chain.filter(exchange);
         } catch (JwtException e) {
