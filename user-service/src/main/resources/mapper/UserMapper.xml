@@ -50,20 +50,38 @@
     <select id="query" resultMap="UserResultMap">
         SELECT * FROM users
         <where>
-            <if test="username != null">
+            <if test="id != null">
+                AND id = #{id}
+            </if>
+            <if test="username != null and username != ''">
                 AND username LIKE CONCAT('%', #{username}, '%')
             </if>
-            <if test="phone != null">
+            <if test="nickName != null and nickName != ''">
+                AND nick_name LIKE CONCAT('%', #{nickName}, '%')
+            </if>
+            <if test="phone != null and phone != ''">
                 AND phone = #{phone}
             </if>
-            <if test="email != null">
+            <if test="email != null and email != ''">
                 AND email = #{email}
+            </if>
+            <if test="avatarUrl != null and avatarUrl != ''">
+                AND avatar_url LIKE CONCAT('%', #{avatarUrl}, '%')
+            </if>
+            <if test="signature != null and signature != ''">
+                AND signature LIKE CONCAT('%', #{signature}, '%')
+            </if>
+            <if test="profile != null and profile != ''">
+                AND profile LIKE CONCAT('%', #{profile}, '%')
             </if>
             <if test="role != null">
                 AND role = #{role}
             </if>
             <if test="createdAt != null">
                 AND created_at >= #{createdAt}
+            </if>
+            <if test="updatedAt != null">
+                AND updated_at >= #{updatedAt}
             </if>
         </where>
     </select>

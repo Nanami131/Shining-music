@@ -45,13 +45,16 @@
     <select id="query" resultMap="CommentResultMap">
         SELECT * FROM comments
         <where>
+            <if test="id != null">
+                AND id = #{id}
+            </if>
             <if test="userId != null">
                 AND user_id = #{userId}
             </if>
-            <if test="content != null">
+            <if test="content != null and content != ''">
                 AND content LIKE CONCAT('%', #{content}, '%')
             </if>
-            <if test="targetType != null">
+            <if test="targetType != null and targetType != ''">
                 AND target_type = #{targetType}
             </if>
             <if test="targetId != null">
@@ -60,11 +63,17 @@
             <if test="parentCommentId != null">
                 AND parent_comment_id = #{parentCommentId}
             </if>
+            <if test="likes != null">
+                AND likes = #{likes}
+            </if>
             <if test="status != null">
                 AND status = #{status}
             </if>
             <if test="createdAt != null">
                 AND created_at >= #{createdAt}
+            </if>
+            <if test="updatedAt != null">
+                AND updated_at >= #{updatedAt}
             </if>
         </where>
     </select>

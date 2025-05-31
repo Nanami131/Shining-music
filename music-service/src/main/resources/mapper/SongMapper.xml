@@ -44,7 +44,10 @@
     <select id="query" resultMap="SongResultMap">
         SELECT * FROM songs
         <where>
-            <if test="title != null">
+            <if test="id != null">
+                AND id = #{id}
+            </if>
+            <if test="title != null and title != ''">
                 AND title LIKE CONCAT('%', #{title}, '%')
             </if>
             <if test="artistId != null">
@@ -53,11 +56,20 @@
             <if test="albumId != null">
                 AND album_id = #{albumId}
             </if>
+            <if test="fileUrl != null and fileUrl != ''">
+                AND file_url LIKE CONCAT('%', #{fileUrl}, '%')
+            </if>
+            <if test="coverUrl != null and coverUrl != ''">
+                AND cover_url LIKE CONCAT('%', #{coverUrl}, '%')
+            </if>
             <if test="status != null">
                 AND status = #{status}
             </if>
             <if test="createdAt != null">
                 AND created_at >= #{createdAt}
+            </if>
+            <if test="updatedAt != null">
+                AND updated_at >= #{updatedAt}
             </if>
         </where>
     </select>

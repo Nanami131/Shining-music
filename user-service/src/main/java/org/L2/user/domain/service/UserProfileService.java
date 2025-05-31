@@ -106,9 +106,10 @@ public class UserProfileService {
     public R getUserBaseInfo(Long userId) {
         String json = stringRedisTemplate.opsForValue().get("cache:userInfo:" + userId);
         if(json!=null){
+            System.out.println(json);
             try {
                 User user = objectMapper.readValue(json, User.class);
-                return R.success("查询成功"+user);
+                return R.success("查询成功",user);
             } catch (JsonProcessingException e) {
                 // TODO:日志记录
             }
@@ -124,7 +125,7 @@ public class UserProfileService {
         } catch (JsonProcessingException e) {
             // TODO:日志记录；缓存存入失败不影响返回
         }
-        return R.success("查询成功"+user);
+        return R.success("查询成功",user);
     }
 
     /**
@@ -138,6 +139,6 @@ public class UserProfileService {
             return R.error("用户不存在");
         }
         User user = query.get(0);
-        return R.success("查询成功"+user);
+        return R.success("查询成功",user);
     }
 }

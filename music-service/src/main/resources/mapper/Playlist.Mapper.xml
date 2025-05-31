@@ -42,8 +42,14 @@
     <select id="query" resultMap="PlaylistResultMap">
         SELECT * FROM playlists
         <where>
-            <if test="name != null">
+            <if test="id != null">
+                AND id = #{id}
+            </if>
+            <if test="name != null and name != ''">
                 AND name LIKE CONCAT('%', #{name}, '%')
+            </if>
+            <if test="description != null and description != ''">
+                AND description LIKE CONCAT('%', #{description}, '%')
             </if>
             <if test="userId != null">
                 AND user_id = #{userId}
@@ -56,6 +62,9 @@
             </if>
             <if test="createdAt != null">
                 AND created_at >= #{createdAt}
+            </if>
+            <if test="updatedAt != null">
+                AND updated_at >= #{updatedAt}
             </if>
         </where>
     </select>

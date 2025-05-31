@@ -42,20 +42,29 @@
     <select id="query" resultMap="PostResultMap">
         SELECT * FROM posts
         <where>
+            <if test="id != null">
+                AND id = #{id}
+            </if>
             <if test="userId != null">
                 AND user_id = #{userId}
             </if>
-            <if test="title != null">
+            <if test="title != null and title != ''">
                 AND title LIKE CONCAT('%', #{title}, '%')
             </if>
-            <if test="content != null">
+            <if test="content != null and content != ''">
                 AND content LIKE CONCAT('%', #{content}, '%')
+            </if>
+            <if test="likes != null">
+                AND likes = #{likes}
             </if>
             <if test="status != null">
                 AND status = #{status}
             </if>
             <if test="createdAt != null">
                 AND created_at >= #{createdAt}
+            </if>
+            <if test="updatedAt != null">
+                AND updated_at >= #{updatedAt}
             </if>
         </where>
     </select>
