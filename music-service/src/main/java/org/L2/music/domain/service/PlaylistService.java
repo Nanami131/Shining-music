@@ -2,10 +2,8 @@ package org.L2.music.domain.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.L2.common.R;
-import org.L2.music.application.dto.PlaylistCreateRequest;
-import org.L2.music.constant.Constant;
+import org.L2.music.constant.Constants;
 import org.L2.music.domain.model.Playlist;
-import org.L2.music.domain.model.Song;
 import org.L2.music.infrastructure.PlaylistMapper;
 import org.L2.music.infrastructure.SongMapper;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -40,7 +38,7 @@ public class PlaylistService {
             stringRedisTemplate.opsForSet().remove("playlist:" + playlistId, songId);
         }
         else{
-            if(stringRedisTemplate.opsForSet().size("playlist:" + playlistId)>=Constant.MAX_PLAYLIST_SIZE){
+            if(stringRedisTemplate.opsForSet().size("playlist:" + playlistId)>= Constants.MAX_PLAYLIST_SIZE){
                 return R.error("歌单歌曲数量已达上限");
             }
            stringRedisTemplate.opsForSet().add("playlist:" + playlistId, String.valueOf(songId));
@@ -53,9 +51,9 @@ public class PlaylistService {
         if(playlist.getType()==null||playlist.getVisibility()==null){
             return R.error("歌单信息不全");
         }
-        if(playlist.getType()== Constant.USER_FAVORITE){
+        if(playlist.getType()== Constants.USER_FAVORITE){
             List<Playlist> query = playlistMapper.query(new Playlist().setUserId(playlist.getUserId())
-                    .setType(Constant.USER_FAVORITE));
+                    .setType(Constants.USER_FAVORITE));
             if(query!=null && !query.isEmpty()){
                 return R.error("非法的请求！");
             }

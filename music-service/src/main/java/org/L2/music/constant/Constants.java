@@ -1,6 +1,6 @@
 package org.L2.music.constant;
 
-public class Constant {
+public class Constants {
     public static final byte PLAYLIST = 1;
     public static final byte ALBUM = 2;
     public static final byte USER_FAVORITE = 3;

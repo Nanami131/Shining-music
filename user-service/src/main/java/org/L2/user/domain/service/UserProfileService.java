@@ -3,6 +3,7 @@ package org.L2.user.domain.service;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.L2.common.R;
+import org.L2.common.constant.CommonConstants;
 import org.L2.user.application.dto.UserBaseDTO;
 import org.L2.user.domain.model.PasswordHistory;
 import org.L2.user.domain.model.User;
@@ -17,6 +18,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.Objects;
+import java.util.concurrent.TimeUnit;
 
 @Service
 public class UserProfileService {
@@ -120,7 +122,7 @@ public class UserProfileService {
         User user = query.get(0);
         try {
             String jsonStr = objectMapper.writeValueAsString(user);
-            stringRedisTemplate.opsForValue().set("cache:userInfo:" + userId, jsonStr, 60*60*24);
+            stringRedisTemplate.opsForValue().set("cache:userInfo:" + userId, jsonStr,  CommonConstants.CACHE_TTL_HOURS, TimeUnit.HOURS);
         } catch (JsonProcessingException e) {
             // TODO:日志记录；缓存存入失败不影响返回
         }
