@@ -1,57 +1,30 @@
 <template>
-  <div class="shining-home">
-    <h1>Welcome to Shining Music Community</h1>
-    <p>Explore music, join discussions, and get personalized recommendations!</p>
-    <button @click="testUserService">Test User Service</button>
-    <p v-if="message">Response: {{ message }}</p>
-    <p v-if="data">Data: {{ data }}</p>
+  <div class="home-container">
+    <h1>欢迎体验音乐社区</h1>
+    <p>发现音乐，参与讨论，获取个性化推荐！</p>
   </div>
 </template>
 
 <script>
-import api from '@/api/index.js';
-
 export default {
   name: 'ShiningHome',
-  data() {
-    return {
-      message: '',
-      data: '',
-    };
-  },
-  methods: {
-    async testUserService() {
-      try {
-        const response = await api.testUserService();
-        this.message = response.data.message;
-        this.data = response.data.data;
-      } catch (error) {
-        console.error('Error:', error);
-        this.message = 'Failed to connect to user service';
-        this.data = '';
-      }
-    },
-  },
 };
 </script>
 
 <style scoped>
-.shining-home {
+.home-container {
   text-align: center;
-  padding: 20px;
+  padding: 40px 20px;
+  min-height: calc(100vh - 60px); /* 减去顶部栏高度 */
+  background: linear-gradient(to bottom, #e0f7fa, #ffffff);
 }
 h1 {
   color: #2c3e50;
+  font-size: 32px;
+  margin-bottom: 20px;
 }
-button {
-  padding: 10px 20px;
-  background-color: #42b983;
-  color: white;
-  border: none;
-  border-radius: 5px;
-  cursor: pointer;
-}
-button:hover {
-  background-color: #3aa876;
+p {
+  color: #555;
+  font-size: 18px;
 }
 </style>
