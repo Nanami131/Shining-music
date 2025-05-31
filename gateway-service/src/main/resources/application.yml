@@ -4,6 +4,8 @@ server:
 spring:
   application:
     name: gateway-service
+  profiles:
+    active: secret
   cloud:
     gateway:
       routes:
@@ -39,3 +41,6 @@ spring:
             allowedMethods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"]
             allowedHeaders: ["*"]
             allowCredentials: true
+
+jwt:
+  secret: ${JWT_SECRET}
