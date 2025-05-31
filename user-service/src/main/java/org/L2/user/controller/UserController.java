@@ -62,7 +62,7 @@ public class UserController {
      * @return
      */
     @GetMapping("/info")
-    public R getUserBaseInfo(@RequestParam Long userId) {
+    public R getUserBaseInfo(@RequestParam("userId") Long userId) {
         return userAppService.getUserBaseInfo(userId);
     }
 
@@ -72,7 +72,7 @@ public class UserController {
      * @return
      */
     @GetMapping("/update-profile")
-    public R getUserDetailsInfo(@RequestParam Long userId) {
+    public R getUserDetailsInfo(@RequestParam("userId") Long userId) {
         return userAppService.getUserDetailsInfo(userId);
     }
 
