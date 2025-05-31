@@ -1,9 +1,9 @@
 package org.L2.user.domain.service;
 
-import org.L2.user.domain.model.User;
-import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.SignatureAlgorithm;
+import org.L2.user.domain.model.User;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.redis.core.StringRedisTemplate;
@@ -47,7 +47,7 @@ public class JwtService {
                 .compact();
 
         String redisKey = "jwt:" + userId+":"+timestamp;
-        stringRedisTemplate.opsForValue().set(redisKey, token, expiration, TimeUnit.SECONDS);
+        stringRedisTemplate.opsForValue().set(redisKey, token,6, TimeUnit.HOURS);
 
         return token;
     }
