@@ -36,8 +36,11 @@ export default {
       try {
         const response = await userApi.login(this.form);
         if (response.data.passed) {
-          // 存储 token（假设 data 包含 token）
-          localStorage.setItem('token', response.data.data?.token || '');
+          // 提取 userBaseDTO, token, deviceCode
+          const { userBaseDTO, token, deviceCode } = response.data.data;
+          localStorage.setItem('token', token || '');
+          localStorage.setItem('deviceCode', deviceCode || '');
+          localStorage.setItem('userBase', JSON.stringify(userBaseDTO || {}));
           alert('登录成功');
           this.$router.push('/');
         } else {

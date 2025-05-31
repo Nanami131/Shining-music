@@ -10,5 +10,5 @@ public class UserBaseDTO {
     private String nickName;
     private String avatarUrl;
     private String signature;
-    private String token;
+    private String email;
 }

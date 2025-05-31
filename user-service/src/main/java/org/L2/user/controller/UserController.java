@@ -47,8 +47,8 @@ public class UserController {
 //    }
 
     /**
-     * 找回密码
-     * @param resetPasswordRequest 找回密码信息
+     * 重置密码
+     * @param resetPasswordRequest 密码信息
      * @return
      */
     @PostMapping("/reset-password")
@@ -62,7 +62,7 @@ public class UserController {
      * @return
      */
     @GetMapping("/info")
-    public R getUserBaseInfo(@RequestParam("userId") Long userId) {
+    public R getUserBaseInfo(@RequestParam Long userId) {
         return userAppService.getUserBaseInfo(userId);
     }
 
@@ -72,7 +72,7 @@ public class UserController {
      * @return
      */
     @GetMapping("/update-profile")
-    public R getUserDetailsInfo(@RequestParam("userId") Long userId) {
+    public R getUserDetailsInfo(@RequestParam Long userId) {
         return userAppService.getUserDetailsInfo(userId);
     }
 
@@ -85,6 +85,17 @@ public class UserController {
     @PostMapping("/update-profile")
     public R updateProfile(@RequestBody UpdateProfileRequest updateProfileRequest) {
         return userAppService.updateProfile(updateProfileRequest);
+    }
+
+    /**
+     * 退出登录
+     * @param userId 用户id
+     * @param deviceCode 设备码
+     * @return
+     */
+    @PostMapping("/logout")
+    public R logout(@RequestParam("userId") Long userId, @RequestParam("deviceCode") String deviceCode) {
+        return userAppService.logout(userId, deviceCode);
     }
     /**
      * 项目初期测试前后端时使用的接口，已废弃

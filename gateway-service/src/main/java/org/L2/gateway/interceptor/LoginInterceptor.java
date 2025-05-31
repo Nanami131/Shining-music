@@ -13,6 +13,9 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.server.ServerWebExchange;
 import reactor.core.publisher.Mono;
 
+import java.util.Arrays;
+import java.util.HashSet;
+import java.util.Set;
 import java.util.concurrent.TimeUnit;
 
 @Component
@@ -23,13 +26,27 @@ public class LoginInterceptor implements GlobalFilter, Ordered {
     @Value("${jwt.secret}")
     private String secret;
 
+    // 不需要登录校验的路径集合，目前是登录注册，未来可扩展
+    private static final Set<String> SKIP_PATHS = new HashSet<>(Arrays.asList(
+            "/api/user/login",
+            "/api/user/register"
+    ));
     @Override
     public Mono<Void> filter(ServerWebExchange exchange, org.springframework.cloud.gateway.filter.GatewayFilterChain chain) {
         if ("OPTIONS".equalsIgnoreCase(exchange.getRequest().getMethod().toString())) {
             return chain.filter(exchange);
         }
 
+        // 获取请求路径
+        String path = exchange.getRequest().getURI().getPath();
+
+        // 检查是否为需要跳过的路径
+        if (SKIP_PATHS.contains(path)) {
+            return chain.filter(exchange);
+        }
+
         String token = exchange.getRequest().getHeaders().getFirst("Authorization");
+
         if (token == null || !token.startsWith("Bearer ")) {
             return unauthorizedResponse(exchange, "未登录或登录已失效");
         }

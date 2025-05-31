@@ -30,7 +30,7 @@ public class JwtService {
     private StringRedisTemplate stringRedisTemplate;
 
     // 生成 JWT 并存储到 Redis
-    public String generateToken(String userId) throws Exception {
+    public String[] generateToken(String userId) throws Exception {
         // 生成时间戳
         // 这个时间戳的目的是将用户不同设备的登录做区分 可以扩展功能让用户管理设备登录状态
         String timestamp = String.valueOf(System.currentTimeMillis() / 1000);
@@ -50,19 +50,7 @@ public class JwtService {
         String redisKey = "jwt:" + userId+":"+timestamp;
         stringRedisTemplate.opsForValue().set(redisKey, token, CommonConstants.CACHE_TTL_HOURS, TimeUnit.HOURS);
 
-        return token;
+        return new String[]{token, timestamp};
     }
 
-
-    // 从 Redis 获取指定用户的 JWT
-    public String getTokenFromRedis(String userId, String timestamp) {
-        String redisKey = "jwt:" + userId+":"+timestamp;
-        return stringRedisTemplate.opsForValue().get(redisKey);
-    }
-
-    // 删除 Redis 中的 JWT
-    public void removeTokenFromRedis(String userId, String timestamp) {
-        String redisKey = "jwt:" + userId+":"+timestamp;
-        stringRedisTemplate.delete(redisKey);
-    }
 }

@@ -1,6 +1,6 @@
 <template>
   <div id="app">
-    <Header />
+    <Header v-if="!isAuthRoute" />
     <router-view />
   </div>
 </template>
@@ -12,6 +12,11 @@ export default {
   name: 'App',
   components: {
     Header,
+  },
+  computed: {
+    isAuthRoute() {
+      return ['/login', '/register'].includes(this.$route.path);
+    },
   },
 };
 </script>

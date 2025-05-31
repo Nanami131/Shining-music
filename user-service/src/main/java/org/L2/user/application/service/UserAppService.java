@@ -65,15 +65,16 @@ public class UserAppService {
 
         UserBaseDTO userBaseDTO = new UserBaseDTO();
         BeanUtils.copyProperties(user,userBaseDTO);
-        // TODO:设置token
+        UserLoginDTO userLoginDTO = new UserLoginDTO().setUserBaseDTO(userBaseDTO);
         try {
-            String token = jwtService.generateToken(user.getId().toString());
-            userBaseDTO.setToken(token);
+            String[] token = jwtService.generateToken(user.getId().toString());
+            userLoginDTO.setToken(token[0]);
+            userLoginDTO.setDeviceCode(token[1]);
         } catch (Exception e) {
             return R.error("生成token失败"+e.getMessage());
         }
 
-        return R.success("登录成功",userBaseDTO);
+        return R.success("登录成功",userLoginDTO);
     }
 
     public R resetPassword(ResetPasswordRequest resetPasswordRequest) {
@@ -95,7 +96,6 @@ public class UserAppService {
     public R getUserBaseInfo(Long userId) {
         R result = userProfileService.getUserBaseInfo(userId);
         if(result.getPassed()==false){
-            System.out.println("1");
             return result;
         }
         UserBaseDTO userBaseDTO = new UserBaseDTO();
@@ -112,4 +112,14 @@ public class UserAppService {
         BeanUtils.copyProperties(result.getData(),userDetailsDTO);
         return R.success("获取用户详情成功",userDetailsDTO);
     }
+
+    public  R logout(Long userId, String deviceCode) {
+        try {
+            loginService.logout(userId, deviceCode);
+            return R.success("退出登录成功");
+        } catch (Exception e) {
+            return R.error("退出登录失败"+e.getMessage());
+        }
+    }
+
 }

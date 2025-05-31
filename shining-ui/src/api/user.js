@@ -1,21 +1,4 @@
-import axios from 'axios';
-
-const api = axios.create({
-    baseURL: 'http://localhost:8080/api',
-    timeout: 5000,
-});
-
-// 请求拦截器，添加 token
-api.interceptors.request.use(
-    (config) => {
-        const token = localStorage.getItem('token');
-        if (token) {
-            config.headers.Authorization = `Bearer ${token}`;
-        }
-        return config;
-    },
-    (error) => Promise.reject(error)
-);
+import api from './index';
 
 export default {
     register(data) {
@@ -38,5 +21,8 @@ export default {
     },
     testUserService() {
         return api.get('/user/test');
+    },
+    logout(userId, deviceCode) {
+        return api.post('/user/logout', null, { params: { userId, deviceCode } });
     },
 };

@@ -1,9 +1,11 @@
 package org.L2.user.domain.service;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.L2.common.R;
 import org.L2.user.domain.model.User;
 import org.L2.user.infrastructure.mapper.UserMapper;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.security.crypto.bcrypt.BCrypt;
 import org.springframework.stereotype.Service;
 
@@ -14,6 +16,10 @@ import java.util.Objects;
 public class LoginService {
     @Autowired
     private UserMapper userMapper;
+    @Autowired
+    private ObjectMapper objectMapper;
+    @Autowired
+    private StringRedisTemplate stringRedisTemplate;
     public R login(User user){
         if(user.getUsername() == null || "".equals(user.getUsername())) {
             return R.error("用户名为空");
@@ -37,5 +43,10 @@ public class LoginService {
             return R.success("登录成功",query.get(0));
         }
         return R.error("密码错误");
+    }
+
+    public void logout(Long userId, String deviceCode) throws Exception {
+        String redisKey = "jwt:" + userId+":"+deviceCode;
+        stringRedisTemplate.delete(redisKey);
     }
 }
