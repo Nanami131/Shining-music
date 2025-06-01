@@ -4,6 +4,14 @@
       <h2>个人信息</h2>
       <div class="profile-info">
         <img :src="userDetails.avatarUrl || defaultAvatar" class="avatar" alt="用户头像" />
+        <button class="change-avatar-btn" @click="$refs.avatarInput.click()">更改头像</button>
+        <input
+            type="file"
+            accept="image/*"
+            @change="handleUpdateAvatar"
+            ref="avatarInput"
+            style="display: none"
+        />
         <p><strong>用户名：</strong>{{ userDetails.username || '未设置' }}</p>
         <p><strong>昵称：</strong>{{ userDetails.nickName || '未设置' }}</p>
         <p><strong>签名：</strong>{{ userDetails.signature || '未设置' }}</p>
@@ -12,17 +20,11 @@
         <p><strong>简介：</strong>{{ userDetails.profile || '未设置' }}</p>
       </div>
 
-      <h3>修改头像</h3>
-      <form @submit.prevent="handleUpdateAvatar">
-        <div class="form-item">
-          <label>上传头像</label>
-          <input type="file" accept="image/*" @change="handleFileChange" ref="avatarInput" required />
-        </div>
-        <button type="submit" class="submit-btn">上传头像</button>
-      </form>
-
       <h3>修改个人资料</h3>
-      <form @submit.prevent="handleUpdateProfile">
+      <button class="toggle-btn" @click="toggleProfileForm">
+        {{ showProfileForm ? '取消' : '编辑资料' }}
+      </button>
+      <form v-if="showProfileForm" @submit.prevent="handleUpdateProfile">
         <div class="form-item">
           <label>昵称</label>
           <input v-model="profileForm.nickName" placeholder="请输入昵称" />
@@ -36,10 +38,6 @@
           <input v-model="profileForm.phone" type="tel" placeholder="请输入手机号" />
         </div>
         <div class="form-item">
-          <label>头像 URL</label>
-          <input v-model="profileForm.avatarUrl" placeholder="请输入头像 URL" />
-        </div>
-        <div class="form-item">
           <label>签名</label>
           <input v-model="profileForm.signature" placeholder="请输入签名" />
         </div>
@@ -51,7 +49,10 @@
       </form>
 
       <h3>修改密码</h3>
-      <form @submit.prevent="handleResetPassword">
+      <button class="toggle-btn" @click="togglePasswordForm">
+        {{ showPasswordForm ? '取消' : '修改密码' }}
+      </button>
+      <form v-if="showPasswordForm" @submit.prevent="handleResetPassword">
         <div class="form-item">
           <label>旧密码</label>
           <input v-model="passwordForm.oldPassword" type="password" placeholder="请输入旧密码" required />
@@ -81,7 +82,6 @@ export default {
         nickName: '',
         email: '',
         phone: '',
-        avatarUrl: '',
         signature: '',
         profile: '',
       },
@@ -96,6 +96,8 @@ export default {
         md5: '',
       },
       defaultAvatar,
+      showProfileForm: false,
+      showPasswordForm: false,
     };
   },
   created() {
@@ -114,10 +116,9 @@ export default {
           this.userDetails = response.data.data;
           this.profileForm = {
             id: userId,
-            nickName: response.data.data.nickName || '',
+            nickName: response.data.data.nickName || '', // 修复：确保 nickName 预加载
             email: response.data.data.email || '',
             phone: response.data.data.phone || '',
-            avatarUrl: response.data.data.avatarUrl || '',
             signature: response.data.data.signature || '',
             profile: response.data.data.profile || '',
           };
@@ -134,11 +135,11 @@ export default {
         if (response.data.passed) {
           const userBase = JSON.parse(localStorage.getItem('userBase') || '{}');
           userBase.nickName = this.profileForm.nickName;
-          userBase.avatarUrl = this.profileForm.avatarUrl;
           userBase.email = this.profileForm.email;
           localStorage.setItem('userBase', JSON.stringify(userBase));
           alert('资料更新成功');
           this.loadUserDetails();
+          this.showProfileForm = false;
         } else {
           alert('资料更新失败：' + response.data.message);
         }
@@ -153,6 +154,7 @@ export default {
           alert('密码修改成功');
           this.passwordForm.oldPassword = '';
           this.passwordForm.newPassword = '';
+          this.showPasswordForm = false;
         } else {
           alert('密码修改失败：' + response.data.message);
         }
@@ -160,37 +162,35 @@ export default {
         alert('密码修改出错：' + error.message);
       }
     },
-    handleFileChange(event) {
+    async handleUpdateAvatar(event) {
       const file = event.target.files[0];
-      if (file) {
-        this.avatarForm.avatarFile = file;
+      if (!file) return;
+      try {
         const reader = new FileReader();
-        reader.onload = () => {
-          this.avatarForm.md5 = md5(reader.result);
+        reader.onload = async () => {
+          const fileMd5 = md5(reader.result);
+          const response = await userApi.updateAvatar(this.avatarForm.id, file, fileMd5);
+          if (response.data.passed) {
+            const userBase = JSON.parse(localStorage.getItem('userBase') || '{}');
+            userBase.avatarUrl = response.data.data;
+            localStorage.setItem('userBase', JSON.stringify(userBase));
+            alert('头像更新成功');
+            this.loadUserDetails();
+            this.$refs.avatarInput.value = '';
+          } else {
+            alert('头像更新失败：' + response.data.message);
+          }
         };
         reader.readAsArrayBuffer(file);
-      }
-    },
-    async handleUpdateAvatar() {
-      try {
-        const formData = new FormData();
-        formData.append('id', this.avatarForm.id);
-        formData.append('avatarFile', this.avatarForm.avatarFile);
-        formData.append('md5', this.avatarForm.md5);
-        const response = await userApi.updateAvatar(formData);
-        if (response.data.passed) {
-          const userBase = JSON.parse(localStorage.getItem('userBase') || '{}');
-          userBase.avatarUrl = response.data.data; // 更新 avatarUrl
-          localStorage.setItem('userBase', JSON.stringify(userBase));
-          alert('头像更新成功');
-          this.loadUserDetails();
-          this.$refs.avatarInput.value = ''; // 清空文件输入
-        } else {
-          alert('头像更新失败：' + response.data.message);
-        }
       } catch (error) {
         alert('头像更新出错：' + error.message);
       }
+    },
+    toggleProfileForm() {
+      this.showProfileForm = !this.showProfileForm;
+    },
+    togglePasswordForm() {
+      this.showPasswordForm = !this.showPasswordForm;
     },
   },
 };
@@ -199,7 +199,7 @@ export default {
 <style scoped>
 .profile-container {
   display: flex;
-  justify-content: center;
+  justify-content: flex-start;
   padding: 40px 20px;
   background: linear-gradient(to bottom, #e0f7fa, #ffffff);
 }
@@ -209,17 +209,15 @@ export default {
   border-radius: 8px;
   box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
   width: 100%;
-  max-width: 600px;
+  max-width: 400px;
 }
 h2 {
-  text-align: center;
   margin-bottom: 20px;
 }
 h3 {
   margin: 20px 0 10px;
 }
 .profile-info {
-  text-align: center;
   margin-bottom: 20px;
 }
 .avatar {
@@ -227,7 +225,21 @@ h3 {
   height: 80px;
   border-radius: 50%;
   object-fit: cover;
-  margin-bottom: 10px;
+  display: block;
+}
+.change-avatar-btn {
+  margin: 0;
+  padding: 8px;
+  border: none;
+  border-radius: 4px;
+  background: linear-gradient(to right, #4facfe, #00f2fe);
+  color: white;
+  cursor: pointer;
+  font-size: 14px;
+  width: 80px; /* 与头像同宽 */
+}
+.change-avatar-btn:hover {
+  opacity: 0.9;
 }
 .form-item {
   margin-bottom: 15px;
@@ -260,6 +272,19 @@ textarea {
   cursor: pointer;
 }
 .submit-btn:hover {
+  opacity: 0.9;
+}
+.toggle-btn {
+  width: 100%;
+  padding: 8px;
+  border: none;
+  border-radius: 4px;
+  background: linear-gradient(to right, #6b7280, #9ca3af);
+  color: white;
+  font-size: 14px;
+  cursor: pointer;
+}
+.toggle-btn:hover {
   opacity: 0.9;
 }
 </style>

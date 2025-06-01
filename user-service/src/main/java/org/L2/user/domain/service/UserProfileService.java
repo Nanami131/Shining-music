@@ -154,7 +154,8 @@ public class UserProfileService {
     public R updateUserAvatar(Long id, MultipartFile file) {
         String originalFilename = file.getOriginalFilename();
         String fileName= FileNameGenerateService.defineNamePath(originalFilename,"/user/avator/",id,5);
-        User user = new User().setId(id).setAvatarUrl("/"+ minioProperties.getBucketName()+fileName);
+        String avatarUrl = minioProperties.getEndpoint() + "/" + minioProperties.getBucketName() + fileName;
+        User user = new User().setId(id).setAvatarUrl(avatarUrl);
         String s = simpleMinioService.uploadFile(file,fileName);
         if(!s.equals("上传成功")){
             return R.error(s);
@@ -165,6 +166,6 @@ public class UserProfileService {
             return R.error("数据库操作失败："+e.getMessage());
         }
 
-        return R.success("头像修改成功",fileName);
+        return R.success("头像修改成功",avatarUrl);
     }
 }

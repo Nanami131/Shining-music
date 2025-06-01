@@ -19,8 +19,12 @@ export default {
     updateProfile(data) {
         return api.post('/user/update-profile', data);
     },
-    updateAvatar(data) {
-        return api.post('/user/update-avatar', data, {
+    updateAvatar(id, avatarFile, md5) {
+        const formData = new FormData();
+        formData.append('id', id);
+        formData.append('avatarFile', avatarFile);
+        formData.append('md5', md5);
+        return api.post('/user/update-avatar', formData, {
             headers: { 'Content-Type': 'multipart/form-data' },
         });
     },

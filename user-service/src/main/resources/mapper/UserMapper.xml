@@ -5,6 +5,7 @@
         <id property="id" column="id"/>
         <result property="username" column="username"/>
         <result property="password" column="password"/>
+        <result property="nickName" column="nick_name"/>
         <result property="salt" column="salt"/>
         <result property="phone" column="phone"/>
         <result property="email" column="email"/>
@@ -21,8 +22,8 @@
     </select>
 
     <insert id="insert" parameterType="org.L2.user.domain.model.User" useGeneratedKeys="true" keyProperty="id">
-        INSERT INTO users (username, password, salt, phone, email, avatar_url, signature, profile, role, created_at, updated_at)
-        VALUES (#{username}, #{password}, #{salt}, #{phone}, #{email}, #{avatarUrl}, #{signature}, #{profile}, #{role}, #{createdAt}, #{updatedAt})
+        INSERT INTO users (username, password, nick_name, salt, phone, email, avatar_url, signature, profile, role, created_at, updated_at)
+        VALUES (#{username}, #{password}, #{nickName}, #{salt}, #{phone}, #{email}, #{avatarUrl}, #{signature}, #{profile}, #{role}, #{createdAt}, #{updatedAt})
     </insert>
 
     <update id="update" parameterType="org.L2.user.domain.model.User">
@@ -30,6 +31,7 @@
         <set>
             <if test="username != null and username != ''">username = #{username},</if>
             <if test="password != null and password != ''">password = #{password},</if>
+            <if test="nickName != null and nickName != ''">nick_name = #{nickName},</if>
             <if test="salt != null and salt != ''">salt = #{salt},</if>
             <if test="phone != null and phone != ''">phone = #{phone},</if>
             <if test="email != null and email != ''">email = #{email},</if>

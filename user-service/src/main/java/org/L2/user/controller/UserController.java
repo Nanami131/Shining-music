@@ -6,6 +6,7 @@ import org.L2.user.application.dto.*;
 import org.L2.user.application.service.UserAppService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 @RestController
 @RequestMapping("/user")
@@ -86,12 +87,14 @@ public class UserController {
 
     /**
      * 更新头像
-     * @param userAvatarRequest
+     *
      * @return
      */
     @PostMapping("/update-avatar")
-    public R updateAvatar(@RequestBody UserAvatarRequest userAvatarRequest) {
-        return userAppService.updateAvatar(userAvatarRequest);
+    public R updateAvatar(@RequestParam("id") Long id,
+                          @RequestParam("avatarFile") MultipartFile avatarFile,
+                          @RequestParam("md5") String md5) {
+        return userAppService.updateAvatar(id, avatarFile, md5);
     }
 
 
