@@ -2,10 +2,7 @@ package org.L2.user.controller;
 
 import org.L2.common.R;
 import org.L2.user.UserApplication;
-import org.L2.user.application.dto.LoginRequest;
-import org.L2.user.application.dto.RegisterRequest;
-import org.L2.user.application.dto.ResetPasswordRequest;
-import org.L2.user.application.dto.UpdateProfileRequest;
+import org.L2.user.application.dto.*;
 import org.L2.user.application.service.UserAppService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
@@ -86,6 +83,12 @@ public class UserController {
     public R updateProfile(@RequestBody UpdateProfileRequest updateProfileRequest) {
         return userAppService.updateProfile(updateProfileRequest);
     }
+
+    @PostMapping("/update-avatar")
+    public R updateAvatar(@RequestBody UserAvatarRequest userAvatarRequest) {
+        return userAppService.updateAvatar(userAvatarRequest);
+    }
+
 
     /**
      * 退出登录

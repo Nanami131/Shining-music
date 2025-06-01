@@ -2,7 +2,10 @@ package org.L2.common.minio.service;
 
 import io.minio.MinioClient;
 import org.L2.common.minio.MinioProperties;
+import org.springframework.stereotype.Service;
 
+
+@Service
 public class MultipartMinioService extends AbstractMinioService {
 
     public MultipartMinioService(MinioClient minioClient, MinioProperties properties) {

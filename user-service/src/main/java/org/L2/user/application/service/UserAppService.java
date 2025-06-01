@@ -10,6 +10,7 @@ import org.L2.user.domain.service.UserProfileService;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.web.bind.annotation.RequestBody;
 
 @Service
 public class UserAppService {
@@ -122,4 +123,8 @@ public class UserAppService {
         }
     }
 
+    public R updateAvatar(UserAvatarRequest userAvatarRequest) {
+        // MD5校验以后再写
+        return userProfileService.updateUserAvatar(userAvatarRequest.getId(),userAvatarRequest.getAvatarFile());
+    }
 }

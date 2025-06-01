@@ -4,6 +4,9 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.L2.common.R;
 import org.L2.common.constant.CommonConstants;
+import org.L2.common.minio.MinioProperties;
+import org.L2.common.minio.service.FileNameGenerateService;
+import org.L2.common.minio.service.SimpleMinioService;
 import org.L2.user.application.dto.UserBaseDTO;
 import org.L2.user.domain.model.PasswordHistory;
 import org.L2.user.domain.model.User;
@@ -15,6 +18,7 @@ import org.springframework.security.crypto.bcrypt.BCrypt;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 import java.util.Objects;
@@ -30,6 +34,10 @@ public class UserProfileService {
     private ObjectMapper objectMapper;
     @Autowired
     private StringRedisTemplate stringRedisTemplate;
+    @Autowired
+    private MinioProperties minioProperties;
+    @Autowired
+    private SimpleMinioService simpleMinioService;
 
     public R updateUserProfile(User user) {
         // 在这里再校验一次，这个接口只修改用户个性化信息
@@ -141,5 +149,22 @@ public class UserProfileService {
         }
         User user = query.get(0);
         return R.success("查询成功",user);
+    }
+
+    public R updateUserAvatar(Long id, MultipartFile file) {
+        String originalFilename = file.getOriginalFilename();
+        String fileName= FileNameGenerateService.defineNamePath(originalFilename,"/user/avator/",id,5);
+        User user = new User().setId(id).setAvatarUrl("/"+ minioProperties.getBucketName()+fileName);
+        String s = simpleMinioService.uploadFile(file,fileName);
+        if(!s.equals("上传成功")){
+            return R.error(s);
+        }
+        try {
+            userMapper.update(user);
+        } catch (Exception e) {
+            return R.error("数据库操作失败："+e.getMessage());
+        }
+
+        return R.success("头像修改成功",fileName);
     }
 }
