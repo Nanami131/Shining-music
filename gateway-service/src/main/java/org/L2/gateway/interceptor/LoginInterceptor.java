@@ -29,7 +29,8 @@ public class LoginInterceptor implements GlobalFilter, Ordered {
     // 不需要登录校验的路径集合，目前是登录注册，未来可扩展
     private static final Set<String> SKIP_PATHS = new HashSet<>(Arrays.asList(
             "/api/user/login",
-            "/api/user/register"
+            "/api/user/register",
+            "/api/user/logout"
     ));
     @Override
     public Mono<Void> filter(ServerWebExchange exchange, org.springframework.cloud.gateway.filter.GatewayFilterChain chain) {

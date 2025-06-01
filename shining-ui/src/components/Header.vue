@@ -1,8 +1,19 @@
 <template>
   <div class="header">
     <div class="logo">音乐社区</div>
+    <div class="nav">
+      <span class="nav-item" @click="goToDiscover">发现音乐</span>
+      <span class="nav-item" @click="goToMyMusic">我的音乐</span>
+      <span class="nav-item" @click="goToForum">讨论区</span>
+    </div>
     <div class="actions">
       <template v-if="isLoggedIn">
+        <img
+            :src="userBase.avatarUrl || defaultAvatar"
+            class="avatar"
+            @click="goToProfile"
+            alt="用户头像"
+        />
         <span class="nickname">{{ userBase.nickName || '用户' }}</span>
         <button class="btn" @click="handleLogout">退出</button>
       </template>
@@ -16,6 +27,7 @@
 
 <script>
 import userApi from '@/api/user';
+import defaultAvatar from '@/assets/default-avatar.png'; // 默认头像
 
 export default {
   name: 'Header',
@@ -23,6 +35,7 @@ export default {
     return {
       userBase: JSON.parse(localStorage.getItem('userBase') || '{}'),
       isLoggedIn: !!localStorage.getItem('token'),
+      defaultAvatar, // 默认头像路径
     };
   },
   watch: {
@@ -31,9 +44,7 @@ export default {
     },
   },
   created() {
-    // 初始加载时检查状态
     this.updateLoginState();
-    // 监听 storage 事件
     window.addEventListener('storage', this.updateLoginState);
   },
   beforeDestroy() {
@@ -49,6 +60,18 @@ export default {
     },
     goToRegister() {
       this.$router.push('/register');
+    },
+    goToProfile() {
+      this.$router.push('/profile');
+    },
+    goToDiscover() {
+      // 占位，无效点击
+    },
+    goToMyMusic() {
+      // 占位，无效点击
+    },
+    goToForum() {
+      // 占位，无效点击
     },
     async handleLogout() {
       try {
@@ -87,10 +110,32 @@ export default {
   font-size: 24px;
   font-weight: bold;
 }
+.nav {
+  display: flex;
+  gap: 20px;
+}
+.nav-item {
+  font-size: 16px;
+  cursor: pointer;
+  padding: 8px 16px;
+  background: linear-gradient(to right, #6b7280, #9ca3af); /* 灰色渐变 */
+  border-radius: 4px;
+  transition: transform 0.2s;
+}
+.nav-item:hover {
+  transform: scale(1.05);
+}
 .actions {
   display: flex;
   gap: 10px;
   align-items: center;
+}
+.avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  object-fit: cover;
+  cursor: pointer;
 }
 .nickname {
   font-size: 16px;

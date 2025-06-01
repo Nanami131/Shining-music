@@ -1,6 +1,8 @@
 import { createRouter, createWebHistory } from 'vue-router';
 import ShiningHome from '../views/ShiningHome.vue';
 import Login from '../views/Login.vue';
+import Register from '../views/Register.vue';
+import Profile from '../views/Profile.vue';
 
 const routes = [
     {
@@ -16,7 +18,12 @@ const routes = [
     {
         path: '/register',
         name: 'register',
-        component: () => import('../views/Register.vue'), // 占位，待实现
+        component: Register,
+    },
+    {
+        path: '/profile',
+        name: 'profile',
+        component: Profile,
     },
 ];
 
