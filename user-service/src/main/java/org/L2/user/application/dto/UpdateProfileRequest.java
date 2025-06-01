@@ -10,6 +10,7 @@ public class UpdateProfileRequest {
     private Long id;
     private String phone;
     private String email;
+    private String nickName;
     private String avatarUrl;
     private String signature;
     private String profile;

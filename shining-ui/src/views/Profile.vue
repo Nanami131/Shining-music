@@ -12,6 +12,15 @@
         <p><strong>简介：</strong>{{ userDetails.profile || '未设置' }}</p>
       </div>
 
+      <h3>修改头像</h3>
+      <form @submit.prevent="handleUpdateAvatar">
+        <div class="form-item">
+          <label>上传头像</label>
+          <input type="file" accept="image/*" @change="handleFileChange" ref="avatarInput" required />
+        </div>
+        <button type="submit" class="submit-btn">上传头像</button>
+      </form>
+
       <h3>修改个人资料</h3>
       <form @submit.prevent="handleUpdateProfile">
         <div class="form-item">
@@ -60,6 +69,7 @@
 <script>
 import userApi from '@/api/user';
 import defaultAvatar from '@/assets/default-avatar.png';
+import md5 from 'js-md5';
 
 export default {
   name: 'Profile',
@@ -80,6 +90,11 @@ export default {
         oldPassword: '',
         newPassword: '',
       },
+      avatarForm: {
+        id: null,
+        avatarFile: null,
+        md5: '',
+      },
       defaultAvatar,
     };
   },
@@ -88,6 +103,7 @@ export default {
     const userBase = JSON.parse(localStorage.getItem('userBase') || '{}');
     this.profileForm.id = userBase.id;
     this.passwordForm.id = userBase.id;
+    this.avatarForm.id = userBase.id;
   },
   methods: {
     async loadUserDetails() {
@@ -96,7 +112,15 @@ export default {
         const response = await userApi.getUserDetailsInfo(userId);
         if (response.data.passed) {
           this.userDetails = response.data.data;
-          this.profileForm = { ...this.profileForm, ...response.data.data };
+          this.profileForm = {
+            id: userId,
+            nickName: response.data.data.nickName || '',
+            email: response.data.data.email || '',
+            phone: response.data.data.phone || '',
+            avatarUrl: response.data.data.avatarUrl || '',
+            signature: response.data.data.signature || '',
+            profile: response.data.data.profile || '',
+          };
         } else {
           alert('获取用户信息失败：' + response.data.message);
         }
@@ -108,7 +132,6 @@ export default {
       try {
         const response = await userApi.updateProfile(this.profileForm);
         if (response.data.passed) {
-          // 更新本地 userBase
           const userBase = JSON.parse(localStorage.getItem('userBase') || '{}');
           userBase.nickName = this.profileForm.nickName;
           userBase.avatarUrl = this.profileForm.avatarUrl;
@@ -135,6 +158,38 @@ export default {
         }
       } catch (error) {
         alert('密码修改出错：' + error.message);
+      }
+    },
+    handleFileChange(event) {
+      const file = event.target.files[0];
+      if (file) {
+        this.avatarForm.avatarFile = file;
+        const reader = new FileReader();
+        reader.onload = () => {
+          this.avatarForm.md5 = md5(reader.result);
+        };
+        reader.readAsArrayBuffer(file);
+      }
+    },
+    async handleUpdateAvatar() {
+      try {
+        const formData = new FormData();
+        formData.append('id', this.avatarForm.id);
+        formData.append('avatarFile', this.avatarForm.avatarFile);
+        formData.append('md5', this.avatarForm.md5);
+        const response = await userApi.updateAvatar(formData);
+        if (response.data.passed) {
+          const userBase = JSON.parse(localStorage.getItem('userBase') || '{}');
+          userBase.avatarUrl = response.data.data; // 更新 avatarUrl
+          localStorage.setItem('userBase', JSON.stringify(userBase));
+          alert('头像更新成功');
+          this.loadUserDetails();
+          this.$refs.avatarInput.value = ''; // 清空文件输入
+        } else {
+          alert('头像更新失败：' + response.data.message);
+        }
+      } catch (error) {
+        alert('头像更新出错：' + error.message);
       }
     },
   },
@@ -182,7 +237,8 @@ label {
   margin-bottom: 5px;
   font-size: 14px;
 }
-input, textarea {
+input,
+textarea {
   width: 100%;
   padding: 8px;
   border: 1px solid #ddd;

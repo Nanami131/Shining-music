@@ -19,6 +19,11 @@ export default {
     updateProfile(data) {
         return api.post('/user/update-profile', data);
     },
+    updateAvatar(data) {
+        return api.post('/user/update-avatar', data, {
+            headers: { 'Content-Type': 'multipart/form-data' },
+        });
+    },
     testUserService() {
         return api.get('/user/test');
     },

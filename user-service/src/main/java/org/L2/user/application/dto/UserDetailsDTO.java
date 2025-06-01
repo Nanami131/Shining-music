@@ -9,6 +9,7 @@ public class UserDetailsDTO {
     private Long id;
     private String username;
     private String avatarUrl;
+    private String nickName;
     private String signature;
     private String token;
     private String email;

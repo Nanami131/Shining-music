@@ -84,6 +84,11 @@ public class UserController {
         return userAppService.updateProfile(updateProfileRequest);
     }
 
+    /**
+     * 更新头像
+     * @param userAvatarRequest
+     * @return
+     */
     @PostMapping("/update-avatar")
     public R updateAvatar(@RequestBody UserAvatarRequest userAvatarRequest) {
         return userAppService.updateAvatar(userAvatarRequest);
