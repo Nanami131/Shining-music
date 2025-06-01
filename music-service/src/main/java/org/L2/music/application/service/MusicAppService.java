@@ -4,6 +4,7 @@ package org.L2.music.application.service;
 import org.L2.common.R;
 import org.L2.music.application.dto.PlaylistCreateRequest;
 import org.L2.music.application.dto.PlaylistSongRequest;
+import org.L2.music.application.dto.SongBaseDTO;
 import org.L2.music.domain.model.Playlist;
 import org.L2.music.domain.service.PlaylistService;
 import org.L2.music.domain.service.SongService;
@@ -37,11 +38,22 @@ public class MusicAppService {
 //        }
 //    }
 
+    public R getSongBaseInfo(Long songId) {
+        R result = songService.getSongInfo(songId);
+        if(!result.getPassed()){
+            return result;
+        }
+        SongBaseDTO songBaseDTO = new SongBaseDTO();
+        BeanUtils.copyProperties(result.getData(), songBaseDTO);
+        return R.success("获取成功",songBaseDTO);
+    }
     public R getSongDetailsInfo(Long songId) {
-        return songService.getSongDetails(songId);
+        // 歌曲这里没有什么需要DTO的，直接返回
+        return songService.getSongInfo(songId);
     }
 
     public R deletePlaylist(Long playlistId) {
+        return null;
     }
 
     public R createPlaylist(PlaylistCreateRequest playlistCreateRequest) {
@@ -50,5 +62,11 @@ public class MusicAppService {
         playlist.setUserId(playlistCreateRequest.getId());
         playlist.setId(null);
         return playlistService.createPlaylist(playlist);
+    }
+
+
+    public R getPlaylistDetailsInfo(Long playlistId) {
+        // TODO:除了歌单 还有歌曲信息
+        return null;
     }
 }

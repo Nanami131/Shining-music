@@ -19,7 +19,6 @@ import java.util.concurrent.TimeUnit;
 @Service
 public class JwtService {
 
-    // TODO:配置
     @Value("${jwt.secret}")
     private String secret;
 

@@ -11,7 +11,7 @@ public class SongService {
     @Autowired
     private SongMapper songMapper;
 
-    public R getSongDetails(Long songId) {
+    public R getSongInfo(Long songId) {
         //TODO: 后续把热歌存在缓存里
         try {
             Song song = songMapper.selectById(songId);

@@ -110,6 +110,7 @@ public class UserProfileService {
 
     /**
      * 获取用户基本信息
+     * 基本信息和详细信息两套逻辑的原因是基本信息经常查看需要缓存
      * @param userId
      * @return
      */
