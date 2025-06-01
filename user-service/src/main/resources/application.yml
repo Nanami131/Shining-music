@@ -1,24 +1,18 @@
-server:
-  port: 8081
-
 spring:
   application:
     name: user-service
-  datasource:
-    url: jdbc:mysql://localhost:3306/shining-user?useSSL=false&serverTimezone=UTC
-    username: ${MYSQL_USERNAME}
-    password: ${MYSQL_PASSWORD}
-    driver-class-name: com.mysql.cj.jdbc.Driver
-  data:
-    redis:
-      host: localhost
-      port: 6379
-      password: ${REDIS_PASSWORD:}
-      database: 4
-  profiles:
-    active: secret
-jwt:
-  secret: ${JWT_SECRET}
-  expiration: 2592000
-mybatis:
-  mapper-locations: classpath:mapper/*.xml
+  config:
+    import:
+      - nacos:user-service.yaml?serverAddr=127.0.0.1:8848&namespace=Shining&group=Shining
+      - nacos:common.yaml?serverAddr=127.0.0.1:8848&namespace=Shining&group=Shining
+      - nacos:secret.yaml?serverAddr=127.0.0.1:8848&namespace=Shining&group=Shining
+  cloud:
+    nacos:
+      config:
+        server-addr: 127.0.0.1:8848
+        namespace: Shining
+        file-extension: yaml
+        group: Shining
+      discovery:
+        server-addr: 127.0.0.1:8848
+        namespace: Shining
