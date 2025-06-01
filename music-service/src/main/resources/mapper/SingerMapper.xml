@@ -1,0 +1,81 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="org.L2.music.infrastructure.SingerMapper">
+    <resultMap id="SingerResultMap" type="org.L2.music.domain.model.Singer">
+        <id property="id" column="id"/>
+        <result property="name" column="name"/>
+        <result property="userId" column="user_id"/>
+        <result property="profile" column="profile"/>
+        <result property="avatarUrl" column="avatar_url"/>
+        <result property="genre" column="genre"/>
+        <result property="country" column="country"/>
+        <result property="status" column="status"/>
+        <result property="createdAt" column="created_at"/>
+        <result property="updatedAt" column="updated_at"/>
+    </resultMap>
+
+    <select id="selectById" resultMap="SingerResultMap">
+        SELECT * FROM singers WHERE id = #{id}
+    </select>
+
+    <insert id="insert" parameterType="org.L2.music.domain.model.Singer" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO singers (name, user_id, profile, avatar_url, genre, country, status, created_at, updated_at)
+        VALUES (#{name}, #{userId}, #{profile}, #{avatarUrl}, #{genre}, #{country}, #{status}, #{createdAt}, #{updatedAt})
+    </insert>
+
+    <update id="update" parameterType="org.L2.music.domain.model.Singer">
+        UPDATE singers
+        <set>
+            <if test="name != null and name != ''">name = #{name},</if>
+            <if test="userId != null">user_id = #{userId},</if>
+            <if test="profile != null and profile != ''">profile = #{profile},</if>
+            <if test="avatarUrl != null and avatarUrl != ''">avatar_url = #{avatarUrl},</if>
+            <if test="genre != null and genre != ''">genre = #{genre},</if>
+            <if test="country != null and country != ''">country = #{country},</if>
+            <if test="status != null">status = #{status},</if>
+            <if test="createdAt != null">created_at = #{createdAt},</if>
+            <if test="updatedAt != null">updated_at = #{updatedAt},</if>
+        </set>
+        WHERE id = #{id}
+    </update>
+
+    <delete id="deleteById">
+        DELETE FROM singers WHERE id = #{id}
+    </delete>
+
+    <select id="query" resultMap="SingerResultMap">
+        SELECT * FROM singers
+        <where>
+            <if test="id != null">
+                AND id = #{id}
+            </if>
+            <if test="name != null and name != ''">
+                AND name LIKE CONCAT('%', #{name}, '%')
+            </if>
+            <if test="userId != null">
+                AND user_id = #{userId}
+            </if>
+            <if test="profile != null and profile != ''">
+                AND profile LIKE CONCAT('%', #{profile}, '%')
+            </if>
+            <if test="avatarUrl != null and avatarUrl != ''">
+                AND avatar_url LIKE CONCAT('%', #{avatarUrl}, '%')
+            </if>
+            <if test="genre != null and genre != ''">
+                AND genre LIKE CONCAT('%', #{genre}, '%')
+            </if>
+            <if test="country != null and country != ''">
+                AND country LIKE CONCAT('%', #{country}, '%')
+            </if>
+            <if test="status != null">
+                AND status = #{status}
+            </if>
+            <if test="createdAt != null">
+                AND created_at >= #{createdAt}
+            </if>
+            <if test="updatedAt != null">
+                AND updated_at >= #{updatedAt}
+            </if>
+        </where>
+    </select>
+</mapper>

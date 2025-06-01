@@ -14,8 +14,9 @@ public class Playlist {
     private String name;
     private String description;
     private Long userId;
-    private Byte type; //歌单类型（普通、专辑、收藏等等）
+    private Byte type; // 歌单类型（普通、专辑、收藏等等）
     private Byte visibility;
+    private String coverUrl;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 }

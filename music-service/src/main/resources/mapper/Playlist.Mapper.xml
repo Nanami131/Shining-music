@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
-<mapper namespace="org.L2.music.infrastructure.mapper.PlaylistMapper">
+<mapper namespace="org.L2.music.infrastructure.PlaylistMapper">
     <resultMap id="PlaylistResultMap" type="org.L2.music.domain.model.Playlist">
         <id property="id" column="id"/>
         <result property="name" column="name"/>
@@ -8,6 +8,7 @@
         <result property="userId" column="user_id"/>
         <result property="type" column="type"/>
         <result property="visibility" column="visibility"/>
+        <result property="coverUrl" column="cover_url"/>
         <result property="createdAt" column="created_at"/>
         <result property="updatedAt" column="updated_at"/>
     </resultMap>
@@ -17,8 +18,8 @@
     </select>
 
     <insert id="insert" parameterType="org.L2.music.domain.model.Playlist" useGeneratedKeys="true" keyProperty="id">
-        INSERT INTO playlists (name, description, user_id, type, visibility, created_at, updated_at)
-        VALUES (#{name}, #{description}, #{userId}, #{type}, #{visibility}, #{createdAt}, #{updatedAt})
+        INSERT INTO playlists (name, description, user_id, type, visibility, cover_url, created_at, updated_at)
+        VALUES (#{name}, #{description}, #{userId}, #{type}, #{visibility}, #{coverUrl}, #{createdAt}, #{updatedAt})
     </insert>
 
     <update id="update" parameterType="org.L2.music.domain.model.Playlist">
@@ -27,8 +28,9 @@
             <if test="name != null and name != ''">name = #{name},</if>
             <if test="description != null and description != ''">description = #{description},</if>
             <if test="userId != null">user_id = #{userId},</if>
-            <if test="type != null and type != ''">type = #{type},</if>
-            <if test="visibility != null and visibility != ''">visibility = #{visibility},</if>
+            <if test="type != null">type = #{type},</if>
+            <if test="visibility != null">visibility = #{visibility},</if>
+            <if test="coverUrl != null and coverUrl != ''">cover_url = #{coverUrl},</if>
             <if test="createdAt != null">created_at = #{createdAt},</if>
             <if test="updatedAt != null">updated_at = #{updatedAt},</if>
         </set>
@@ -59,6 +61,9 @@
             </if>
             <if test="visibility != null">
                 AND visibility = #{visibility}
+            </if>
+            <if test="coverUrl != null and coverUrl != ''">
+                AND cover_url LIKE CONCAT('%', #{coverUrl}, '%')
             </if>
             <if test="createdAt != null">
                 AND created_at >= #{createdAt}

@@ -4,7 +4,6 @@ package org.L2.music.application.service;
 import org.L2.common.R;
 import org.L2.music.application.dto.PlaylistCreateRequest;
 import org.L2.music.application.dto.PlaylistSongRequest;
-import org.L2.music.application.dto.PlaylistSongRequestList;
 import org.L2.music.domain.model.Playlist;
 import org.L2.music.domain.service.PlaylistService;
 import org.L2.music.domain.service.SongService;
@@ -31,14 +30,14 @@ public class MusicAppService {
         }
     }
 
-    public R managePlaylistSongList(PlaylistSongRequestList playlistSongRequestlist) {
-        Long playlistId = playlistSongRequestlist.getPlaylistId();
-        for(Long songId: playlistSongRequestlist.getSongIds()){
-            playlistService.managePlaylistSong(playlistId, songId);
-        }
-    }
+//    public R managePlaylistSongList(PlaylistSongRequestList playlistSongRequestlist) {
+//        Long playlistId = playlistSongRequestlist.getPlaylistId();
+//        for(Long songId: playlistSongRequestlist.getSongIds()){
+//            playlistService.managePlaylistSong(playlistId, songId);
+//        }
+//    }
 
-    public R getSongDetails(Long songId) {
+    public R getSongDetailsInfo(Long songId) {
         return songService.getSongDetails(songId);
     }
 
