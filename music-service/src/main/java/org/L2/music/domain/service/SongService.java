@@ -1,11 +1,16 @@
 package org.L2.music.domain.service;
 
 import org.L2.common.R;
+import org.L2.common.minio.MinioProperties;
+import org.L2.common.minio.service.FileNameGenerateService;
+import org.L2.common.minio.service.SimpleMinioService;
 import org.L2.music.application.dto.SongBaseDTO;
+import org.L2.music.domain.model.Singer;
 import org.L2.music.domain.model.Song;
 import org.L2.music.infrastructure.SongMapper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 
@@ -13,6 +18,10 @@ import java.util.List;
 public class SongService {
     @Autowired
     private SongMapper songMapper;
+    @Autowired
+    private MinioProperties minioProperties;
+    @Autowired
+    private SimpleMinioService simpleMinioService;
 
     public R getSongInfo(Long songId) {
         //TODO: 后续把热歌存在缓存里
@@ -43,5 +52,23 @@ public class SongService {
         }catch (Exception e){
             return R.error("获取歌单歌曲失败"+e.getMessage());
         }
+    }
+
+    public R uploadSong(Long id, MultipartFile file) {
+        String originalFilename = file.getOriginalFilename();
+        String fileName= FileNameGenerateService.defineNamePath(originalFilename,"/song/cover/",id,5);
+        String coverUrl = minioProperties.getEndpoint() + "/" + minioProperties.getBucketName() + fileName;
+        Song song = new Song().setArtistId(id).setCoverUrl(coverUrl);
+        String s = simpleMinioService.uploadFile(file,fileName);
+        if(!s.equals("上传成功")){
+            return R.error(s);
+        }
+        try {
+            songMapper.update(song);
+        } catch (Exception e) {
+            return R.error("数据库操作失败："+e.getMessage());
+        }
+
+        return R.success("歌曲上传成功",coverUrl);
     }
 }

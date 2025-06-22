@@ -22,16 +22,17 @@ public class MusicController {
      */
 
     /**
-     * 上传歌曲
+     * 不分片上传歌曲
      * @param file 歌曲文件
-     * @param songRequest 歌曲元数据
+     * @param md5 歌曲校验值
      * @return 上传结果
      */
-//    @PostMapping("/upload")
-//    public R uploadSong(@RequestPart("file") MultipartFile file,
-//                        @RequestPart("metadata") SongRequest songRequest) {
-//        return musicAppService.uploadSong(file, songRequest);
-//    }
+    @PostMapping("/upload")
+    public R uploadSong(@RequestParam("id") Long id,
+                        @RequestParam("avatarFile") MultipartFile file,
+                        @RequestParam("md5") String md5) {
+        return musicAppService.uploadSong(id, file, md5);
+    }
 
     /**
      * 下载歌曲
@@ -158,8 +159,9 @@ public class MusicController {
     }
 
     /**
-     * 更新头像
-     *
+     * 更新歌手头像
+     * @param avatarFile 头像文件
+     * @param md5 头像文件校验值
      * @return
      */
     @PostMapping("/update-avatar")

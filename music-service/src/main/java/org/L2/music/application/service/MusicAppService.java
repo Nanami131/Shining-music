@@ -46,6 +46,9 @@ public class MusicAppService {
         return songService.getSongInfo(songId);
     }
 
+    public R uploadSong(Long id, MultipartFile file, String md5){
+        return songService.uploadSong(id,file);
+    }
     /*
      * 歌单相关
      */
@@ -149,6 +152,6 @@ public class MusicAppService {
     }
 
     public R updateSingerAvatar(Long id, MultipartFile avatarFile, String md5){
-        return null;
+        return singerService.updateSingerAvatar(id,avatarFile);
     }
 }
