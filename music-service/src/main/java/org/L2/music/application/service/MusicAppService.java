@@ -2,15 +2,16 @@ package org.L2.music.application.service;
 
 
 import org.L2.common.R;
-import org.L2.music.application.dto.PlaylistCreateRequest;
-import org.L2.music.application.dto.PlaylistSongRequest;
-import org.L2.music.application.dto.SongBaseDTO;
+import org.L2.music.application.dto.*;
 import org.L2.music.domain.model.Playlist;
 import org.L2.music.domain.service.PlaylistService;
+import org.L2.music.domain.service.SingerService;
 import org.L2.music.domain.service.SongService;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+
+import java.util.List;
 
 @Service
 public class MusicAppService {
@@ -19,25 +20,12 @@ public class MusicAppService {
     private SongService songService;
     @Autowired
     private PlaylistService playlistService;
+    @Autowired
+    private SingerService singerService;
 
-
-    public R managePlaylistSong(PlaylistSongRequest playlistSongRequest) {
-        Long playlistId = playlistSongRequest.getPlaylistId();
-        Long songId = playlistSongRequest.getSongId();
-        try {
-            return playlistService.managePlaylistSong(playlistId, songId);
-        } catch (Exception e) {
-            return R.error("操作失败"+e.getMessage());
-        }
-    }
-
-//    public R managePlaylistSongList(PlaylistSongRequestList playlistSongRequestlist) {
-//        Long playlistId = playlistSongRequestlist.getPlaylistId();
-//        for(Long songId: playlistSongRequestlist.getSongIds()){
-//            playlistService.managePlaylistSong(playlistId, songId);
-//        }
-//    }
-
+    /*
+     * 歌曲相关
+     */
     public R getSongBaseInfo(Long songId) {
         R result = songService.getSongInfo(songId);
         if(!result.getPassed()){
@@ -52,6 +40,9 @@ public class MusicAppService {
         return songService.getSongInfo(songId);
     }
 
+    /*
+     * 歌单相关
+     */
     public R deletePlaylist(Long playlistId) {
         return null;
     }
@@ -64,17 +55,70 @@ public class MusicAppService {
         return playlistService.createPlaylist(playlist);
     }
 
-
-    public R getPlaylistDetailsInfo(Long playlistId) {
-        // TODO:除了歌单 还有歌曲信息
-        return null;
+    public R getPlaylistBaseInfo(Long playlistId) {
+        R result = playlistService.getPlaylistInfo(playlistId);
+        if(!result.getPassed()){
+            return result;
+        }
+        PlaylistBaseDTO playlistBaseDTO = new PlaylistBaseDTO();
+        BeanUtils.copyProperties(result.getData(), playlistBaseDTO);
+        return R.success("获取成功",playlistBaseDTO);
     }
 
-    public R getSingerBaseInfo(Long singerId) {
+    public R getPlaylistDetailsInfo(Long playlistId) {
+        R result = playlistService.getPlaylistInfo(playlistId);
+        if(!result.getPassed()){
+            return result;
+        }
+        PlaylistDetailsDTO playlistDetailsDTO = new PlaylistDetailsDTO();
+        BeanUtils.copyProperties(result.getData(), playlistDetailsDTO);
+        R songs = songService.getPlaylistSongs(playlistId);
+        playlistDetailsDTO.setSongs((List<SongBaseDTO>)songs.getData());
 
+        return R.success("获取成功",playlistDetailsDTO);
+    }
+
+    public R managePlaylistSong(PlaylistSongRequest playlistSongRequest) {
+        Long playlistId = playlistSongRequest.getPlaylistId();
+        Long songId = playlistSongRequest.getSongId();
+        try {
+            return playlistService.managePlaylistSong(playlistId, songId);
+        } catch (Exception e) {
+            return R.error("操作失败"+e.getMessage());
+        }
+    }
+
+    //    public R managePlaylistSongList(PlaylistSongRequestList playlistSongRequestlist) {
+//        Long playlistId = playlistSongRequestlist.getPlaylistId();
+//        for(Long songId: playlistSongRequestlist.getSongIds()){
+//            playlistService.managePlaylistSong(playlistId, songId);
+//        }
+//    }
+
+    /*
+     * 歌手相关
+     */
+    public R getSingerBaseInfo(Long singerId) {
+        R result = singerService.getSingerInfo(singerId);
+        if(!result.getPassed()){
+            return result;
+        }
+        SingerBaseDTO singerBaseDTO = new SingerBaseDTO();
+        BeanUtils.copyProperties(result.getData(), singerBaseDTO);
+        return R.success("获取成功",singerBaseDTO);
     }
 
     public R getSingerDetailsInfo(Long singerId) {
-
+        R result = singerService.getSingerInfo(singerId);
+        if(!result.getPassed()){
+            return result;
+        }
+        SingerDetailsDTO singerDetailsDTO = new SingerDetailsDTO();
+        BeanUtils.copyProperties(result.getData(), singerDetailsDTO);
+        R songs = songService.getSingerSongs(singerId);
+        singerDetailsDTO.setSongs((List<SongBaseDTO>)songs.getData());
+        return R.success("获取成功",singerDetailsDTO);
     }
+
+
 }

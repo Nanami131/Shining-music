@@ -40,7 +40,7 @@ public class MusicController {
      * @param songId 歌曲ID
      * @return 歌曲基本信息
      */
-    @GetMapping("/info/{songId}")
+    @GetMapping("/info/song/{songId}")
     public R getSongBaseInfo(@PathVariable Long songId) {
         return musicAppService.getSongBaseInfo(songId);
     }
@@ -50,7 +50,7 @@ public class MusicController {
      * @param songId 歌曲ID
      * @return 歌曲详细信息
      */
-    @GetMapping("/details/{songId}")
+    @GetMapping("/details/song/{songId}")
     public R getSongDetailsInfo(@PathVariable Long songId) {
         return musicAppService.getSongDetailsInfo(songId);
     }
@@ -87,7 +87,7 @@ public class MusicController {
 
     /**
      * 向歌单批量添加或移除歌曲
-     * @param playlistSongRequestList 歌单歌曲批量请求
+     //* @param playlistSongRequestList 歌单歌曲批量请求
      * @return 操作结果
      */
 //    @PostMapping("/playlist/songs")
@@ -95,13 +95,17 @@ public class MusicController {
 //        return musicAppService.managePlaylistSongList(playlistSongRequestList);
 //    }
 
+    @GetMapping("/info/playlist/{playlistId}")
+    public R getPlaylistBaseInfo(Long playlistId) {
+        return musicAppService.getPlaylistBaseInfo(playlistId);
+    }
 
     /**
      * 获取歌单详情
      * @param playlistId 歌单ID
      * @return 歌单详细信息
      */
-    @GetMapping("/playlist/{playlistId}")
+    @GetMapping("/details/playlist/{playlistId}")
     public R getPlaylistDetailsInfo(@PathVariable Long playlistId) {
         return musicAppService.getPlaylistDetailsInfo(playlistId);
     }
@@ -111,7 +115,7 @@ public class MusicController {
      * @param singerId 歌手ID
      * @return 歌手基本信息
      */
-    @GetMapping("/info/{singerId}")
+    @GetMapping("/info/player/{singerId}")
     public R getSingerBaseInfo(@PathVariable Long singerId) {
         return musicAppService.getSingerBaseInfo(singerId);
     }
@@ -121,7 +125,7 @@ public class MusicController {
      * @param singerId 歌手ID
      * @return 歌手详细信息
      */
-    @GetMapping("/details/{singerId}")
+    @GetMapping("/details/player/{singerId}")
     public R getSingerDetailsInfo(@PathVariable Long singerId) {
         return musicAppService.getSingerDetailsInfo(singerId);
     }

@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import org.L2.common.R;
 import org.L2.music.constant.Constants;
 import org.L2.music.domain.model.Playlist;
+import org.L2.music.domain.model.Singer;
 import org.L2.music.infrastructure.PlaylistMapper;
 import org.L2.music.infrastructure.SongMapper;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -68,5 +69,18 @@ public class PlaylistService {
             return R.error("创建歌单失败"+e.getMessage());
         }
         return R.success("创建歌单成功");
+    }
+
+    public R getPlaylistInfo(Long playlistId) {
+        try {
+            Playlist playlist = playlistMapper.selectById(playlistId);
+            // TODO: 需要鉴权；还要考虑可见性的情况
+            if (playlist == null) {
+                return R.error("歌单不存在");
+            }
+            return R.success("获取歌单信息成功", playlist);
+        }catch (Exception e) {
+            return R.error("获取歌单信息失败"+e.getMessage());
+        }
     }
 }
