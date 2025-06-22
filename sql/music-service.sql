@@ -34,6 +34,7 @@ CREATE TABLE singers (
                          genre VARCHAR(100), -- 音乐流派
                          country VARCHAR(100), -- 国家或地区
                          STATUS TINYINT NOT NULL, -- 歌手状态（如活跃、退役等）
+                         sex TINYINT, -- 性别
                          created_at DATETIME, -- 创建时间
                          updated_at DATETIME -- 更新时间
 );

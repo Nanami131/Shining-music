@@ -19,8 +19,8 @@
     </select>
 
     <insert id="insert" parameterType="org.L2.music.domain.model.Singer" useGeneratedKeys="true" keyProperty="id">
-        INSERT INTO singers (name, user_id, profile, avatar_url, genre, country, status, created_at, updated_at)
-        VALUES (#{name}, #{userId}, #{profile}, #{avatarUrl}, #{genre}, #{country}, #{status}, #{createdAt}, #{updatedAt})
+        INSERT INTO singers (name, user_id, profile, avatar_url, genre, country, status, sex,created_at, updated_at)
+        VALUES (#{name}, #{userId}, #{profile}, #{avatarUrl}, #{genre}, #{country}, #{status},#{sex}, #{createdAt}, #{updatedAt})
     </insert>
 
     <update id="update" parameterType="org.L2.music.domain.model.Singer">
@@ -33,6 +33,7 @@
             <if test="genre != null and genre != ''">genre = #{genre},</if>
             <if test="country != null and country != ''">country = #{country},</if>
             <if test="status != null">status = #{status},</if>
+            <if test="sex != null">sex = #{sex},</if>
             <if test="createdAt != null">created_at = #{createdAt},</if>
             <if test="updatedAt != null">updated_at = #{updatedAt},</if>
         </set>
@@ -69,6 +70,9 @@
             </if>
             <if test="status != null">
                 AND status = #{status}
+            </if>
+            <if test="sex != null">
+                AND sex = #{sex}
             </if>
             <if test="createdAt != null">
                 AND created_at >= #{createdAt}

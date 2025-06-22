@@ -19,6 +19,7 @@ public class Singer {
     private String genre; // 音乐流派
     private String country; // 国家或地区
     private Byte status; // 歌手状态（如活跃、退役等）
+    private Byte sex;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 }
