@@ -5,7 +5,7 @@ import lombok.experimental.Accessors;
 import java.time.LocalDateTime;
 
 /**
- * 歌曲实体类，代表音乐系统中的单首歌曲
+ * 歌曲实体类，代表音乐系统中的单首歌曲，暂时不设计DTO类，直接使用实体类。
  */
 @Data
 @Accessors(chain = true)

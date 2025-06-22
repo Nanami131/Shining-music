@@ -69,4 +69,12 @@ public class MusicAppService {
         // TODO:除了歌单 还有歌曲信息
         return null;
     }
+
+    public R getSingerBaseInfo(Long singerId) {
+
+    }
+
+    public R getSingerDetailsInfo(Long singerId) {
+
+    }
 }

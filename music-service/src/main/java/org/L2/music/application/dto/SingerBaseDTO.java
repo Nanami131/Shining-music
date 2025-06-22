@@ -5,11 +5,8 @@ import lombok.experimental.Accessors;
 
 @Data
 @Accessors(chain = true)
-public class PlaylistBaseDTO {
+public class SingerBaseDTO {
     private Long id;
     private String name;
-    private Byte type;
-    private Byte visibility;
-    private String coverUrl;
-
+    private String avatarUrl;
 }

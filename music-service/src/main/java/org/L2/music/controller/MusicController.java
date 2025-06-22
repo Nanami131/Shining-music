@@ -106,7 +106,25 @@ public class MusicController {
         return musicAppService.getPlaylistDetailsInfo(playlistId);
     }
 
+    /**
+     * 获取歌手基本信息
+     * @param singerId 歌手ID
+     * @return 歌手基本信息
+     */
+    @GetMapping("/info/{singerId}")
+    public R getSingerBaseInfo(@PathVariable Long singerId) {
+        return musicAppService.getSingerBaseInfo(singerId);
+    }
 
+    /**
+     * 获取歌手详情
+     * @param singerId 歌手ID
+     * @return 歌手详细信息
+     */
+    @GetMapping("/details/{singerId}")
+    public R getSingerDetailsInfo(@PathVariable Long singerId) {
+        return musicAppService.getSingerDetailsInfo(singerId);
+    }
 
     /**
      * 测试接口，用于初期测试
