@@ -1,12 +1,14 @@
-package org.L2.music.application.dto;
+package org.L2.music.application.request;
 
 import lombok.Data;
 import lombok.experimental.Accessors;
 
+import java.util.List;
+
 @Data
 @Accessors(chain = true)
-public class PlaylistSongRequest {
+public class PlaylistSongListRequest{
     private Long Id;
     private Long playlistId;
-    private Long songId;
+    private List<Long> songIds;
 }

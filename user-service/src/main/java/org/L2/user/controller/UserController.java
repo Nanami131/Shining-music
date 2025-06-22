@@ -1,8 +1,10 @@
 package org.L2.user.controller;
 
 import org.L2.common.R;
-import org.L2.user.UserApplication;
-import org.L2.user.application.dto.*;
+import org.L2.user.application.requset.LoginRequest;
+import org.L2.user.application.requset.RegisterRequest;
+import org.L2.user.application.requset.ResetPasswordRequest;
+import org.L2.user.application.requset.UpdateProfileRequest;
 import org.L2.user.application.service.UserAppService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
@@ -69,7 +71,7 @@ public class UserController {
      * @param userId 用户id
      * @return
      */
-    @GetMapping("/update-profile")
+    @GetMapping("/details")
     public R getUserDetailsInfo(@RequestParam("userId") Long userId) {
         return userAppService.getUserDetailsInfo(userId);
     }

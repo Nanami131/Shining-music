@@ -41,6 +41,10 @@
         DELETE FROM songs WHERE id = #{id}
     </delete>
 
+    <delete id="deleteBySingerId">
+        DELETE FROM songs WHERE artist_id = #{singerId}
+    </delete>
+
     <select id="query" resultMap="SongResultMap">
         SELECT * FROM songs
         <where>

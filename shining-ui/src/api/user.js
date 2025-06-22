@@ -14,7 +14,7 @@ export default {
         return api.get('/user/info', { params: { userId } });
     },
     getUserDetailsInfo(userId) {
-        return api.get('/user/update-profile', { params: { userId } });
+        return api.get('/user/details', { params: { userId } });
     },
     updateProfile(data) {
         return api.post('/user/update-profile', data);

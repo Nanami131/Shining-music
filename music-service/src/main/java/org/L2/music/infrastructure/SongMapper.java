@@ -15,4 +15,6 @@ public interface SongMapper {
     int deleteById(Long id);
 
     List<Song> query(Song song);
+
+    void deleteBySingerId(Long singerId);
 }

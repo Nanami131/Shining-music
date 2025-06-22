@@ -2,6 +2,10 @@ package org.L2.user.application.service;
 
 import org.L2.common.R;
 import org.L2.user.application.dto.*;
+import org.L2.user.application.requset.LoginRequest;
+import org.L2.user.application.requset.RegisterRequest;
+import org.L2.user.application.requset.ResetPasswordRequest;
+import org.L2.user.application.requset.UpdateProfileRequest;
 import org.L2.user.domain.model.User;
 import org.L2.user.domain.service.JwtService;
 import org.L2.user.domain.service.LoginService;
@@ -10,8 +14,6 @@ import org.L2.user.domain.service.UserProfileService;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.multipart.MultipartFile;
 
 @Service
@@ -31,9 +33,6 @@ public class UserAppService {
      * @return
      */
     public R register(RegisterRequest registerRequest) {
-        if(registerRequest==null){
-            return R.error("请求参数为空");
-        }
         User user = new User();
         // 还没有配置手机和邮箱的验证码服务
         user.setUsername(registerRequest.getUsername())

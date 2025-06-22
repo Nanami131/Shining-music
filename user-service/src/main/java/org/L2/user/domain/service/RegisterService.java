@@ -28,10 +28,11 @@ public class RegisterService {
      */
     @Transactional(rollbackFor = Exception.class)
     public R register(User user) throws Exception {
-        if(user.getUsername() == null || "".equals(user.getUsername())) {
+        if(user.getUsername() == null || user.getUsername().isBlank()) {
+
             return R.error("用户名为空");
         }
-        if(user.getPassword() == null || "".equals(user.getPassword())) {
+        if(user.getPassword() == null || user.getPassword().isBlank()) {
             return R.error("密码为空");
         }
         if(user.getEmail() == null && user.getPhone() == null){

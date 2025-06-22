@@ -21,11 +21,11 @@ public class LoginService {
     @Autowired
     private StringRedisTemplate stringRedisTemplate;
     public R login(User user){
-        if(user.getUsername() == null || "".equals(user.getUsername())) {
+        if(user.getUsername() == null || user.getUsername().isEmpty()) {
             return R.error("用户名为空");
         }
         // 未来要扩展其他登录方式
-        if(user.getPassword() != null && !"".equals(user.getPassword())) {
+        if(user.getPassword() != null && !user.getPassword().isEmpty()) {
             return loginWithPassword(new User().setUsername(user.getUsername()),user.getPassword());
         }
         return R.error("没有可用的登录凭证");

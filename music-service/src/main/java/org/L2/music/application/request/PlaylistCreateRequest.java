@@ -1,4 +1,4 @@
-package org.L2.music.application.dto;
+package org.L2.music.application.request;
 
 import lombok.Data;
 import lombok.experimental.Accessors;

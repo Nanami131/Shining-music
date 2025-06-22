@@ -1,10 +1,14 @@
 package org.L2.music.controller;
 
 import org.L2.common.R;
-import org.L2.music.application.dto.*;
+import org.L2.music.application.request.PlaylistCreateRequest;
+import org.L2.music.application.request.PlaylistSongRequest;
+import org.L2.music.application.request.SingerCreateRequest;
+import org.L2.music.application.request.SingerUpdateRequest;
 import org.L2.music.application.service.MusicAppService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 @RestController
 @RequestMapping("/music")
@@ -12,6 +16,10 @@ public class MusicController {
 
     @Autowired
     private MusicAppService musicAppService;
+
+    /*
+     * 歌曲相关
+     */
 
     /**
      * 上传歌曲
@@ -54,6 +62,10 @@ public class MusicController {
     public R getSongDetailsInfo(@PathVariable Long songId) {
         return musicAppService.getSongDetailsInfo(songId);
     }
+
+    /*
+     * 歌单相关
+     */
 
     /**
      * 创建歌单
@@ -108,6 +120,53 @@ public class MusicController {
     @GetMapping("/details/playlist/{playlistId}")
     public R getPlaylistDetailsInfo(@PathVariable Long playlistId) {
         return musicAppService.getPlaylistDetailsInfo(playlistId);
+    }
+
+    /*
+     * 歌手相关
+     */
+
+
+    /**
+     * 创建歌手
+     * @param singerCreateRequest 歌手信息
+     * @return 创建结果
+     */
+    @PostMapping("/singer")
+    public R createSinger(@RequestBody SingerCreateRequest singerCreateRequest) {
+        return musicAppService.createSinger(singerCreateRequest);
+    }
+
+    /**
+     * 删除歌手
+     * @param singerId
+     * @return
+     */
+    @DeleteMapping("/singer/{singerId}")
+    public R deleteSinger(@PathVariable Long singerId) {
+        return musicAppService.deleteSinger(singerId);
+    }
+
+    /**
+     * 更改歌手资料
+     * @param singerUpdateRequest 歌手资料信息
+     * @return
+     */
+    @PostMapping("/update-profile")
+    public R updateProfile(@RequestBody SingerUpdateRequest singerUpdateRequest) {
+        return musicAppService.updateSingerProfile(singerUpdateRequest);
+    }
+
+    /**
+     * 更新头像
+     *
+     * @return
+     */
+    @PostMapping("/update-avatar")
+    public R updateAvatar(@RequestParam("id") Long id,
+                          @RequestParam("avatarFile") MultipartFile avatarFile,
+                          @RequestParam("md5") String md5) {
+        return musicAppService.updateSingerAvatar(id, avatarFile, md5);
     }
 
     /**

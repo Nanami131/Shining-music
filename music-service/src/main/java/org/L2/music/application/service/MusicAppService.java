@@ -3,13 +3,19 @@ package org.L2.music.application.service;
 
 import org.L2.common.R;
 import org.L2.music.application.dto.*;
+import org.L2.music.application.request.PlaylistCreateRequest;
+import org.L2.music.application.request.PlaylistSongRequest;
+import org.L2.music.application.request.SingerCreateRequest;
+import org.L2.music.application.request.SingerUpdateRequest;
 import org.L2.music.domain.model.Playlist;
+import org.L2.music.domain.model.Singer;
 import org.L2.music.domain.service.PlaylistService;
 import org.L2.music.domain.service.SingerService;
 import org.L2.music.domain.service.SongService;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 
@@ -120,5 +126,29 @@ public class MusicAppService {
         return R.success("获取成功",singerDetailsDTO);
     }
 
+    public R createSinger(SingerCreateRequest singerCreateRequest) {
+        Singer singer = new Singer();
+        BeanUtils.copyProperties(singerCreateRequest, singer);
+        return singerService.createSinger(singer);
+    }
 
+    public R deleteSinger(Long singerId) {
+        try {
+            singerService.deleteSinger(singerId);
+        }catch (Exception e) {
+            return R.error("删除失败"+e.getMessage());
+        }
+        return R.success("删除成功");
+    }
+
+
+    public R updateSingerProfile(SingerUpdateRequest singerUpdateRequest){
+        Singer singer = new Singer();
+        BeanUtils.copyProperties(singerUpdateRequest, singer);
+        return singerService.updateSinger(singer);
+    }
+
+    public R updateSingerAvatar(Long id, MultipartFile avatarFile, String md5){
+        return null;
+    }
 }
