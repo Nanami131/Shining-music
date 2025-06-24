@@ -7,6 +7,7 @@ import org.L2.music.application.request.PlaylistCreateRequest;
 import org.L2.music.application.request.PlaylistSongRequest;
 import org.L2.music.application.request.SingerCreateRequest;
 import org.L2.music.application.request.SingerUpdateRequest;
+import org.L2.music.domain.model.Lyrics;
 import org.L2.music.domain.model.Playlist;
 import org.L2.music.domain.model.Singer;
 import org.L2.music.domain.service.LyricsService;
@@ -18,6 +19,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.util.ArrayList;
 import java.util.List;
 
 @Service
@@ -45,9 +47,18 @@ public class MusicAppService {
         return R.success("获取成功",songBaseDTO);
     }
     public R getSongDetailsInfo(Long songId) {
-        // 歌曲这里没有什么需要DTO的，直接返回
-        return songService.getSongInfo(songId);
+        R result = songService.getSongInfo(songId);
+        if(!result.getPassed()){
+            return result;
+        }
+        SongDetailsDTO songDetailsDTO = new SongDetailsDTO();
+        BeanUtils.copyProperties(result.getData(), songDetailsDTO);
+        //noinspection unchecked
+        songDetailsDTO.setAllLyrics((ArrayList<Lyrics>) lyricsService.getAllLyricsBySongId(songId).getData());
+
+        return R.success("获取成功",songDetailsDTO);
     }
+
 
     public R uploadLyrics(Long songId, MultipartFile file) {
         return lyricsService.uploadLyrics(songId, file);
