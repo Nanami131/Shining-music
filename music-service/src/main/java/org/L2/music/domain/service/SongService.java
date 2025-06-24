@@ -56,16 +56,20 @@ public class SongService {
 
     public R uploadSong(Long id, MultipartFile file) {
         String originalFilename = file.getOriginalFilename();
-        String fileName= FileNameGenerateService.defineNamePath(originalFilename,"/song/cover/",id,5);
+        String fileName= FileNameGenerateService.defineNamePath(originalFilename,"/song/",id,5);
         String coverUrl = minioProperties.getEndpoint() + "/" + minioProperties.getBucketName() + fileName;
-        Song song = new Song().setArtistId(id).setCoverUrl(coverUrl);
+        Song song = new Song().setTitle(originalFilename).
+                setArtistId(id).
+                setFileUrl(coverUrl).
+                setStatus((byte) 1);
         String s = simpleMinioService.uploadFile(file,fileName);
         if(!s.equals("上传成功")){
             return R.error(s);
         }
         try {
-            songMapper.update(song);
+            songMapper.insert(song);
         } catch (Exception e) {
+            e.printStackTrace();
             return R.error("数据库操作失败："+e.getMessage());
         }
 

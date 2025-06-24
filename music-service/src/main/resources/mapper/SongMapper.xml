@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
-<mapper namespace="org.L2.music.infrastructure.mapper.SongMapper">
+<mapper namespace="org.L2.music.infrastructure.SongMapper">
     <resultMap id="SongResultMap" type="org.L2.music.domain.model.Song">
         <id property="id" column="id"/>
         <result property="title" column="title"/>
