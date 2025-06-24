@@ -22,7 +22,7 @@ public class MusicController {
      */
 
     /**
-     * 不分片上传歌曲
+     * 单次上传歌曲
      * @param file 歌曲文件
      * @param md5 歌曲校验值
      * @return 上传结果
@@ -34,6 +34,17 @@ public class MusicController {
         return musicAppService.uploadSong(id, file, md5);
     }
 
+    /**
+     * 上传歌词
+     * @param songId 对应歌曲ID
+     * @param lyricsFile 歌词文件
+     * @return
+     */
+    @PostMapping("/lyrics/{songId}")
+    public R uploadLyrics(@PathVariable Long songId,
+                         @RequestParam("lyricsFile") MultipartFile lyricsFile) {
+        return musicAppService.uploadLyrics(songId, lyricsFile);
+    }
     /**
      * 下载歌曲
      * @param songId 歌曲ID
@@ -64,6 +75,21 @@ public class MusicController {
         return musicAppService.getSongDetailsInfo(songId);
     }
 
+    /**
+     * 获取歌曲所有歌词
+     * @param songId
+     * @return
+     */
+    @GetMapping("/lyrics/all/{songId}")
+    public R getAllLyrics(@PathVariable Long songId) {
+        return musicAppService.getAllLyricsBySongId(songId);
+    }
+
+
+    @GetMapping("/lyrics/{lyricsId}")
+    public R getLyrics(@PathVariable Long lyricsId) {
+        return musicAppService.getLyrics(lyricsId);
+    }
     /*
      * 歌单相关
      */

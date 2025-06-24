@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="org.L2.music.infrastructure.LyricsMapper">
+    <resultMap id="LyricsResultMap" type="org.L2.music.domain.model.Lyrics">
+        <id property="id" column="id"/>
+        <result property="songId" column="song_id"/>
+        <result property="languageMsg" column="language_msg"/>
+        <result property="content" column="content"/>
+        <result property="createdAt" column="created_at"/>
+        <result property="updatedAt" column="updated_at"/>
+    </resultMap>
+
+    <select id="selectById" resultMap="LyricsResultMap">
+        SELECT * FROM lyrics WHERE id = #{id}
+    </select>
+
+    <select id="selectBySongId" resultMap="LyricsResultMap">
+        SELECT * FROM lyrics WHERE song_id = #{songId}
+    </select>
+
+    <insert id="insert" parameterType="org.L2.music.domain.model.Lyrics" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO lyrics (song_id, language_msg, content, created_at, updated_at)
+        VALUES (#{songId}, #{languageMsg}, #{content}, #{createdAt}, #{updatedAt})
+    </insert>
+
+    <update id="update" parameterType="org.L2.music.domain.model.Lyrics">
+        UPDATE lyrics
+        <set>
+            <if test="songId != null">song_id = #{songId},</if>
+            <if test="languageMsg != null and languageMsg != ''">language_msg = #{languageMsg},</if>
+            <if test="content != null and content != ''">content = #{content},</if>
+            <if test="createdAt != null">created_at = #{createdAt},</if>
+            <if test="updatedAt != null">updated_at = #{updatedAt},</if>
+        </set>
+        WHERE id = #{id}
+    </update>
+
+    <delete id="deleteById">
+        DELETE FROM lyrics WHERE id = #{id}
+    </delete>
+</mapper>

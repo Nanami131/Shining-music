@@ -38,3 +38,13 @@ CREATE TABLE singers (
                          created_at DATETIME, -- 创建时间
                          updated_at DATETIME -- 更新时间
 );
+
+-- 歌词表
+CREATE TABLE lyrics (
+                        id BIGINT PRIMARY KEY AUTO_INCREMENT, -- 歌词ID
+                        song_id BIGINT NOT NULL, -- 关联歌曲ID
+                        language_msg VARCHAR(50) NOT NULL, -- 歌词语言描述信息
+                        content TEXT NOT NULL, -- 歌词内容
+                        created_at DATETIME, -- 创建时间
+                        updated_at DATETIME -- 更新时间
+);

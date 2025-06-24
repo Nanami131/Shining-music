@@ -7,7 +7,6 @@ import java.time.LocalDateTime;
 /**
  * 歌手实体类，代表音乐系统中的歌手信息
  */
-// TODO: 忘了考虑性别了，后面得改一套
 @Data
 @Accessors(chain = true)
 public class Singer {

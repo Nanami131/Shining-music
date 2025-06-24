@@ -9,6 +9,7 @@ import org.L2.music.application.request.SingerCreateRequest;
 import org.L2.music.application.request.SingerUpdateRequest;
 import org.L2.music.domain.model.Playlist;
 import org.L2.music.domain.model.Singer;
+import org.L2.music.domain.service.LyricsService;
 import org.L2.music.domain.service.PlaylistService;
 import org.L2.music.domain.service.SingerService;
 import org.L2.music.domain.service.SongService;
@@ -28,6 +29,8 @@ public class MusicAppService {
     private PlaylistService playlistService;
     @Autowired
     private SingerService singerService;
+    @Autowired
+    private LyricsService lyricsService;
 
     /*
      * 歌曲相关
@@ -44,6 +47,18 @@ public class MusicAppService {
     public R getSongDetailsInfo(Long songId) {
         // 歌曲这里没有什么需要DTO的，直接返回
         return songService.getSongInfo(songId);
+    }
+
+    public R uploadLyrics(Long songId, MultipartFile file) {
+        return lyricsService.uploadLyrics(songId, file);
+    }
+
+    public R getAllLyricsBySongId(Long songId) {
+        return lyricsService.getAllLyricsBySongId(songId);
+    }
+
+    public R getLyrics(Long lyricsId) {
+        return lyricsService.getLyrics(lyricsId);
     }
 
     public R uploadSong(Long id, MultipartFile file, String md5){
@@ -154,4 +169,5 @@ public class MusicAppService {
     public R updateSingerAvatar(Long id, MultipartFile avatarFile, String md5){
         return singerService.updateSingerAvatar(id,avatarFile);
     }
+
 }
