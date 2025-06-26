@@ -2,6 +2,9 @@ package org.L2.music.domain.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.L2.common.R;
+import org.L2.common.minio.MinioProperties;
+import org.L2.common.minio.service.FileNameGenerateService;
+import org.L2.common.minio.service.SimpleMinioService;
 import org.L2.music.constant.Constants;
 import org.L2.music.domain.model.Playlist;
 import org.L2.music.domain.model.Singer;
@@ -10,6 +13,7 @@ import org.L2.music.infrastructure.SongMapper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 
@@ -23,6 +27,10 @@ public class PlaylistService {
     private ObjectMapper objectMapper;
     @Autowired
     private StringRedisTemplate stringRedisTemplate;
+    @Autowired
+    private MinioProperties minioProperties;
+    @Autowired
+    private SimpleMinioService simpleMinioService;
 
     public R managePlaylistSong(Long playlistId, Long songId) throws Exception {
         if(playlistId==null || songId==null){
@@ -82,5 +90,23 @@ public class PlaylistService {
         }catch (Exception e) {
             return R.error("获取歌单信息失败"+e.getMessage());
         }
+    }
+
+    public R uploadPlaylistAvatar(Long id, MultipartFile file) {
+        String originalFilename = file.getOriginalFilename();
+        String fileName= FileNameGenerateService.defineNamePath(originalFilename,"/playlist/cover/",id,5);
+        String avatarUrl = minioProperties.getEndpoint() + "/" + minioProperties.getBucketName() + fileName;
+        Playlist playlist = new Playlist().setId(id).setCoverUrl(avatarUrl);
+        String s = simpleMinioService.uploadFile(file,fileName);
+        if(!s.equals("上传成功")){
+            return R.error(s);
+        }
+        try {
+            playlistMapper.update(playlist);
+        } catch (Exception e) {
+            return R.error("数据库操作失败："+e.getMessage());
+        }
+
+        return R.success("头像修改成功",avatarUrl);
     }
 }

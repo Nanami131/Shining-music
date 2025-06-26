@@ -45,6 +45,19 @@ public class MusicController {
                          @RequestParam("lyricsFile") MultipartFile lyricsFile) {
         return musicAppService.uploadLyrics(songId, lyricsFile);
     }
+
+    /**
+     * 上传/更新歌曲封面
+     * @param avatarFile 封面文件
+     * @param md5 封面文件校验值
+     * @return
+     */
+    @PostMapping("/cover/song")
+    public R uploadSongAvatar(@RequestParam("id") Long id,
+                          @RequestParam("avatarFile") MultipartFile avatarFile,
+                          @RequestParam("md5") String md5) {
+        return musicAppService.uploadSongAvatar(id, avatarFile, md5);
+    }
     /**
      * 下载歌曲
      * @param songId 歌曲ID
@@ -102,6 +115,19 @@ public class MusicController {
     @PostMapping("/playlist")
     public R createPlaylist(@RequestBody PlaylistCreateRequest playlistCreateRequest) {
         return musicAppService.createPlaylist(playlistCreateRequest);
+    }
+
+    /**
+     * 上传/更新歌单封面
+     * @param avatarFile 封面文件
+     * @param md5 封面文件校验值
+     * @return
+     */
+    @PostMapping("/cover/playlist")
+    public R uploadPlaylistAvatar(@RequestParam("id") Long id,
+                              @RequestParam("avatarFile") MultipartFile avatarFile,
+                              @RequestParam("md5") String md5) {
+        return musicAppService.uploadPlaylistAvatar(id, avatarFile, md5);
     }
 
     /**

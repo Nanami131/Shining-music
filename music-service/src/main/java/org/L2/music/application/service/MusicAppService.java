@@ -75,6 +75,11 @@ public class MusicAppService {
     public R uploadSong(Long id, MultipartFile file, String md5){
         return songService.uploadSong(id,file);
     }
+
+    public R uploadSongAvatar(Long id, MultipartFile avatarFile, String md5){
+        return songService.uploadSongAvatar(id,avatarFile);
+    }
+
     /*
      * 歌单相关
      */
@@ -129,6 +134,10 @@ public class MusicAppService {
 //            playlistService.managePlaylistSong(playlistId, songId);
 //        }
 //    }
+
+    public R uploadPlaylistAvatar(Long id, MultipartFile avatarFile, String md5){
+        return playlistService.uploadPlaylistAvatar(id,avatarFile);
+    }
 
     /*
      * 歌手相关

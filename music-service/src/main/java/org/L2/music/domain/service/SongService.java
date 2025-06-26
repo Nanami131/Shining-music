@@ -57,22 +57,36 @@ public class SongService {
     public R uploadSong(Long id, MultipartFile file) {
         String originalFilename = file.getOriginalFilename();
         String fileName= FileNameGenerateService.defineNamePath(originalFilename,"/song/",id,5);
-        String coverUrl = minioProperties.getEndpoint() + "/" + minioProperties.getBucketName() + fileName;
-        Song song = new Song().setTitle(originalFilename).
-                setArtistId(id).
-                setFileUrl(coverUrl).
-                setStatus((byte) 1);
+        String fileUrl = minioProperties.getEndpoint() + "/" + minioProperties.getBucketName() + fileName;
+        Song song = new Song().setId(id).setFileUrl(fileUrl);
         String s = simpleMinioService.uploadFile(file,fileName);
         if(!s.equals("上传成功")){
             return R.error(s);
         }
         try {
-            songMapper.insert(song);
+            songMapper.update(song);
         } catch (Exception e) {
-            e.printStackTrace();
             return R.error("数据库操作失败："+e.getMessage());
         }
 
-        return R.success("歌曲上传成功",coverUrl);
+        return R.success("歌曲上传成功",fileUrl);
+    }
+
+    public R uploadSongAvatar(Long id, MultipartFile file) {
+        String originalFilename = file.getOriginalFilename();
+        String fileName= FileNameGenerateService.defineNamePath(originalFilename,"/song/cover/",id,5);
+        String avatarUrl = minioProperties.getEndpoint() + "/" + minioProperties.getBucketName() + fileName;
+        Song song = new Song().setId(id).setCoverUrl(avatarUrl);
+        String s = simpleMinioService.uploadFile(file,fileName);
+        if(!s.equals("上传成功")){
+            return R.error(s);
+        }
+        try {
+            songMapper.update(song);
+        } catch (Exception e) {
+            return R.error("数据库操作失败："+e.getMessage());
+        }
+
+        return R.success("头像修改成功",avatarUrl);
     }
 }

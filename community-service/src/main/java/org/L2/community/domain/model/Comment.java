@@ -16,6 +16,7 @@ public class Comment {
     private String content;
     private String targetType; // 目标类型（"song", "playlist", "post"）
     private Long targetId; // 目标ID（歌曲、歌单或帖子ID）
+    private Long replyToCommentId; // 回复的评论ID(大部分时候为空)
     private Long parentCommentId;
     private Long likes;
     private Byte status;
