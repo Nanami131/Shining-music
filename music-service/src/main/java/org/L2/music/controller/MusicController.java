@@ -41,8 +41,8 @@ public class MusicController {
      * @return
      */
     @PostMapping("/lyrics/{songId}")
-    public R uploadLyrics(@PathVariable Long songId,
-                         @RequestParam("lyricsFile") MultipartFile lyricsFile) {
+    public R uploadLyrics(@PathVariable("songId") Long songId,
+                          @RequestParam("lyricsFile") MultipartFile lyricsFile) {
         return musicAppService.uploadLyrics(songId, lyricsFile);
     }
 
@@ -54,8 +54,8 @@ public class MusicController {
      */
     @PostMapping("/cover/song")
     public R uploadSongAvatar(@RequestParam("id") Long id,
-                          @RequestParam("avatarFile") MultipartFile avatarFile,
-                          @RequestParam("md5") String md5) {
+                              @RequestParam("avatarFile") MultipartFile avatarFile,
+                              @RequestParam("md5") String md5) {
         return musicAppService.uploadSongAvatar(id, avatarFile, md5);
     }
     /**
@@ -74,7 +74,7 @@ public class MusicController {
      * @return 歌曲基本信息
      */
     @GetMapping("/info/song/{songId}")
-    public R getSongBaseInfo(@PathVariable Long songId) {
+    public R getSongBaseInfo(@PathVariable("songId") Long songId) {
         return musicAppService.getSongBaseInfo(songId);
     }
 
@@ -84,7 +84,7 @@ public class MusicController {
      * @return 歌曲详细信息
      */
     @GetMapping("/details/song/{songId}")
-    public R getSongDetailsInfo(@PathVariable Long songId) {
+    public R getSongDetailsInfo(@PathVariable("songId") Long songId) {
         return musicAppService.getSongDetailsInfo(songId);
     }
 
@@ -94,13 +94,12 @@ public class MusicController {
      * @return
      */
     @GetMapping("/lyrics/all/{songId}")
-    public R getAllLyrics(@PathVariable Long songId) {
+    public R getAllLyrics(@PathVariable("songId") Long songId) {
         return musicAppService.getAllLyricsBySongId(songId);
     }
 
-
     @GetMapping("/lyrics/{lyricsId}")
-    public R getLyrics(@PathVariable Long lyricsId) {
+    public R getLyrics(@PathVariable("lyricsId") Long lyricsId) {
         return musicAppService.getLyrics(lyricsId);
     }
     /*
@@ -125,8 +124,8 @@ public class MusicController {
      */
     @PostMapping("/cover/playlist")
     public R uploadPlaylistAvatar(@RequestParam("id") Long id,
-                              @RequestParam("avatarFile") MultipartFile avatarFile,
-                              @RequestParam("md5") String md5) {
+                                  @RequestParam("avatarFile") MultipartFile avatarFile,
+                                  @RequestParam("md5") String md5) {
         return musicAppService.uploadPlaylistAvatar(id, avatarFile, md5);
     }
 
@@ -136,7 +135,7 @@ public class MusicController {
      * @return 删除结果
      */
     @DeleteMapping("/playlist/{playlistId}")
-    public R deletePlaylist(@PathVariable Long playlistId) {
+    public R deletePlaylist(@PathVariable("playlistId") Long playlistId) {
         return musicAppService.deletePlaylist(playlistId);
     }
 
@@ -161,7 +160,7 @@ public class MusicController {
 //    }
 
     @GetMapping("/info/playlist/{playlistId}")
-    public R getPlaylistBaseInfo(Long playlistId) {
+    public R getPlaylistBaseInfo(@PathVariable("playlistId") Long playlistId) {
         return musicAppService.getPlaylistBaseInfo(playlistId);
     }
 
@@ -171,14 +170,13 @@ public class MusicController {
      * @return 歌单详细信息
      */
     @GetMapping("/details/playlist/{playlistId}")
-    public R getPlaylistDetailsInfo(@PathVariable Long playlistId) {
+    public R getPlaylistDetailsInfo(@PathVariable("playlistId") Long playlistId) {
         return musicAppService.getPlaylistDetailsInfo(playlistId);
     }
 
     /*
      * 歌手相关
      */
-
 
     /**
      * 创建歌手
@@ -196,7 +194,7 @@ public class MusicController {
      * @return
      */
     @DeleteMapping("/singer/{singerId}")
-    public R deleteSinger(@PathVariable Long singerId) {
+    public R deleteSinger(@PathVariable("singerId") Long singerId) {
         return musicAppService.deleteSinger(singerId);
     }
 
@@ -229,7 +227,7 @@ public class MusicController {
      * @return 歌手基本信息
      */
     @GetMapping("/info/player/{singerId}")
-    public R getSingerBaseInfo(@PathVariable Long singerId) {
+    public R getSingerBaseInfo(@PathVariable("singerId") Long singerId) {
         return musicAppService.getSingerBaseInfo(singerId);
     }
 
@@ -239,7 +237,7 @@ public class MusicController {
      * @return 歌手详细信息
      */
     @GetMapping("/details/player/{singerId}")
-    public R getSingerDetailsInfo(@PathVariable Long singerId) {
+    public R getSingerDetailsInfo(@PathVariable("singerId") Long singerId) {
         return musicAppService.getSingerDetailsInfo(singerId);
     }
 

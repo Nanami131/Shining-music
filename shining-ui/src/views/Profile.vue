@@ -137,6 +137,7 @@ export default {
           userBase.nickName = this.profileForm.nickName;
           userBase.email = this.profileForm.email;
           localStorage.setItem('userBase', JSON.stringify(userBase));
+          window.dispatchEvent(new Event('userBaseUpdated')); // 触发事件
           alert('资料更新成功');
           this.loadUserDetails();
           this.showProfileForm = false;
@@ -174,6 +175,7 @@ export default {
             const userBase = JSON.parse(localStorage.getItem('userBase') || '{}');
             userBase.avatarUrl = response.data.data;
             localStorage.setItem('userBase', JSON.stringify(userBase));
+            window.dispatchEvent(new Event('userBaseUpdated')); // 触发事件
             alert('头像更新成功');
             this.loadUserDetails();
             this.$refs.avatarInput.value = '';

@@ -5,6 +5,9 @@
       <span class="nav-item" @click="goToDiscover">发现音乐</span>
       <span class="nav-item" @click="goToMyMusic">我的音乐</span>
       <span class="nav-item" @click="goToForum">讨论区</span>
+      <span class="nav-item" @click="goToSingers">歌手</span>
+      <span class="nav-item" @click="goToSongs">歌曲</span>
+      <span class="nav-item" @click="goToPlaylists">歌单</span>
     </div>
     <div class="actions">
       <template v-if="isLoggedIn">
@@ -27,7 +30,7 @@
 
 <script>
 import userApi from '@/api/user';
-import defaultAvatar from '@/assets/default-avatar.png'; // 默认头像
+import defaultAvatar from '@/assets/default-avatar.png';
 
 export default {
   name: 'Header',
@@ -35,20 +38,17 @@ export default {
     return {
       userBase: JSON.parse(localStorage.getItem('userBase') || '{}'),
       isLoggedIn: !!localStorage.getItem('token'),
-      defaultAvatar, // 默认头像路径
+      defaultAvatar,
     };
-  },
-  watch: {
-    '$route'() {
-      this.updateLoginState();
-    },
   },
   created() {
     this.updateLoginState();
     window.addEventListener('storage', this.updateLoginState);
+    window.addEventListener('userBaseUpdated', this.updateLoginState); // 监听更新事件
   },
   beforeDestroy() {
     window.removeEventListener('storage', this.updateLoginState);
+    window.removeEventListener('userBaseUpdated', this.updateLoginState);
   },
   methods: {
     updateLoginState() {
@@ -65,13 +65,22 @@ export default {
       this.$router.push('/profile');
     },
     goToDiscover() {
-      // 占位，无效点击
+      this.$router.push('/');
     },
     goToMyMusic() {
-      // 占位，无效点击
+      this.$router.push('/my-music');
     },
     goToForum() {
-      // 占位，无效点击
+      this.$router.push('/forum');
+    },
+    goToSingers() {
+      this.$router.push('/singers');
+    },
+    goToSongs() {
+      this.$router.push('/songs');
+    },
+    goToPlaylists() {
+      this.$router.push('/playlists');
     },
     async handleLogout() {
       try {
@@ -118,7 +127,7 @@ export default {
   font-size: 16px;
   cursor: pointer;
   padding: 8px 16px;
-  background: linear-gradient(to right, #6b7280, #9ca3af); /* 灰色渐变 */
+  background: linear-gradient(to right, #6b7280, #9ca3af);
   border-radius: 4px;
   transition: transform 0.2s;
 }
