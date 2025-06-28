@@ -32,17 +32,20 @@
       </button>
     </div>
 
-    <!-- 可展开部分：歌词 -->
+    <!-- 歌词面板：当前页面覆盖 -->
     <div class="lyrics-panel" v-if="showLyrics">
-      <h3>歌词</h3>
+      <div class="playlist-placeholder"></div>
       <div class="lyrics-content">
-        <div
-            v-for="(line, index) in parsedLyrics"
-            :key="index"
-            :class="{ active: isActiveLine(line.time) }"
-            class="lyric-line"
-        >
-          <span v-for="(text, lang) in line.text" :key="lang">[{{ lang }}] {{ text }}</span>
+        <h3>歌词</h3>
+        <div v-for="(line, index) in parsedLyrics" :key="index" class="lyrics-group">
+          <div
+              :class="{ active: isActiveLine(line.time, index) }"
+              class="lyric-line"
+          >
+            <p v-if="line.zh">{{ line.zh }}</p>
+            <p v-if="line.ja">{{ line.ja }}</p>
+          </div>
+          <p v-if="!line.zh && !line.ja">无歌词内容</p>
         </div>
         <p v-if="!parsedLyrics.length">无歌词</p>
       </div>
@@ -60,7 +63,7 @@ export default {
     return {
       currentSong: {},
       currentLyrics: {},
-      parsedLyrics: [], // 解析后的歌词：[{ time: 秒, text: { ja: '', zh: '' } }]
+      parsedLyrics: [], // [{ time, zh: text, ja: text }]
       audio: new Audio(),
       isPlaying: false,
       currentTime: 0,
@@ -72,16 +75,26 @@ export default {
   created() {
     this.audio.addEventListener('timeupdate', this.updateProgress);
     this.audio.addEventListener('loadedmetadata', this.updateDuration);
+    this.audio.addEventListener('ended', this.handleEnded);
     this.$bus.on('playSong', this.playSong);
   },
   beforeDestroy() {
     this.audio.removeEventListener('timeupdate', this.updateProgress);
     this.audio.removeEventListener('loadedmetadata', this.updateDuration);
+    this.audio.removeEventListener('ended', this.handleEnded);
     this.$bus.off('playSong', this.playSong);
+    this.audio.pause();
+    this.audio.src = '';
   },
   methods: {
     async playSong({ songId }) {
       try {
+        // 清理音频
+        this.audio.pause();
+        this.audio.src = '';
+        this.currentTime = 0;
+        this.isPlaying = false;
+
         const response = await musicApi.getSongDetailsInfo(songId);
         if (response.data.passed) {
           this.currentSong = response.data.data;
@@ -105,49 +118,50 @@ export default {
         } else {
           this.currentLyrics = {};
           this.parsedLyrics = [];
+          alert('无歌词数据');
         }
       } catch (error) {
         this.currentLyrics = {};
         this.parsedLyrics = [];
+        alert('加载歌词出错：' + error.message);
       }
     },
     parseLyrics(content) {
       this.parsedLyrics = [];
-      const lines = content.split('\n');
-      let currentTime = null;
-      let currentText = {};
+      if (!content) return;
+      const lines = content.split('\n').map(line => line.trim());
+      const timeMap = {};
       lines.forEach(line => {
-        const timeMatch = line.match(/\[(\d+:\d+\.\d+)\]/);
-        const langMatch = line.match(/\[(\w+)\](.+)/);
-        if (timeMatch) {
-          currentTime = this.timeToSeconds(timeMatch[1]);
-          if (Object.keys(currentText).length) {
-            this.parsedLyrics.push({ time: currentTime, text: currentText });
-            currentText = {};
+        const langMatch = line.match(/^\[(\d+:\d+\.\d+)\]\[(\w+)\](.+)$/);
+        if (langMatch) {
+          const [, time, lang, text] = langMatch;
+          const parsedTime = this.timeToSeconds(time);
+          if (!timeMap[parsedTime]) {
+            timeMap[parsedTime] = { time: parsedTime };
           }
-        } else if (langMatch && currentTime !== null) {
-          const [, lang, text] = langMatch;
-          currentText[lang] = text.trim();
+          timeMap[parsedTime][lang] = text.trim();
         }
       });
-      if (currentTime !== null && Object.keys(currentText).length) {
-        this.parsedLyrics.push({ time: currentTime, text: currentText });
-      }
+      this.parsedLyrics = Object.values(timeMap).sort((a, b) => a.time - b.time);
     },
     timeToSeconds(timeStr) {
       const [min, sec] = timeStr.split(':').map(parseFloat);
       return min * 60 + sec;
     },
-    isActiveLine(time) {
-      return this.currentTime >= time && (!this.parsedLyrics[this.parsedLyrics.findIndex(l => l.time === time) + 1] || this.currentTime < this.parsedLyrics[this.parsedLyrics.findIndex(l => l.time === time) + 1].time);
+    isActiveLine(time, index) {
+      return (
+          this.currentTime >= time &&
+          (index + 1 >= this.parsedLyrics.length || this.currentTime < this.parsedLyrics[index + 1].time)
+      );
     },
     togglePlay() {
       if (this.isPlaying) {
         this.audio.pause();
-      } else {
+        this.isPlaying = false;
+      } else if (this.audio.src) {
         this.audio.play();
+        this.isPlaying = true;
       }
-      this.isPlaying = !this.isPlaying;
     },
     updateProgress() {
       this.currentTime = this.audio.currentTime;
@@ -156,7 +170,19 @@ export default {
       this.duration = this.audio.duration || 0;
     },
     seek() {
-      this.audio.currentTime = this.currentTime;
+      if (this.currentSong.fileUrl) {
+        this.audio.pause();
+        this.audio.src = this.currentSong.fileUrl;
+        this.audio.currentTime = this.currentTime;
+        if (this.currentTime < this.duration && this.isPlaying) {
+          this.audio.play();
+        }
+      }
+    },
+    handleEnded() {
+      this.currentTime = 0;
+      this.isPlaying = false;
+      this.audio.currentTime = 0;
     },
     formatTime(seconds) {
       if (!seconds) return '00:00';
@@ -177,6 +203,7 @@ export default {
   bottom: 0;
   left: 0;
   right: 0;
+  height: 50px;
   background: white;
   box-shadow: 0 -2px 4px rgba(0, 0, 0, 0.1);
   z-index: 1000;
@@ -186,6 +213,7 @@ export default {
   align-items: center;
   padding: 10px 20px;
   gap: 20px;
+  height: 100%;
 }
 .song-info {
   display: flex;
@@ -194,8 +222,8 @@ export default {
   flex: 1;
 }
 .song-cover {
-  width: 50px;
-  height: 50px;
+  width: 40px;
+  height: 40px;
   object-fit: cover;
   border-radius: 4px;
 }
@@ -214,7 +242,7 @@ export default {
   flex: 2;
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 8px;
 }
 .progress-bar {
   display: flex;
@@ -234,7 +262,7 @@ export default {
   justify-content: center;
 }
 .control-buttons button {
-  padding: 8px 16px;
+  padding: 6px 12px;
   border: none;
   border-radius: 4px;
   background: linear-gradient(to right, #4facfe, #00f2fe);
@@ -246,7 +274,7 @@ export default {
   cursor: not-allowed;
 }
 .toggle-lyrics {
-  padding: 8px 16px;
+  padding: 6px 12px;
   border: none;
   border-radius: 4px;
   background: linear-gradient(to right, #4facfe, #00f2fe);
@@ -254,26 +282,37 @@ export default {
   cursor: pointer;
 }
 .lyrics-panel {
+  position: fixed;
+  bottom: 50px;
+  left: 0;
+  right: 0;
   background: white;
-  padding: 20px;
-  max-height: 300px;
-  overflow-y: auto;
-  border-top: 1px solid #ddd;
+  max-height: 400px;
+  display: flex;
+  z-index: 999;
+}
+.playlist-placeholder {
+  width: 30%;
+  background: #f5f5f5;
 }
 .lyrics-content {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
+  width: 70%;
+  padding: 20px;
+  overflow-y: auto;
+}
+.lyrics-group {
+  margin-bottom: 20px;
 }
 .lyric-line {
   font-size: 14px;
   color: #333;
+  margin-bottom: 8px;
 }
 .lyric-line.active {
   color: #4facfe;
   font-weight: bold;
 }
-.lyric-line span {
-  display: block;
+.lyric-line p {
+  margin: 2px 0;
 }
 </style>

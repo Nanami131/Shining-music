@@ -9,7 +9,6 @@
         <p><strong>状态：</strong>{{ song.status || '未知' }}</p>
         <p><strong>创建时间：</strong>{{ song.createdAt || '未知' }}</p>
         <p><strong>更新时间：</strong>{{ song.updatedAt || '未知' }}</p>
-        <p><strong>文件地址：</strong>{{ song.fileUrl || '无' }}</p>
         <button class="play-btn" @click="playSong">播放</button>
       </div>
     </div>
@@ -17,7 +16,14 @@
     <div class="lyrics-list">
       <div v-for="lyric in song.allLyrics" :key="lyric.id" class="lyric-card">
         <p><strong>语言：</strong>{{ lyric.languageMsg || '未知' }}</p>
-        <pre>{{ lyric.content || '无歌词内容' }}</pre>
+        <div v-for="(line, index) in parseLyrics(lyric.content)" :key="index">
+          <div class="lyric-line">
+            <p v-if="line.zh">{{ line.zh }}</p>
+            <p v-if="line.ja">{{ line.ja }}</p>
+          </div>
+          <p v-if="!line.zh && !line.ja">无歌词内容</p>
+        </div>
+        <p v-if="!lyric.content">无歌词</p>
         <p><strong>创建时间：</strong>{{ lyric.createdAt || '未知' }}</p>
         <p><strong>更新时间：</strong>{{ lyric.updatedAt || '未知' }}</p>
       </div>
@@ -57,6 +63,28 @@ export default {
     },
     playSong() {
       this.$bus.emit('playSong', { songId: this.song.id });
+    },
+    parseLyrics(content) {
+      const parsed = [];
+      if (!content) return parsed;
+      const lines = content.split('\n').map(line => line.trim());
+      const timeMap = {};
+      lines.forEach(line => {
+        const langMatch = line.match(/^\[(\d+:\d+\.\d+)\]\[(\w+)\](.+)$/);
+        if (langMatch) {
+          const [, time, lang, text] = langMatch;
+          const parsedTime = this.timeToSeconds(time);
+          if (!timeMap[parsedTime]) {
+            timeMap[parsedTime] = { time: parsedTime };
+          }
+          timeMap[parsedTime][lang] = text.trim();
+        }
+      });
+      return Object.values(timeMap).sort((a, b) => a.time - b.time);
+    },
+    timeToSeconds(timeStr) {
+      const [min, sec] = timeStr.split(':').map(parseFloat);
+      return min * 60 + sec;
     },
   },
 };
@@ -117,10 +145,12 @@ h3 {
   margin: 0 0 10px;
   font-size: 16px;
 }
-.lyric-card pre {
-  margin: 0;
+.lyric-line {
   font-size: 14px;
-  white-space: pre-wrap;
   color: #333;
+  margin-bottom: 8px;
+}
+.lyric-line p {
+  margin: 2px 0;
 }
 </style>
