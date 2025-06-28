@@ -5,6 +5,7 @@ import Register from '../views/Register.vue';
 import Profile from '../views/Profile.vue';
 import SingerDetail from '../views/SingerDetail.vue';
 import PlaylistDetail from '../views/PlaylistDetail.vue';
+import SongDetail from '../views/SongDetail.vue';
 import Singers from '../views/Singers.vue';
 import Songs from '../views/Songs.vue';
 import Playlists from '../views/Playlists.vue';
@@ -58,6 +59,11 @@ const routes = [
         path: '/playlist/:id',
         name: 'playlist-detail',
         component: PlaylistDetail,
+    },
+    {
+        path: '/song/:id',
+        name: 'song-detail',
+        component: SongDetail,
     },
     // 开发者模式路由，生产环境注释以下路由
     {

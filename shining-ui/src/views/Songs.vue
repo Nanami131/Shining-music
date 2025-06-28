@@ -2,7 +2,7 @@
   <div class="songs-container">
     <h2>发现歌曲</h2>
     <div class="songs-list">
-      <div v-for="song in songs" :key="song.id" class="song-card">
+      <div v-for="song in songs" :key="song.id" class="song-card" @click="goToSong(song.id)">
         <img :src="song.coverUrl || defaultCover" class="song-cover" alt="歌曲封面" />
         <div class="song-info">
           <h3>{{ song.title || '未知歌曲' }}</h3>
@@ -43,6 +43,9 @@ export default {
         alert('获取歌曲列表出错：' + error.message);
       }
     },
+    goToSong(songId) {
+      this.$router.push(`/song/${songId}`);
+    },
   },
 };
 </script>
@@ -68,6 +71,11 @@ h2 {
   border-radius: 8px;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
   padding: 15px;
+  cursor: pointer;
+  transition: transform 0.2s;
+}
+.song-card:hover {
+  transform: scale(1.05);
 }
 .song-cover {
   width: 100%;

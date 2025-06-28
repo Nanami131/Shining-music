@@ -114,10 +114,10 @@ public class SongService {
                    return R.error("对应专辑不存在");
                }
            }
-           songMapper.insert(song);
+           songMapper.insert(song.setStatus((byte)1));
            return R.success("创建歌曲成功",song);
         } catch (Exception e) {
-            return R.error("创建歌手失败"+e.getMessage());
+            return R.error("创建歌曲失败"+e.getMessage());
         }
     }
 }

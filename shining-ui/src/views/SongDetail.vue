@@ -1,0 +1,111 @@
+<template>
+  <div class="song-detail-container">
+    <h2>{{ song.title || '未知歌曲' }}</h2>
+    <div class="song-content">
+      <img :src="song.coverUrl || defaultCover" class="song-cover" alt="歌曲封面" />
+      <div class="song-info">
+        <p><strong>歌手 ID：</strong>{{ song.artistId || '未知' }}</p>
+        <p><strong>专辑 ID：</strong>{{ song.albumId || '未知' }}</p>
+        <p><strong>状态：</strong>{{ song.status || '未知' }}</p>
+        <p><strong>创建时间：</strong>{{ song.createdAt || '未知' }}</p>
+        <p><strong>更新时间：</strong>{{ song.updatedAt || '未知' }}</p>
+        <p><strong>文件地址：</strong>{{ song.fileUrl || '无' }}</p>
+      </div>
+    </div>
+    <h3>歌词列表</h3>
+    <div class="lyrics-list">
+      <div v-for="lyric in song.allLyrics" :key="lyric.id" class="lyric-card">
+        <p><strong>语言：</strong>{{ lyric.languageMsg || '未知' }}</p>
+        <pre>{{ lyric.content || '无歌词内容' }}</pre>
+        <p><strong>创建时间：</strong>{{ lyric.createdAt || '未知' }}</p>
+        <p><strong>更新时间：</strong>{{ lyric.updatedAt || '未知' }}</p>
+      </div>
+      <p v-if="!song.allLyrics || song.allLyrics.length === 0">无歌词</p>
+    </div>
+  </div>
+</template>
+
+<script>
+import musicApi from '@/api/music';
+import defaultCover from '@/assets/default-cover.png';
+
+export default {
+  name: 'SongDetail',
+  data() {
+    return {
+      song: {},
+      defaultCover,
+    };
+  },
+  created() {
+    this.loadSongDetails();
+  },
+  methods: {
+    async loadSongDetails() {
+      try {
+        const songId = this.$route.params.id;
+        const response = await musicApi.getSongDetailsInfo(songId);
+        if (response.data.passed) {
+          this.song = response.data.data;
+        } else {
+          alert('获取歌曲详情失败：' + response.data.message);
+        }
+      } catch (error) {
+        alert('获取歌曲详情出错：' + error.message);
+      }
+    },
+  },
+};
+</script>
+
+<style scoped>
+.song-detail-container {
+  padding: 20px;
+  max-width: 800px;
+  margin: 0 auto;
+  background: linear-gradient(to bottom, #e0f7fa, #ffffff);
+}
+h2 {
+  text-align: center;
+  margin-bottom: 20px;
+}
+.song-content {
+  display: flex;
+  gap: 20px;
+  margin-bottom: 20px;
+}
+.song-cover {
+  width: 200px;
+  height: 200px;
+  object-fit: cover;
+  border-radius: 8px;
+}
+.song-info p {
+  margin: 10px 0;
+  font-size: 16px;
+}
+h3 {
+  margin: 20px 0 10px;
+}
+.lyrics-list {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+.lyric-card {
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  padding: 15px;
+}
+.lyric-card p {
+  margin: 0 0 10px;
+  font-size: 16px;
+}
+.lyric-card pre {
+  margin: 0;
+  font-size: 14px;
+  white-space: pre-wrap;
+  color: #333;
+}
+</style>

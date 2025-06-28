@@ -17,7 +17,7 @@ CREATE TABLE songs (
                        title VARCHAR(255) NOT NULL, -- 歌曲标题
                        artist_id BIGINT, -- 关联歌手ID
                        album_id BIGINT, -- 关联专辑ID
-                       file_url VARCHAR(500) NOT NULL, -- 歌曲文件URL
+                       file_url VARCHAR(500) , -- 歌曲文件URL
                        cover_url VARCHAR(500), -- 封面URL
                        STATUS TINYINT NOT NULL, -- 歌曲状态
                        created_at DATETIME, -- 创建时间

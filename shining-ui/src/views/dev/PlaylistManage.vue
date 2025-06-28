@@ -37,6 +37,22 @@
       </form>
     </div>
 
+    <!-- 上传歌单封面 -->
+    <div class="section">
+      <h3>上传歌单封面</h3>
+      <form @submit.prevent="handleUploadPlaylistCover">
+        <div class="form-item">
+          <label>歌单 ID</label>
+          <input v-model="coverForm.id" type="number" placeholder="请输入歌单 ID" required />
+        </div>
+        <div class="form-item">
+          <label>封面文件</label>
+          <input type="file" accept="image/*" @change="handleCoverChange" required />
+        </div>
+        <button type="submit" class="submit-btn">上传封面</button>
+      </form>
+    </div>
+
     <!-- 删除歌单 -->
     <div class="section">
       <h3>删除歌单</h3>
@@ -69,6 +85,7 @@
 
 <script>
 import musicApi from '@/api/music';
+import md5 from 'js-md5';
 
 export default {
   name: 'PlaylistManage',
@@ -81,10 +98,14 @@ export default {
         type: 0,
         visibility: 0,
       },
+      coverForm: {
+        id: null,
+        file: null,
+        md5: '',
+      },
       deletePlaylistId: null,
       songForm: {
         Id: null,
-        playlistId: null,
         songId: null,
       },
     };
@@ -101,6 +122,34 @@ export default {
         }
       } catch (error) {
         alert('创建歌单出错：' + error.message);
+      }
+    },
+    handleCoverChange(event) {
+      const file = event.target.files[0];
+      if (file) {
+        this.coverForm.file = file;
+        const reader = new FileReader();
+        reader.onload = () => {
+          this.coverForm.md5 = md5(reader.result);
+        };
+        reader.readAsArrayBuffer(file);
+      }
+    },
+    async handleUploadPlaylistCover() {
+      try {
+        const response = await musicApi.uploadPlaylistCover(
+            this.coverForm.id,
+            this.coverForm.file,
+            this.coverForm.md5
+        );
+        if (response.data.passed) {
+          alert('上传歌单封面成功');
+          this.coverForm = { id: null, file: null, md5: '' };
+        } else {
+          alert('上传歌单封面失败：' + response.data.message);
+        }
+      } catch (error) {
+        alert('上传歌单封面出错：' + error.message);
       }
     },
     async handleDeletePlaylist() {
@@ -121,7 +170,7 @@ export default {
         const response = await musicApi.managePlaylistSong(this.songForm);
         if (response.data.passed) {
           alert('管理歌单歌曲成功');
-          this.songForm = { Id: null, playlistId: null, songId: null };
+          this.songForm = { Id: null, songId: null };
         } else {
           alert('管理歌单歌曲失败：' + response.data.message);
         }

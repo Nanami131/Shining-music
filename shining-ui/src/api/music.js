@@ -1,7 +1,9 @@
 import api from './index';
 
 export default {
-    // 歌曲相关
+    createSong(data) {
+        return api.post('/music/song', data);
+    },
     uploadSong(id, file, md5) {
         const formData = new FormData();
         formData.append('id', id);
@@ -11,14 +13,44 @@ export default {
             headers: { 'Content-Type': 'multipart/form-data' },
         });
     },
+    uploadLyrics(songId, file, msg) {
+        const formData = new FormData();
+        formData.append('lyricsFile', file);
+        formData.append('msg', msg);
+        return api.post(`/music/lyrics/${songId}`, formData, {
+            headers: { 'Content-Type': 'multipart/form-data' },
+        });
+    },
+    uploadSongCover(id, file, md5) {
+        const formData = new FormData();
+        formData.append('id', id);
+        formData.append('avatarFile', file);
+        formData.append('md5', md5);
+        return api.post('/music/cover/song', formData, {
+            headers: { 'Content-Type': 'multipart/form-data' },
+        });
+    },
+    uploadPlaylistCover(id, file, md5) {
+        const formData = new FormData();
+        formData.append('id', id);
+        formData.append('avatarFile', file);
+        formData.append('md5', md5);
+        return api.post('/music/cover/playlist', formData, {
+            headers: { 'Content-Type': 'multipart/form-data' },
+        });
+    },
     getSongBaseInfo(songId) {
         return api.get(`/music/info/song/${songId}`);
     },
     getSongDetailsInfo(songId) {
         return api.get(`/music/details/song/${songId}`);
     },
-
-    // 歌单相关
+    getAllLyrics(songId) {
+        return api.get(`/music/lyrics/all/${songId}`);
+    },
+    getLyrics(lyricsId) {
+        return api.get(`/music/lyrics/${lyricsId}`);
+    },
     createPlaylist(data) {
         return api.post('/music/playlist', data);
     },
@@ -34,8 +66,6 @@ export default {
     getPlaylistDetailsInfo(playlistId) {
         return api.get(`/music/details/playlist/${playlistId}`);
     },
-
-    // 歌手相关
     createSinger(data) {
         return api.post('/music/singer', data);
     },
