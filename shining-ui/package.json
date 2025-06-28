@@ -11,6 +11,7 @@
   "dependencies": {
     "axios": "^1.9.0",
     "js-md5": "^0.8.3",
+    "mitt": "^3.0.1",
     "vue": "^3.5.13",
     "vue-router": "^4.5.1"
   },

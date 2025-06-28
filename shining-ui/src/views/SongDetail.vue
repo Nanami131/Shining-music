@@ -10,6 +10,7 @@
         <p><strong>创建时间：</strong>{{ song.createdAt || '未知' }}</p>
         <p><strong>更新时间：</strong>{{ song.updatedAt || '未知' }}</p>
         <p><strong>文件地址：</strong>{{ song.fileUrl || '无' }}</p>
+        <button class="play-btn" @click="playSong">播放</button>
       </div>
     </div>
     <h3>歌词列表</h3>
@@ -54,6 +55,9 @@ export default {
         alert('获取歌曲详情出错：' + error.message);
       }
     },
+    playSong() {
+      this.$bus.emit('playSong', { songId: this.song.id });
+    },
   },
 };
 </script>
@@ -83,6 +87,17 @@ h2 {
 .song-info p {
   margin: 10px 0;
   font-size: 16px;
+}
+.play-btn {
+  padding: 8px 16px;
+  border: none;
+  border-radius: 4px;
+  background: linear-gradient(to right, #4facfe, #00f2fe);
+  color: white;
+  cursor: pointer;
+}
+.play-btn:hover {
+  opacity: 0.9;
 }
 h3 {
   margin: 20px 0 10px;
