@@ -3,13 +3,11 @@ package org.L2.music.application.service;
 
 import org.L2.common.R;
 import org.L2.music.application.dto.*;
-import org.L2.music.application.request.PlaylistCreateRequest;
-import org.L2.music.application.request.PlaylistSongRequest;
-import org.L2.music.application.request.SingerCreateRequest;
-import org.L2.music.application.request.SingerUpdateRequest;
+import org.L2.music.application.request.*;
 import org.L2.music.domain.model.Lyrics;
 import org.L2.music.domain.model.Playlist;
 import org.L2.music.domain.model.Singer;
+import org.L2.music.domain.model.Song;
 import org.L2.music.domain.service.LyricsService;
 import org.L2.music.domain.service.PlaylistService;
 import org.L2.music.domain.service.SingerService;
@@ -37,6 +35,12 @@ public class MusicAppService {
     /*
      * 歌曲相关
      */
+    public R createSong(SongCreateRequest songCreateRequest) {
+        Song song = new Song();
+        BeanUtils.copyProperties(songCreateRequest, song);
+        return songService.createSong(song);
+    }
+
     public R getSongBaseInfo(Long songId) {
         R result = songService.getSongInfo(songId);
         if(!result.getPassed()){
@@ -60,8 +64,8 @@ public class MusicAppService {
     }
 
 
-    public R uploadLyrics(Long songId, MultipartFile file) {
-        return lyricsService.uploadLyrics(songId, file);
+    public R uploadLyrics(Long songId, MultipartFile file,String msg) {
+        return lyricsService.uploadLyrics(songId, file,msg);
     }
 
     public R getAllLyricsBySongId(Long songId) {
@@ -180,9 +184,9 @@ public class MusicAppService {
     }
 
 
-    public R updateSingerProfile(SingerUpdateRequest singerUpdateRequest){
+    public R updateSingerProfile(SingerFieldsUpdateRequest singerFieldsUpdateRequest){
         Singer singer = new Singer();
-        BeanUtils.copyProperties(singerUpdateRequest, singer);
+        BeanUtils.copyProperties(singerFieldsUpdateRequest, singer);
         return singerService.updateSinger(singer);
     }
 

@@ -5,19 +5,26 @@ import org.L2.common.minio.MinioProperties;
 import org.L2.common.minio.service.FileNameGenerateService;
 import org.L2.common.minio.service.SimpleMinioService;
 import org.L2.music.application.dto.SongBaseDTO;
+import org.L2.music.domain.model.Playlist;
 import org.L2.music.domain.model.Singer;
 import org.L2.music.domain.model.Song;
+import org.L2.music.infrastructure.PlaylistMapper;
+import org.L2.music.infrastructure.SingerMapper;
 import org.L2.music.infrastructure.SongMapper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
-
+import org.L2.music.constant.Constants;
 import java.util.List;
 
 @Service
 public class SongService {
     @Autowired
     private SongMapper songMapper;
+    @Autowired
+    private SingerMapper singerMapper;
+    @Autowired
+    private PlaylistMapper playlistMapper;
     @Autowired
     private MinioProperties minioProperties;
     @Autowired
@@ -88,5 +95,29 @@ public class SongService {
         }
 
         return R.success("头像修改成功",avatarUrl);
+    }
+
+    public R createSong(Song song) {
+        if(song.getTitle() == null || song.getTitle().isBlank()){
+            return R.error("歌曲名称不能为空");
+        }
+        try {
+           if(song.getArtistId()!= null){
+               Singer singer =singerMapper.selectById(song.getArtistId());
+               if(singer == null){
+                   return R.error("对应歌手不存在");
+               }
+           }
+           if(song.getAlbumId() != null){
+               Playlist playlist = playlistMapper.selectById(song.getAlbumId());
+               if(playlist == null||playlist.getType() !=Constants.ALBUM){
+                   return R.error("对应专辑不存在");
+               }
+           }
+           songMapper.insert(song);
+           return R.success("创建歌曲成功",song);
+        } catch (Exception e) {
+            return R.error("创建歌手失败"+e.getMessage());
+        }
     }
 }

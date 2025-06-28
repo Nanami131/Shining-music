@@ -5,7 +5,7 @@ import lombok.experimental.Accessors;
 
 @Data
 @Accessors(chain = true)
-public class SingerUpdateRequest {
+public class SingerFieldsUpdateRequest {
     private Long id;
     private String name;
     private Long userId;

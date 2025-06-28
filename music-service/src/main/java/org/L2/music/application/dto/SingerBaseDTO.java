@@ -9,4 +9,6 @@ public class SingerBaseDTO {
     private Long id;
     private String name;
     private String avatarUrl;
+    private String genre;
+    private String country;
 }

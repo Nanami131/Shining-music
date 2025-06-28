@@ -1,10 +1,7 @@
 package org.L2.music.controller;
 
 import org.L2.common.R;
-import org.L2.music.application.request.PlaylistCreateRequest;
-import org.L2.music.application.request.PlaylistSongRequest;
-import org.L2.music.application.request.SingerCreateRequest;
-import org.L2.music.application.request.SingerUpdateRequest;
+import org.L2.music.application.request.*;
 import org.L2.music.application.service.MusicAppService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
@@ -20,6 +17,12 @@ public class MusicController {
     /*
      * 歌曲相关
      */
+
+    @PostMapping("/song")
+    public R createSong(@RequestBody SongCreateRequest songCreateRequest) {
+        return musicAppService.createSong(songCreateRequest);
+    }
+
 
     /**
      * 单次上传歌曲
@@ -42,8 +45,10 @@ public class MusicController {
      */
     @PostMapping("/lyrics/{songId}")
     public R uploadLyrics(@PathVariable("songId") Long songId,
-                          @RequestParam("lyricsFile") MultipartFile lyricsFile) {
-        return musicAppService.uploadLyrics(songId, lyricsFile);
+                          @RequestParam("lyricsFile") MultipartFile lyricsFile,
+                          @RequestParam("msg") String msg
+                          ) {
+        return musicAppService.uploadLyrics(songId, lyricsFile,msg);
     }
 
     /**
@@ -200,12 +205,12 @@ public class MusicController {
 
     /**
      * 更改歌手资料
-     * @param singerUpdateRequest 歌手资料信息
+     * @param singerFieldsUpdateRequest 歌手资料信息
      * @return
      */
     @PostMapping("/update-profile")
-    public R updateProfile(@RequestBody SingerUpdateRequest singerUpdateRequest) {
-        return musicAppService.updateSingerProfile(singerUpdateRequest);
+    public R updateProfile(@RequestBody SingerFieldsUpdateRequest singerFieldsUpdateRequest) {
+        return musicAppService.updateSingerProfile(singerFieldsUpdateRequest);
     }
 
     /**

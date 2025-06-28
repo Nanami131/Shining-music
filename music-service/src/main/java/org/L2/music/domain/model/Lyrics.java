@@ -14,6 +14,6 @@ public class Lyrics {
     private Long songId; // 关联歌曲ID
     private String languageMsg; // 歌词语言描述信息
     private String content; // 歌词内容
-    private LocalDateTime createdAt; // 创建时间
-    private LocalDateTime updatedAt; // 更新时间
+    private LocalDateTime createdAt;
+    private LocalDateTime updatedAt;
 }

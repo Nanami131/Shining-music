@@ -18,7 +18,7 @@ public class LyricsService {
     @Autowired
     private LyricsMapper lyricsMapper;
 
-    public R uploadLyrics(Long songId, MultipartFile file) {
+    public R uploadLyrics(Long songId, MultipartFile file,String msg) {
         if (songId == null || songId <= 0) {
             return R.error("无效的歌曲ID");
         }
@@ -50,7 +50,7 @@ public class LyricsService {
                 return R.error("文件内容不符合 LRC 格式");
             }
 
-            lyricsMapper.insert(new Lyrics().setSongId(songId).setContent(content.toString()));
+            lyricsMapper.insert(new Lyrics().setSongId(songId).setContent(content.toString()).setLanguageMsg(msg));
             return R.success("歌词上传成功");
         } catch (Exception e) {
             return R.error("歌词文件解析失败: " + e.getMessage());
