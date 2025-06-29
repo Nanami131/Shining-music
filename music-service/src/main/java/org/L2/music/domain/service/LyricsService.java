@@ -10,6 +10,7 @@ import org.springframework.web.multipart.MultipartFile;
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.regex.Pattern;
 
@@ -49,8 +50,11 @@ public class LyricsService {
             if (!isLrc) {
                 return R.error("文件内容不符合 LRC 格式");
             }
-
-            lyricsMapper.insert(new Lyrics().setSongId(songId).setContent(content.toString()).setLanguageMsg(msg));
+            LocalDateTime now =LocalDateTime.now();
+            lyricsMapper.insert(new Lyrics().setSongId(songId).
+                    setContent(content.toString()).setLanguageMsg(msg)
+                    .setCreatedAt(now).setCreatedAt(now)
+            );
             return R.success("歌词上传成功");
         } catch (Exception e) {
             return R.error("歌词文件解析失败: " + e.getMessage());

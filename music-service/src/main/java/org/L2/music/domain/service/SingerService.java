@@ -16,6 +16,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 import org.L2.common.minio.MinioProperties;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 @Service
@@ -84,12 +85,14 @@ public class SingerService {
         // 歌单存储在redis中不便于直接遍历删除
     }
 
-    @AutoFill(OperationType.UPDATE)
     public R updateSingerAvatar(Long id, MultipartFile file) {
         String originalFilename = file.getOriginalFilename();
         String fileName= FileNameGenerateService.defineNamePath(originalFilename,"/singer/avator/",id,5);
         String avatarUrl = minioProperties.getEndpoint() + "/" + minioProperties.getBucketName() + fileName;
-        Singer singer = new Singer().setId(id).setAvatarUrl(avatarUrl);
+        Singer singer = new Singer().
+                setId(id).
+                setUpdatedAt(LocalDateTime.now()).
+                setAvatarUrl(avatarUrl);
         String s = simpleMinioService.uploadFile(file,fileName);
         if(!s.equals("上传成功")){
             return R.error(s);

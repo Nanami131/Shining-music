@@ -1,6 +1,8 @@
 package org.L2.music.domain.service;
 
 import org.L2.common.R;
+import org.L2.common.annotation.AutoFill;
+import org.L2.common.constant.OperationType;
 import org.L2.common.minio.MinioProperties;
 import org.L2.common.minio.service.FileNameGenerateService;
 import org.L2.common.minio.service.SimpleMinioService;
@@ -15,6 +17,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 import org.L2.music.constant.Constants;
+
+import java.time.LocalDateTime;
 import java.util.List;
 
 @Service
@@ -61,6 +65,7 @@ public class SongService {
         }
     }
 
+    @AutoFill(OperationType.UPDATE)
     public R uploadSong(Long id, MultipartFile file) {
         String originalFilename = file.getOriginalFilename();
         String fileName= FileNameGenerateService.defineNamePath(originalFilename,"/song/",id,5);
@@ -83,7 +88,10 @@ public class SongService {
         String originalFilename = file.getOriginalFilename();
         String fileName= FileNameGenerateService.defineNamePath(originalFilename,"/song/cover/",id,5);
         String avatarUrl = minioProperties.getEndpoint() + "/" + minioProperties.getBucketName() + fileName;
-        Song song = new Song().setId(id).setCoverUrl(avatarUrl);
+        Song song = new Song().
+                setId(id).
+                setUpdatedAt(LocalDateTime.now()).
+                setCoverUrl(avatarUrl);
         String s = simpleMinioService.uploadFile(file,fileName);
         if(!s.equals("上传成功")){
             return R.error(s);
@@ -97,6 +105,7 @@ public class SongService {
         return R.success("头像修改成功",avatarUrl);
     }
 
+    @AutoFill(OperationType.INSERT)
     public R createSong(Song song) {
         if(song.getTitle() == null || song.getTitle().isBlank()){
             return R.error("歌曲名称不能为空");

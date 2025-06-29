@@ -2,6 +2,8 @@ package org.L2.music.domain.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.L2.common.R;
+import org.L2.common.annotation.AutoFill;
+import org.L2.common.constant.OperationType;
 import org.L2.common.minio.MinioProperties;
 import org.L2.common.minio.service.FileNameGenerateService;
 import org.L2.common.minio.service.SimpleMinioService;
@@ -15,6 +17,7 @@ import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 @Service
@@ -56,6 +59,7 @@ public class PlaylistService {
     }
 
 
+    @AutoFill(OperationType.INSERT)
     public R createPlaylist(Playlist playlist) {
         if(playlist.getType()==null||playlist.getVisibility()==null){
             return R.error("歌单信息不全");
@@ -96,7 +100,10 @@ public class PlaylistService {
         String originalFilename = file.getOriginalFilename();
         String fileName= FileNameGenerateService.defineNamePath(originalFilename,"/playlist/cover/",id,5);
         String avatarUrl = minioProperties.getEndpoint() + "/" + minioProperties.getBucketName() + fileName;
-        Playlist playlist = new Playlist().setId(id).setCoverUrl(avatarUrl);
+        Playlist playlist = new Playlist().
+                setId(id).
+                setUpdatedAt(LocalDateTime.now()).
+                setCoverUrl(avatarUrl);
         String s = simpleMinioService.uploadFile(file,fileName);
         if(!s.equals("上传成功")){
             return R.error(s);

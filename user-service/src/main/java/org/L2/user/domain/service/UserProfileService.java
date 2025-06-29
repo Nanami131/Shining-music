@@ -3,7 +3,9 @@ package org.L2.user.domain.service;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.L2.common.R;
+import org.L2.common.annotation.AutoFill;
 import org.L2.common.constant.CommonConstants;
+import org.L2.common.constant.OperationType;
 import org.L2.common.minio.MinioProperties;
 import org.L2.common.minio.service.FileNameGenerateService;
 import org.L2.common.minio.service.SimpleMinioService;
@@ -20,6 +22,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.TimeUnit;
@@ -39,6 +42,7 @@ public class UserProfileService {
     @Autowired
     private SimpleMinioService simpleMinioService;
 
+    @AutoFill(OperationType.UPDATE)
     public R updateUserProfile(User user) {
         // 在这里再校验一次，这个接口只修改用户个性化信息
         user.setAvatarUrl("").setPassword("").setSalt("");
@@ -157,6 +161,7 @@ public class UserProfileService {
         String fileName= FileNameGenerateService.defineNamePath(originalFilename,"/user/avator/",id,5);
         String avatarUrl = minioProperties.getEndpoint() + "/" + minioProperties.getBucketName() + fileName;
         User user = new User().setId(id).setAvatarUrl(avatarUrl);
+        user.setUpdatedAt(LocalDateTime.now());
         String s = simpleMinioService.uploadFile(file,fileName);
         if(!s.equals("上传成功")){
             return R.error(s);

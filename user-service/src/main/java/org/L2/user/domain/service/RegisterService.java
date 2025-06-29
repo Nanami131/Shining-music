@@ -1,6 +1,8 @@
 package org.L2.user.domain.service;
 
 import org.L2.common.R;
+import org.L2.common.annotation.AutoFill;
+import org.L2.common.constant.OperationType;
 import org.L2.user.domain.model.PasswordHistory;
 import org.L2.user.domain.model.User;
 import org.L2.user.infrastructure.mapper.PasswordHistoryMapper;
@@ -26,7 +28,7 @@ public class RegisterService {
      * @param user
      * @return
      */
-    @Transactional(rollbackFor = Exception.class)
+    @AutoFill(OperationType.INSERT)
     public R register(User user) throws Exception {
         if(user.getUsername() == null || user.getUsername().isBlank()) {
 
