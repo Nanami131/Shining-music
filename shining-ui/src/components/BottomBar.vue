@@ -1,5 +1,5 @@
 <template>
-  <div class="bottom-bar">
+  <div class="bottom-bar" :class="{ 'expanded': showLyrics }">
     <div class="fixed-bar">
       <div class="song-info">
         <img :src="currentSong.coverUrl || defaultCover" class="song-cover" alt="歌曲封面" />
@@ -40,20 +40,40 @@
     </div>
 
     <div class="lyrics-panel" v-if="showLyrics">
-      <div class="playlist-placeholder"></div>
-      <div class="lyrics-content" ref="lyricsContent" :class="'highlight-color-' + highlightColor">
-        <div v-for="(line, index) in parsedLyrics" :key="index" class="lyrics-group">
-          <div
-              :class="{ active: isActiveLine(line.time, index) }"
-              class="lyric-line"
-              ref="lyricLines"
-          >
-            <p v-if="line.ja">{{ line.ja }}</p>
-            <p v-if="line.zh">{{ line.zh }}</p>
+      <!-- 去掉了这个灰色留白的div -->
+      <div class="panel-content">
+        <div class="playlist-placeholder"></div>
+        <div class="lyrics-right">
+          <div class="lyric-header">
+            <div class="title">歌词</div>
+            <div class="controls">
+              <div class="lang-select">
+                <span class="lang-btn" :class="{ active: true }">中</span>
+                <span class="lang-btn">日</span>
+              </div>
+              <div class="color-select">
+                <span class="color-btn pink" :class="{ active: highlightColor === 'pink' }"></span>
+                <span class="color-btn blue" :class="{ active: highlightColor === 'blue' }"></span>
+                <span class="color-btn green" :class="{ active: highlightColor === 'green' }"></span>
+                <span class="color-btn purple" :class="{ active: highlightColor === 'purple' }"></span>
+              </div>
+            </div>
           </div>
-          <p v-if="!line.zh && !line.ja">无歌词内容</p>
+          <div class="lyrics-content" ref="lyricsContent" :class="'highlight-color-' + highlightColor">
+            <div v-for="(line, index) in parsedLyrics" :key="index" class="lyrics-group">
+              <div
+                  :class="{ active: isActiveLine(line.time, index) }"
+                  class="lyric-line"
+                  ref="lyricLines"
+              >
+                <p v-if="line.ja">{{ line.ja }}</p>
+                <p v-if="line.zh">{{ line.zh }}</p>
+              </div>
+              <p v-if="!line.zh && !line.ja">无歌词内容</p>
+            </div>
+            <p v-if="!parsedLyrics.length" class="no-lyric"><span>暂无歌词</span></p>
+          </div>
         </div>
-        <p v-if="!parsedLyrics.length" class="no-lyric"><span>暂无歌词</span></p>
       </div>
     </div>
   </div>
@@ -165,12 +185,15 @@ export default {
     },
     scrollToActiveLine(index) {
       const lyricsContent = this.$refs.lyricsContent;
-      const activeLine = this.$refs.lyricLines[index];
+      const activeLine = this.$refs.lyricLines && this.$refs.lyricLines[index];
       if (lyricsContent && activeLine) {
-        lyricsContent.scrollTo({
-          top: activeLine.offsetTop - lyricsContent.offsetTop - 50,
-          behavior: 'smooth',
-        });
+        const scrollTop = activeLine.offsetTop - lyricsContent.offsetTop - 50;
+        if (scrollTop >= 0 && scrollTop <= lyricsContent.scrollHeight - lyricsContent.clientHeight) {
+          lyricsContent.scrollTo({
+            top: scrollTop,
+            behavior: 'smooth',
+          });
+        }
       }
     },
     togglePlay() {
@@ -220,10 +243,8 @@ export default {
 </script>
 
 <style scoped>
-
 .lyric-panel {
   width: 100%;
-  height: 100%;
   overflow: hidden;
   position: relative;
   background: rgba(255, 255, 255, 0.1);
@@ -235,6 +256,7 @@ export default {
   justify-content: space-between;
   align-items: center;
   padding: 15px 0;
+  height: 60px; /* 固定高度 */
 }
 .lyric-header .title {
   font-size: 20px;
@@ -267,6 +289,7 @@ export default {
 .lang-btn:hover {
   background: #b2bec3;
   color: #fff;
+
 }
 .lang-btn.active {
   background: var(--highlight-color);
@@ -363,17 +386,26 @@ export default {
   bottom: 0;
   left: 0;
   right: 0;
-  height: 50px;
+  height: 90px; /* 未展开时的固定高度 */
   background: #fff;
   box-shadow: 0 -2px 4px rgba(0, 0, 0, 0.1);
   z-index: 1000;
+  transition: height 0.3s ease; /* 高度平滑过渡 */
+}
+.bottom-bar.expanded {
+  height: 290px; /* 展开时包含 lyrics-panel (200px) + fixed-bar (90px) */
 }
 .fixed-bar {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
   display: flex;
   align-items: center;
   padding: 10px 20px;
   gap: 20px;
-  height: 100%;
+  height: 90px;
+  z-index: 1; /* 确保在 lyrics-panel 下方 */
 }
 .song-info {
   display: flex;
@@ -457,24 +489,36 @@ export default {
   cursor: pointer;
 }
 .lyrics-panel {
-  position: fixed;
-  bottom: 50px;
+  position: absolute;
+  top: 0;
   left: 0;
   right: 0;
   max-height: 200px;
-  display: flex;
   width: 100%;
-  z-index: 999;
+  z-index: 2; /* 高于 fixed-bar */
+  display: flex;
+  flex-direction: column;
+}
+.panel-content {
+  display: flex;
+  flex-direction: row;
+  height: 200px; /* 取消原来减去的留白高度 */
 }
 .playlist-placeholder {
-  width: 50%;
-  background: #f5f5f5;
+  width: 30%;
+  background: #fefeff;
+}
+.lyrics-right {
+  flex: 1; /* 占剩余宽度（70%） */
+  display: flex;
+  flex-direction: column;
 }
 .lyrics-content {
-  width: 50%;
+  max-height: 140px; /* 200px - 60px (lyric-header) */
   padding: 20px;
   overflow-y: auto;
-  background: #fafafa;
+  background: #edf1f6;
+  text-align: center;
 }
 .lyrics-group {
   margin-bottom: 20px;
@@ -484,11 +528,14 @@ export default {
   color: #333;
   margin-bottom: 8px;
   font-family: 'KaiTi', 'STKaiti', '楷体', sans-serif;
+  display: inline-block;
 }
 .lyric-line.active {
   color: var(--highlight-color);
   background: var(--highlight-bg);
   font-weight: 600;
+  width: 100%;
+  padding: 8px 0;
 }
 .lyric-line p {
   margin: 2px 0;
