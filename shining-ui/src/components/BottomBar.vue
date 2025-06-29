@@ -30,20 +30,29 @@
       <button class="toggle-lyrics" @click="toggleLyrics">
         {{ showLyrics ? '收起歌词' : '展开歌词' }}
       </button>
+      <!-- 颜色选择按钮移到固定栏 -->
+      <div class="highlight-color-selector">
+        <select v-model="highlightColor" @change="updateHighlightColor">
+          <option value="pink" style="background-color: #ff6b81; color: white;">粉色</option>
+          <option value="blue" style="background-color: #4facfe; color: white;">蓝色</option>
+          <option value="green" style="background-color: #00cc00; color: white;">绿色</option>
+          <option value="purple" style="background-color: #9933ff; color: white;">紫色</option>
+        </select>
+      </div>
     </div>
 
     <!-- 歌词面板：当前页面覆盖 -->
     <div class="lyrics-panel" v-if="showLyrics">
       <div class="playlist-placeholder"></div>
-      <div class="lyrics-content">
-        <h3>歌词</h3>
+      <div class="lyrics-content" ref="lyricsContent" :class="'highlight-color-' + highlightColor">
         <div v-for="(line, index) in parsedLyrics" :key="index" class="lyrics-group">
           <div
               :class="{ active: isActiveLine(line.time, index) }"
               class="lyric-line"
+              ref="lyricLines"
           >
-            <p v-if="line.zh">{{ line.zh }}</p>
             <p v-if="line.ja">{{ line.ja }}</p>
+            <p v-if="line.zh">{{ line.zh }}</p>
           </div>
           <p v-if="!line.zh && !line.ja">无歌词内容</p>
         </div>
@@ -70,6 +79,7 @@ export default {
       duration: 0,
       showLyrics: false,
       defaultCover,
+      highlightColor: 'pink', // 默认高亮颜色
     };
   },
   created() {
@@ -149,10 +159,23 @@ export default {
       return min * 60 + sec;
     },
     isActiveLine(time, index) {
-      return (
+      const isActive =
           this.currentTime >= time &&
-          (index + 1 >= this.parsedLyrics.length || this.currentTime < this.parsedLyrics[index + 1].time)
-      );
+          (index + 1 >= this.parsedLyrics.length || this.currentTime < this.parsedLyrics[index + 1].time);
+      if (isActive && this.showLyrics) {
+        this.$nextTick(() => this.scrollToActiveLine(index));
+      }
+      return isActive;
+    },
+    scrollToActiveLine(index) {
+      const lyricsContent = this.$refs.lyricsContent;
+      const activeLine = this.$refs.lyricLines[index];
+      if (lyricsContent && activeLine) {
+        lyricsContent.scrollTo({
+          top: activeLine.offsetTop - lyricsContent.offsetTop - 50, // 居中偏移
+          behavior: 'smooth',
+        });
+      }
     },
     togglePlay() {
       if (this.isPlaying) {
@@ -193,6 +216,9 @@ export default {
     toggleLyrics() {
       this.showLyrics = !this.showLyrics;
     },
+    updateHighlightColor() {
+      // 动态类绑定已处理颜色切换
+    },
   },
 };
 </script>
@@ -204,7 +230,7 @@ export default {
   left: 0;
   right: 0;
   height: 50px;
-  background: white;
+  background: #fff;
   box-shadow: 0 -2px 4px rgba(0, 0, 0, 0.1);
   z-index: 1000;
 }
@@ -255,6 +281,19 @@ export default {
 }
 .progress-slider {
   flex: 1;
+  height: 4px;
+  border-radius: 2px;
+  background: #dfe6e9;
+  appearance: none;
+  cursor: pointer;
+}
+.progress-slider::-webkit-slider-thumb {
+  appearance: none;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: #ff6b81;
+  box-shadow: 0 0 6px rgba(0, 0, 0, 0.2);
 }
 .control-buttons {
   display: flex;
@@ -267,6 +306,7 @@ export default {
   border-radius: 4px;
   background: linear-gradient(to right, #4facfe, #00f2fe);
   color: white;
+  font-size: 14px;
   cursor: pointer;
 }
 .control-buttons button:disabled {
@@ -279,6 +319,7 @@ export default {
   border-radius: 4px;
   background: linear-gradient(to right, #4facfe, #00f2fe);
   color: white;
+  font-size: 14px;
   cursor: pointer;
 }
 .lyrics-panel {
@@ -286,33 +327,69 @@ export default {
   bottom: 50px;
   left: 0;
   right: 0;
-  background: white;
-  max-height: 400px;
+  max-height: 200px;
   display: flex;
+  width: 100%;
   z-index: 999;
 }
 .playlist-placeholder {
-  width: 30%;
+  width: 50%;
   background: #f5f5f5;
 }
 .lyrics-content {
-  width: 70%;
+  width: 50%;
   padding: 20px;
   overflow-y: auto;
+  background: #fafafa;
 }
 .lyrics-group {
   margin-bottom: 20px;
 }
 .lyric-line {
-  font-size: 14px;
+  font-size: 16px;
   color: #333;
   margin-bottom: 8px;
+  font-family: 'KaiTi', 'STKaiti', '楷体', sans-serif;
 }
 .lyric-line.active {
-  color: #4facfe;
-  font-weight: bold;
+  font-size: 16px;
+  color: var(--highlight-color);
+  background: var(--highlight-bg);
 }
 .lyric-line p {
   margin: 2px 0;
+}
+.lyrics-content p:not(.lyric-line p) {
+  font-size: 16px;
+  color: #666;
+  font-family: 'KaiTi', 'STKaiti', '楷体', sans-serif;
+}
+.highlight-color-selector {
+  display: inline-block;
+}
+.highlight-color-selector select {
+  padding: 4px;
+  border-radius: 4px;
+  border: 1px solid #ccc;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+/* 动态高亮颜色 */
+.lyrics-content.highlight-color-pink .lyric-line.active {
+  --highlight-color: #ff6b81;
+  --highlight-bg: rgba(255, 107, 129, 0.2);
+}
+.lyrics-content.highlight-color-blue .lyric-line.active {
+  --highlight-color: #4facfe;
+  --highlight-bg: rgba(79, 172, 254, 0.2);
+}
+.lyrics-content.highlight-color-green .lyric-line.active {
+  --highlight-color: #00cc00;
+  --highlight-bg: rgba(0, 204, 0, 0.2);
+}
+.lyrics-content.highlight-color-purple .lyric-line.active {
+  --highlight-color: #9933ff;
+  --highlight-bg: rgba(153, 51, 255, 0.2);
 }
 </style>
