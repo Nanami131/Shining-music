@@ -1,6 +1,5 @@
 <template>
   <div class="bottom-bar">
-    <!-- 固定部分：歌曲信息、进度、控制 -->
     <div class="fixed-bar">
       <div class="song-info">
         <img :src="currentSong.coverUrl || defaultCover" class="song-cover" alt="歌曲封面" />
@@ -30,18 +29,16 @@
       <button class="toggle-lyrics" @click="toggleLyrics">
         {{ showLyrics ? '收起歌词' : '展开歌词' }}
       </button>
-      <!-- 颜色选择按钮移到固定栏 -->
       <div class="highlight-color-selector">
         <select v-model="highlightColor" @change="updateHighlightColor">
-          <option value="pink" style="background-color: #ff6b81; color: white;">粉色</option>
-          <option value="blue" style="background-color: #4facfe; color: white;">蓝色</option>
-          <option value="green" style="background-color: #00cc00; color: white;">绿色</option>
-          <option value="purple" style="background-color: #9933ff; color: white;">紫色</option>
+          <option value="pink">粉色</option>
+          <option value="blue">蓝色</option>
+          <option value="green">绿色</option>
+          <option value="purple">紫色</option>
         </select>
       </div>
     </div>
 
-    <!-- 歌词面板：当前页面覆盖 -->
     <div class="lyrics-panel" v-if="showLyrics">
       <div class="playlist-placeholder"></div>
       <div class="lyrics-content" ref="lyricsContent" :class="'highlight-color-' + highlightColor">
@@ -56,7 +53,7 @@
           </div>
           <p v-if="!line.zh && !line.ja">无歌词内容</p>
         </div>
-        <p v-if="!parsedLyrics.length">无歌词</p>
+        <p v-if="!parsedLyrics.length" class="no-lyric"><span>暂无歌词</span></p>
       </div>
     </div>
   </div>
@@ -99,7 +96,6 @@ export default {
   methods: {
     async playSong({ songId }) {
       try {
-        // 清理音频
         this.audio.pause();
         this.audio.src = '';
         this.currentTime = 0;
@@ -172,7 +168,7 @@ export default {
       const activeLine = this.$refs.lyricLines[index];
       if (lyricsContent && activeLine) {
         lyricsContent.scrollTo({
-          top: activeLine.offsetTop - lyricsContent.offsetTop - 50, // 居中偏移
+          top: activeLine.offsetTop - lyricsContent.offsetTop - 50,
           behavior: 'smooth',
         });
       }
@@ -217,13 +213,151 @@ export default {
       this.showLyrics = !this.showLyrics;
     },
     updateHighlightColor() {
-      // 动态类绑定已处理颜色切换
+      // 颜色切换通过动态class绑定完成，无需额外处理
     },
   },
 };
 </script>
 
 <style scoped>
+
+.lyric-panel {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  position: relative;
+  background: rgba(255, 255, 255, 0.1);
+  padding: 0 25px;
+}
+
+.lyric-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 15px 0;
+}
+.lyric-header .title {
+  font-size: 20px;
+  color: #2c3e50;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+.lyric-header .controls {
+  display: flex;
+  gap: 20px;
+}
+.lyric-header .lang-select,
+.lyric-header .color-select {
+  display: flex;
+  gap: 10px;
+}
+.lang-btn {
+  width: 36px;
+  height: 36px;
+  line-height: 36px;
+  text-align: center;
+  border-radius: 50%;
+  background: #dfe6e9;
+  color: #636e72;
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+.lang-btn:hover {
+  background: #b2bec3;
+  color: #fff;
+}
+.lang-btn.active {
+  background: var(--highlight-color);
+  color: #fff;
+  box-shadow: 0 0 8px rgba(0, 0, 0, 0.2);
+  transform: scale(1.1);
+}
+.color-btn {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  border: 2px solid #fff;
+}
+.color-btn.pink {
+  background: #ff6b81;
+}
+.color-btn.blue {
+  background: #3498db;
+}
+.color-btn.purple {
+  background: #9b59b6;
+}
+.color-btn.green {
+  background: #2ecc71;
+}
+.color-btn:hover {
+  transform: scale(1.2);
+}
+.color-btn.active {
+  box-shadow: 0 0 6px rgba(0, 0, 0, 0.3);
+  transform: scale(1.2);
+}
+
+.lyric-wrapper {
+  position: relative;
+  height: calc(100% - 60px);
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.has-lyric {
+  width: 100%;
+  padding: 20px 0;
+}
+.has-lyric li {
+  width: 100%;
+  height: 40px;
+  text-align: center;
+  font-size: 14px;
+  line-height: 40px;
+  color: #555;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+  transition: all 0.3s ease;
+}
+.has-lyric li.active {
+  color: var(--highlight-color);
+  font-size: 18px;
+  background: var(--highlight-bg);
+}
+
+.no-lyric {
+  text-align: center;
+  padding-top: 20px;
+}
+.no-lyric span {
+  font-size: 18px;
+  color: #95a5a6;
+  font-style: italic;
+}
+
+/* 动态高亮颜色 */
+.lyrics-content.highlight-color-pink .lyric-line.active {
+  --highlight-color: #ff6b81;
+  --highlight-bg: rgba(255, 107, 129, 0.2);
+}
+.lyrics-content.highlight-color-blue .lyric-line.active {
+  --highlight-color: #3498db;
+  --highlight-bg: rgba(52, 152, 219, 0.2);
+}
+.lyrics-content.highlight-color-green .lyric-line.active {
+  --highlight-color: #2ecc71;
+  --highlight-bg: rgba(46, 204, 113, 0.2);
+}
+.lyrics-content.highlight-color-purple .lyric-line.active {
+  --highlight-color: #9b59b6;
+  --highlight-bg: rgba(155, 89, 182, 0.2);
+}
+
+/* 以下为底部栏样式 */
 .bottom-bar {
   position: fixed;
   bottom: 0;
@@ -352,9 +486,9 @@ export default {
   font-family: 'KaiTi', 'STKaiti', '楷体', sans-serif;
 }
 .lyric-line.active {
-  font-size: 16px;
   color: var(--highlight-color);
   background: var(--highlight-bg);
+  font-weight: 600;
 }
 .lyric-line p {
   margin: 2px 0;
@@ -373,23 +507,5 @@ export default {
   border: 1px solid #ccc;
   font-size: 14px;
   cursor: pointer;
-}
-
-/* 动态高亮颜色 */
-.lyrics-content.highlight-color-pink .lyric-line.active {
-  --highlight-color: #ff6b81;
-  --highlight-bg: rgba(255, 107, 129, 0.2);
-}
-.lyrics-content.highlight-color-blue .lyric-line.active {
-  --highlight-color: #4facfe;
-  --highlight-bg: rgba(79, 172, 254, 0.2);
-}
-.lyrics-content.highlight-color-green .lyric-line.active {
-  --highlight-color: #00cc00;
-  --highlight-bg: rgba(0, 204, 0, 0.2);
-}
-.lyrics-content.highlight-color-purple .lyric-line.active {
-  --highlight-color: #9933ff;
-  --highlight-bg: rgba(153, 51, 255, 0.2);
 }
 </style>
