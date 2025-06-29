@@ -29,33 +29,32 @@
       <button class="toggle-lyrics" @click="toggleLyrics">
         {{ showLyrics ? '收起歌词' : '展开歌词' }}
       </button>
-      <div class="highlight-color-selector">
-        <select v-model="highlightColor" @change="updateHighlightColor">
-          <option value="pink">粉色</option>
-          <option value="blue">蓝色</option>
-          <option value="green">绿色</option>
-          <option value="purple">紫色</option>
-        </select>
-      </div>
     </div>
 
     <div class="lyrics-panel" v-if="showLyrics">
-      <!-- 去掉了这个灰色留白的div -->
       <div class="panel-content">
         <div class="playlist-placeholder"></div>
         <div class="lyrics-right">
           <div class="lyric-header">
             <div class="title">歌词</div>
             <div class="controls">
+              <div class="lyrics-select">
+                <select v-model="selectedLyricId" @change="loadSelectedLyrics">
+                  <option v-for="lyric in allLyrics" :key="lyric.id" :value="lyric.id">
+                    歌词版本 {{ lyric.id }}
+                  </option>
+                </select>
+              </div>
               <div class="lang-select">
-                <span class="lang-btn" :class="{ active: true }">中</span>
-                <span class="lang-btn">日</span>
+                <span class="lang-btn" :class="{ active: selectedLang === 'zh' }" @click="setLanguage('zh')">中</span>
+                <span class="lang-btn" :class="{ active: selectedLang === 'ja' }" @click="setLanguage('ja')">日</span>
+                <span class="lang-btn" :class="{ active: selectedLang === 'all' }" @click="setLanguage('all')">全</span>
               </div>
               <div class="color-select">
-                <span class="color-btn pink" :class="{ active: highlightColor === 'pink' }"></span>
-                <span class="color-btn blue" :class="{ active: highlightColor === 'blue' }"></span>
-                <span class="color-btn green" :class="{ active: highlightColor === 'green' }"></span>
-                <span class="color-btn purple" :class="{ active: highlightColor === 'purple' }"></span>
+                <span class="color-btn pink" :class="{ active: highlightColor === 'pink' }" @click="setHighlightColor('pink')"></span>
+                <span class="color-btn blue" :class="{ active: highlightColor === 'blue' }" @click="setHighlightColor('blue')"></span>
+                <span class="color-btn green" :class="{ active: highlightColor === 'green' }" @click="setHighlightColor('green')"></span>
+                <span class="color-btn purple" :class="{ active: highlightColor === 'purple' }" @click="setHighlightColor('purple')"></span>
               </div>
             </div>
           </div>
@@ -66,10 +65,16 @@
                   class="lyric-line"
                   ref="lyricLines"
               >
-                <p v-if="line.ja">{{ line.ja }}</p>
-                <p v-if="line.zh">{{ line.zh }}</p>
+                <template v-if="selectedLang === 'all'">
+                  <p v-if="line.zh">{{ line.zh }}</p>
+                  <p v-if="line.ja">{{ line.ja }}</p>
+                  <p v-if="!line.zh && !line.ja">无歌词内容</p>
+                </template>
+                <template v-else>
+                  <p v-if="line[selectedLang]">{{ line[selectedLang] }}</p>
+                  <p v-else>无歌词内容</p>
+                </template>
               </div>
-              <p v-if="!line.zh && !line.ja">无歌词内容</p>
             </div>
             <p v-if="!parsedLyrics.length" class="no-lyric"><span>暂无歌词</span></p>
           </div>
@@ -88,15 +93,17 @@ export default {
   data() {
     return {
       currentSong: {},
-      currentLyrics: {},
-      parsedLyrics: [], // [{ time, zh: text, ja: text }]
+      allLyrics: [],
+      selectedLyricId: null,
+      selectedLang: 'zh',
+      parsedLyrics: [],
       audio: new Audio(),
       isPlaying: false,
       currentTime: 0,
       duration: 0,
       showLyrics: false,
       defaultCover,
-      highlightColor: 'pink', // 默认高亮颜色
+      highlightColor: 'pink',
     };
   },
   created() {
@@ -127,7 +134,7 @@ export default {
           this.audio.src = this.currentSong.fileUrl || '';
           this.audio.play();
           this.isPlaying = true;
-          this.loadLyrics(songId);
+          this.loadAllLyrics(songId);
         } else {
           alert('获取歌曲详情失败：' + response.data.message);
         }
@@ -135,21 +142,32 @@ export default {
         alert('播放歌曲出错：' + error.message);
       }
     },
-    async loadLyrics(songId) {
+    async loadAllLyrics(songId) {
       try {
         const response = await musicApi.getAllLyrics(songId);
         if (response.data.passed && response.data.data.length > 0) {
-          this.currentLyrics = response.data.data[0];
-          this.parseLyrics(this.currentLyrics.content || '');
+          this.allLyrics = response.data.data;
+          this.selectedLyricId = this.allLyrics[0].id;
+          this.loadSelectedLyrics();
         } else {
-          this.currentLyrics = {};
+          this.allLyrics = [];
+          this.selectedLyricId = null;
           this.parsedLyrics = [];
           alert('无歌词数据');
         }
       } catch (error) {
-        this.currentLyrics = {};
+        this.allLyrics = [];
+        this.selectedLyricId = null;
         this.parsedLyrics = [];
         alert('加载歌词出错：' + error.message);
+      }
+    },
+    loadSelectedLyrics() {
+      const selectedLyric = this.allLyrics.find(lyric => lyric.id === this.selectedLyricId);
+      if (selectedLyric) {
+        this.parseLyrics(selectedLyric.content || '');
+      } else {
+        this.parsedLyrics = [];
       }
     },
     parseLyrics(content) {
@@ -235,8 +253,11 @@ export default {
     toggleLyrics() {
       this.showLyrics = !this.showLyrics;
     },
-    updateHighlightColor() {
-      // 颜色切换通过动态class绑定完成，无需额外处理
+    setHighlightColor(color) {
+      this.highlightColor = color;
+    },
+    setLanguage(lang) {
+      this.selectedLang = lang;
     },
   },
 };
@@ -256,7 +277,7 @@ export default {
   justify-content: space-between;
   align-items: center;
   padding: 15px 0;
-  height: 60px; /* 固定高度 */
+  height: 60px;
 }
 .lyric-header .title {
   font-size: 20px;
@@ -268,9 +289,17 @@ export default {
 .lyric-header .controls {
   display: flex;
   gap: 20px;
+  align-items: center;
 }
-.lyric-header .lang-select,
-.lyric-header .color-select {
+.lyrics-select select {
+  padding: 4px;
+  border-radius: 4px;
+  border: 1px solid #ccc;
+  font-size: 14px;
+  cursor: pointer;
+}
+.lang-select,
+.color-select {
   display: flex;
   gap: 10px;
 }
@@ -289,7 +318,6 @@ export default {
 .lang-btn:hover {
   background: #b2bec3;
   color: #fff;
-
 }
 .lang-btn.active {
   background: var(--highlight-color);
@@ -325,44 +353,13 @@ export default {
   transform: scale(1.2);
 }
 
-.lyric-wrapper {
-  position: relative;
-  height: calc(100% - 60px);
+.lyrics-content {
+  max-height: 140px;
+  padding: 20px;
   overflow-y: auto;
-  -webkit-overflow-scrolling: touch;
-}
-
-.has-lyric {
-  width: 100%;
-  padding: 20px 0;
-}
-.has-lyric li {
-  width: 100%;
-  height: 40px;
+  background: #edf1f6;
   text-align: center;
-  font-size: 14px;
-  line-height: 40px;
-  color: #555;
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
-  transition: all 0.3s ease;
 }
-.has-lyric li.active {
-  color: var(--highlight-color);
-  font-size: 18px;
-  background: var(--highlight-bg);
-}
-
-.no-lyric {
-  text-align: center;
-  padding-top: 20px;
-}
-.no-lyric span {
-  font-size: 18px;
-  color: #95a5a6;
-  font-style: italic;
-}
-
-/* 动态高亮颜色 */
 .lyrics-content.highlight-color-pink .lyric-line.active {
   --highlight-color: #ff6b81;
   --highlight-bg: rgba(255, 107, 129, 0.2);
@@ -380,20 +377,19 @@ export default {
   --highlight-bg: rgba(155, 89, 182, 0.2);
 }
 
-/* 以下为底部栏样式 */
 .bottom-bar {
   position: fixed;
   bottom: 0;
   left: 0;
   right: 0;
-  height: 90px; /* 未展开时的固定高度 */
+  height: 90px;
   background: #fff;
   box-shadow: 0 -2px 4px rgba(0, 0, 0, 0.1);
   z-index: 1000;
-  transition: height 0.3s ease; /* 高度平滑过渡 */
+  transition: height 0.3s ease;
 }
 .bottom-bar.expanded {
-  height: 290px; /* 展开时包含 lyrics-panel (200px) + fixed-bar (90px) */
+  height: 290px;
 }
 .fixed-bar {
   position: absolute;
@@ -405,7 +401,7 @@ export default {
   padding: 10px 20px;
   gap: 20px;
   height: 90px;
-  z-index: 1; /* 确保在 lyrics-panel 下方 */
+  z-index: 1;
 }
 .song-info {
   display: flex;
@@ -495,30 +491,23 @@ export default {
   right: 0;
   max-height: 200px;
   width: 100%;
-  z-index: 2; /* 高于 fixed-bar */
+  z-index: 2;
   display: flex;
   flex-direction: column;
 }
 .panel-content {
   display: flex;
   flex-direction: row;
-  height: 200px; /* 取消原来减去的留白高度 */
+  height: 200px;
 }
 .playlist-placeholder {
   width: 30%;
   background: #fefeff;
 }
 .lyrics-right {
-  flex: 1; /* 占剩余宽度（70%） */
+  flex: 1;
   display: flex;
   flex-direction: column;
-}
-.lyrics-content {
-  max-height: 140px; /* 200px - 60px (lyric-header) */
-  padding: 20px;
-  overflow-y: auto;
-  background: #edf1f6;
-  text-align: center;
 }
 .lyrics-group {
   margin-bottom: 20px;
@@ -544,15 +533,5 @@ export default {
   font-size: 16px;
   color: #666;
   font-family: 'KaiTi', 'STKaiti', '楷体', sans-serif;
-}
-.highlight-color-selector {
-  display: inline-block;
-}
-.highlight-color-selector select {
-  padding: 4px;
-  border-radius: 4px;
-  border: 1px solid #ccc;
-  font-size: 14px;
-  cursor: pointer;
 }
 </style>
