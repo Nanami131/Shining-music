@@ -2,6 +2,8 @@ package org.L2.music.domain.service;
 
 
 import org.L2.common.R;
+import org.L2.common.annotation.AutoFill;
+import org.L2.common.constant.OperationType;
 import org.L2.common.minio.service.FileNameGenerateService;
 import org.L2.common.minio.service.SimpleMinioService;
 import org.L2.music.domain.model.Singer;
@@ -39,6 +41,7 @@ public class SingerService {
         }
     }
 
+    @AutoFill(OperationType.INSERT)
     public R createSinger(Singer singer) {
         if(singer.getName() == null || singer.getName().isBlank()){
             return R.error("歌手名称不能为空");
@@ -57,6 +60,7 @@ public class SingerService {
 
     }
 
+    @AutoFill(OperationType.UPDATE)
     public R updateSinger(Singer singer) {
         if(singer.getId() == null){
             return R.error("非法的请求");
@@ -80,6 +84,7 @@ public class SingerService {
         // 歌单存储在redis中不便于直接遍历删除
     }
 
+    @AutoFill(OperationType.UPDATE)
     public R updateSingerAvatar(Long id, MultipartFile file) {
         String originalFilename = file.getOriginalFilename();
         String fileName= FileNameGenerateService.defineNamePath(originalFilename,"/singer/avator/",id,5);
