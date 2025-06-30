@@ -33,6 +33,7 @@
         <jackson.version>2.15.3</jackson.version>
         <minio.version>8.5.10</minio.version>
         <aspectj.version>1.9.9.1</aspectj.version>
+        <feign.version>4.1.1</feign.version>
     </properties>
 
     <dependencyManagement>
@@ -86,6 +87,7 @@
             <dependency>
                 <groupId>org.springframework.cloud</groupId>
                 <artifactId>spring-cloud-starter-openfeign</artifactId>
+                <version>${feign.version}</version>
             </dependency>
             <!-- Spring Cloud Gateway -->
             <dependency>
