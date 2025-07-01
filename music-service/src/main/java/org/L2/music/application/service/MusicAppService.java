@@ -153,6 +153,13 @@ public class MusicAppService {
         return playlistService.uploadPlaylistAvatar(id,avatarFile);
     }
 
+    public R clearUserCurrentPlaylist(Long userId){
+        Playlist playlist = new Playlist().
+                setUserId(userId).
+                setType(Constants.CURRENT_PLAYLIST);
+        return playlistService.clearUserCurrentPlaylist(playlist);
+    }
+
     /*
      * 歌手相关
      */

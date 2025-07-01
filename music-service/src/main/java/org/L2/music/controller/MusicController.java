@@ -149,11 +149,20 @@ public class MusicController {
      * @param playlistId 歌单ID
      * @return 删除结果
      */
-    @DeleteMapping("/playlist/{playlistId}")
-    public R deletePlaylist(@PathVariable("playlistId") Long playlistId) {
+    @DeleteMapping("/playlist")
+    public R deletePlaylist(@RequestParam("playlistId") Long playlistId) {
         return musicAppService.deletePlaylist(playlistId);
     }
 
+    /**
+     * 清空用户播放列表
+     * @param userId 用户ID
+     * @return
+     */
+    @PostMapping("/playlist/clear")
+    public R clearUserCurrentPlaylist(@RequestParam("userId") Long userId) {
+        return musicAppService.clearUserCurrentPlaylist(userId);
+    }
     /**
      * 向歌单添加或移除歌曲
      * @param playlistSongRequest 歌单歌曲请求
@@ -208,8 +217,8 @@ public class MusicController {
      * @param singerId
      * @return
      */
-    @DeleteMapping("/singer/{singerId}")
-    public R deleteSinger(@PathVariable("singerId") Long singerId) {
+    @DeleteMapping("/singer")
+    public R deleteSinger(@RequestParam("singerId") Long singerId) {
         return musicAppService.deleteSinger(singerId);
     }
 

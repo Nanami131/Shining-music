@@ -75,6 +75,7 @@ public class PlaylistService {
         if(playlist.getName()==null||playlist.getName().isEmpty()){
             return R.error("歌单名称不能为空");
         }
+        playlist.setVisibility((byte) 1);
         try {
             playlistMapper.insert(playlist);
         } catch (Exception e) {
@@ -115,5 +116,19 @@ public class PlaylistService {
         }
 
         return R.success("头像修改成功",avatarUrl);
+    }
+
+    public R clearUserCurrentPlaylist(Playlist playlist) {
+        try {
+            List<Playlist> query = playlistMapper.query(playlist);
+            if(query==null || query.isEmpty()){
+                createPlaylist(playlist.setName("播放列表"+playlist.getUserId()));
+                return R.error("当前用户没有播放列表");
+            }
+            stringRedisTemplate.delete("playlist:" + query.get(0).getId());
+            return R.success("清除成功");
+        } catch (Exception e) {
+            return R.error("清除失败"+e.getMessage());
+        }
     }
 }
