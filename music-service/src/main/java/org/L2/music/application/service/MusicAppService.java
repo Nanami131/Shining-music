@@ -4,6 +4,7 @@ package org.L2.music.application.service;
 import org.L2.common.R;
 import org.L2.music.application.dto.*;
 import org.L2.music.application.request.*;
+import org.L2.music.constant.Constants;
 import org.L2.music.domain.model.Lyrics;
 import org.L2.music.domain.model.Playlist;
 import org.L2.music.domain.model.Singer;
@@ -97,6 +98,15 @@ public class MusicAppService {
         playlist.setUserId(playlistCreateRequest.getId());
         playlist.setId(null);
         return playlistService.createPlaylist(playlist);
+    }
+
+    public R createUserCurrentPlaylist(Long userId){
+        Playlist playlist = new Playlist().
+                setUserId(userId).
+                setType(Constants.CURRENT_PLAYLIST).
+                setName("播放列表"+userId);
+        return playlistService.createPlaylist(playlist);
+
     }
 
     public R getPlaylistBaseInfo(Long playlistId) {

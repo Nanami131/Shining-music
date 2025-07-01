@@ -64,9 +64,9 @@ public class PlaylistService {
         if(playlist.getType()==null||playlist.getVisibility()==null){
             return R.error("歌单信息不全");
         }
-        if(playlist.getType()== Constants.USER_FAVORITE){
+        if(playlist.getType()== Constants.USER_FAVORITE||playlist.getType()== Constants.CURRENT_PLAYLIST){
             List<Playlist> query = playlistMapper.query(new Playlist().setUserId(playlist.getUserId())
-                    .setType(Constants.USER_FAVORITE));
+                    .setType(playlist.getType()));
             if(query!=null && !query.isEmpty()){
                 return R.error("非法的请求！");
             }

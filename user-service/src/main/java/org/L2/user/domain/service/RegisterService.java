@@ -3,6 +3,7 @@ package org.L2.user.domain.service;
 import org.L2.common.R;
 import org.L2.common.annotation.AutoFill;
 import org.L2.common.constant.OperationType;
+import org.L2.common.rpc.MusicClient;
 import org.L2.user.domain.model.PasswordHistory;
 import org.L2.user.domain.model.User;
 import org.L2.user.infrastructure.mapper.PasswordHistoryMapper;
@@ -18,10 +19,10 @@ import java.util.List;
 public class RegisterService {
     @Autowired
     private UserMapper userMapper;
-
     @Autowired
     private PasswordHistoryMapper passwordHistoryMapper;
-
+    @Autowired
+    private MusicClient musicClient;
 
     /**
      *  用户注册
@@ -78,6 +79,8 @@ public class RegisterService {
 
         // 插入密码历史记录
         passwordHistoryMapper.insert(passwordHistory.setUserId(id));
+
+        musicClient.createUserCurrentPlaylist(id);
 
         return R.success("注册成功");
     }

@@ -122,6 +122,16 @@ public class MusicController {
     }
 
     /**
+     * 生成用户播放列表
+     * @param userId 用户ID
+     * @return
+     */
+    @PostMapping("/curPlaylist")
+    public R createUserCurrentPlaylist(@RequestBody Long userId) {
+        return musicAppService.createUserCurrentPlaylist(userId);
+    }
+
+    /**
      * 上传/更新歌单封面
      * @param avatarFile 封面文件
      * @param md5 封面文件校验值
