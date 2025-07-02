@@ -75,6 +75,11 @@
                 <artifactId>spring-cloud-starter-openfeign</artifactId>
                 <version>${feign.version}</version>
             </dependency>
+            <dependency>
+                <groupId>org.springframework.cloud</groupId>
+                <artifactId>spring-cloud-starter-loadbalancer</artifactId>
+                <version>${feign.version}</version>
+            </dependency>
             <!-- Spring Cloud Gateway -->
             <dependency>
                 <groupId>org.springframework.cloud</groupId>

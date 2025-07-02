@@ -19,8 +19,8 @@
     </select>
 
     <insert id="insert" parameterType="org.L2.music.domain.model.Singer" useGeneratedKeys="true" keyProperty="id">
-        INSERT INTO singers (name, user_id, profile, avatar_url, genre, country, status, sex,created_at, updated_at)
-        VALUES (#{name}, #{userId}, #{profile}, #{avatarUrl}, #{genre}, #{country}, #{status},#{sex}, #{createdAt}, #{updatedAt})
+        INSERT INTO singers (name, user_id, profile, avatar_url, genre, country, status, sex, created_at, updated_at)
+        VALUES (#{name}, #{userId}, #{profile}, #{avatarUrl}, #{genre}, #{country}, #{status}, #{sex}, #{createdAt}, #{updatedAt})
     </insert>
 
     <update id="update" parameterType="org.L2.music.domain.model.Singer">
@@ -51,22 +51,22 @@
                 AND id = #{id}
             </if>
             <if test="name != null and name != ''">
-                AND name LIKE CONCAT('%', #{name}, '%')
+                AND name = #{name}
             </if>
             <if test="userId != null">
                 AND user_id = #{userId}
             </if>
             <if test="profile != null and profile != ''">
-                AND profile LIKE CONCAT('%', #{profile}, '%')
+                AND profile = #{profile}
             </if>
             <if test="avatarUrl != null and avatarUrl != ''">
-                AND avatar_url LIKE CONCAT('%', #{avatarUrl}, '%')
+                AND avatar_url = #{avatarUrl}
             </if>
             <if test="genre != null and genre != ''">
-                AND genre LIKE CONCAT('%', #{genre}, '%')
+                AND genre = #{genre}
             </if>
             <if test="country != null and country != ''">
-                AND country LIKE CONCAT('%', #{country}, '%')
+                AND country = #{country}
             </if>
             <if test="status != null">
                 AND status = #{status}

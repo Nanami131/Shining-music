@@ -56,10 +56,10 @@
                 AND id = #{id}
             </if>
             <if test="username != null and username != ''">
-                AND username LIKE CONCAT('%', #{username}, '%')
+                AND username = #{username}
             </if>
             <if test="nickName != null and nickName != ''">
-                AND nick_name LIKE CONCAT('%', #{nickName}, '%')
+                AND nick_name = #{nickName}
             </if>
             <if test="phone != null and phone != ''">
                 AND phone = #{phone}
@@ -68,13 +68,13 @@
                 AND email = #{email}
             </if>
             <if test="avatarUrl != null and avatarUrl != ''">
-                AND avatar_url LIKE CONCAT('%', #{avatarUrl}, '%')
+                AND avatar_url = #{avatarUrl}
             </if>
             <if test="signature != null and signature != ''">
-                AND signature LIKE CONCAT('%', #{signature}, '%')
+                AND signature = #{signature}
             </if>
             <if test="profile != null and profile != ''">
-                AND profile LIKE CONCAT('%', #{profile}, '%')
+                AND profile = #{profile}
             </if>
             <if test="role != null">
                 AND role = #{role}

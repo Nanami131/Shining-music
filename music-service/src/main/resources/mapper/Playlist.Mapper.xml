@@ -48,10 +48,10 @@
                 AND id = #{id}
             </if>
             <if test="name != null and name != ''">
-                AND name LIKE CONCAT('%', #{name}, '%')
+                AND name = #{name}
             </if>
             <if test="description != null and description != ''">
-                AND description LIKE CONCAT('%', #{description}, '%')
+                AND description = #{description}
             </if>
             <if test="userId != null">
                 AND user_id = #{userId}
@@ -63,7 +63,7 @@
                 AND visibility = #{visibility}
             </if>
             <if test="coverUrl != null and coverUrl != ''">
-                AND cover_url LIKE CONCAT('%', #{coverUrl}, '%')
+                AND cover_url = #{coverUrl}
             </if>
             <if test="createdAt != null">
                 AND created_at >= #{createdAt}

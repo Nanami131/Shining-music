@@ -52,7 +52,7 @@
                 AND id = #{id}
             </if>
             <if test="title != null and title != ''">
-                AND title LIKE CONCAT('%', #{title}, '%')
+                AND title = #{title}
             </if>
             <if test="artistId != null">
                 AND artist_id = #{artistId}
@@ -61,10 +61,10 @@
                 AND album_id = #{albumId}
             </if>
             <if test="fileUrl != null and fileUrl != ''">
-                AND file_url LIKE CONCAT('%', #{fileUrl}, '%')
+                AND file_url = #{fileUrl}
             </if>
             <if test="coverUrl != null and coverUrl != ''">
-                AND cover_url LIKE CONCAT('%', #{coverUrl}, '%')
+                AND cover_url = #{coverUrl}
             </if>
             <if test="status != null">
                 AND status = #{status}
