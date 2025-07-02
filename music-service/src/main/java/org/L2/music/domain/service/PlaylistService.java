@@ -61,7 +61,7 @@ public class PlaylistService {
 
     @AutoFill(OperationType.INSERT)
     public R createPlaylist(Playlist playlist) {
-        if(playlist.getType()==null||playlist.getVisibility()==null){
+        if(playlist.getType()==null){
             return R.error("歌单信息不全");
         }
         if(playlist.getType()== Constants.USER_FAVORITE||playlist.getType()== Constants.CURRENT_PLAYLIST){

@@ -30,6 +30,7 @@ public class RegisterService {
      * @return
      */
     @AutoFill(OperationType.INSERT)
+    @Transactional(rollbackFor = Exception.class)
     public R register(User user) throws Exception {
         if(user.getUsername() == null || user.getUsername().isBlank()) {
 
