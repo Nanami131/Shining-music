@@ -76,8 +76,8 @@ public class RegisterService {
     @Transactional(rollbackFor = Exception.class)
     public R saveUserAndPassword(User user, PasswordHistory passwordHistory) throws Exception {
         // 插入用户信息
-        Long id=userMapper.insert(user);
-
+        userMapper.insert(user);
+        Long id = user.getId();
         // 插入密码历史记录
         passwordHistoryMapper.insert(passwordHistory.setUserId(id));
 

@@ -15,7 +15,7 @@ public interface MusicClient {
      * @param userId 用户ID
      * @return
      */
-    @PostMapping("/curPlaylist")
+    @PostMapping("music/curPlaylist")
     public R createUserCurrentPlaylist(@RequestBody Long userId);
 
 }
