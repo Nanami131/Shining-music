@@ -55,7 +55,7 @@ export default {
         return api.post('/music/playlist', data);
     },
     deletePlaylist(playlistId) {
-        return api.delete(`/music/playlist/${playlistId}`);
+        return api.delete('/music/playlist', { params: { playlistId } });
     },
     managePlaylistSong(data) {
         return api.post('/music/playlist/song', data);
@@ -70,7 +70,7 @@ export default {
         return api.post('/music/singer', data);
     },
     deleteSinger(singerId) {
-        return api.delete(`/music/singer/${singerId}`);
+        return api.delete('/music/singer', { params: { singerId } });
     },
     updateSingerProfile(data) {
         return api.post('/music/update-profile', data);
