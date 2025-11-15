@@ -47,9 +47,31 @@
                 全
               </span>
             </div>
+            <div class="color-select">
+              <span
+                class="color-btn pink"
+                :class="{ active: highlightColor === 'pink' }"
+                @click="setHighlightColor('pink')"
+              ></span>
+              <span
+                class="color-btn blue"
+                :class="{ active: highlightColor === 'blue' }"
+                @click="setHighlightColor('blue')"
+              ></span>
+              <span
+                class="color-btn green"
+                :class="{ active: highlightColor === 'green' }"
+                @click="setHighlightColor('green')"
+              ></span>
+              <span
+                class="color-btn purple"
+                :class="{ active: highlightColor === 'purple' }"
+                @click="setHighlightColor('purple')"
+              ></span>
+            </div>
           </div>
         </div>
-        <div class="lyrics-content">
+        <div class="lyrics-content" :class="'highlight-color-' + highlightColor">
           <div v-for="(line, index) in parsedLyrics" :key="index" class="lyrics-group">
             <div class="lyric-line">
               <template v-if="selectedLang === 'all'">
@@ -92,6 +114,7 @@ export default {
       defaultCover,
       isLoaded: false,
       hasError: false,
+      highlightColor: 'pink',
     };
   },
   created() {
@@ -172,6 +195,9 @@ export default {
     },
     setLanguage(lang) {
       this.selectedLang = lang;
+    },
+    setHighlightColor(color) {
+      this.highlightColor = color;
     },
   },
 };
@@ -267,12 +293,55 @@ h3 {
   box-shadow: 0 0 8px rgba(0, 0, 0, 0.2);
   transform: scale(1.1);
 }
+.color-select {
+  display: flex;
+  gap: 10px;
+}
+.color-btn {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  border: 2px solid #fff;
+}
+.color-btn.pink {
+  background: #ff6b81;
+}
+.color-btn.blue {
+  background: #3498db;
+}
+.color-btn.purple {
+  background: #9b59b6;
+}
+.color-btn.green {
+  background: #2ecc71;
+}
+.color-btn:hover {
+  transform: scale(1.2);
+}
+.color-btn.active {
+  box-shadow: 0 0 6px rgba(0, 0, 0, 0.3);
+  transform: scale(1.2);
+}
 .lyrics-content {
   max-height: 400px;
   padding: 20px;
   overflow-y: auto;
   background: #edf1f6;
   text-align: center;
+}
+.lyrics-content.highlight-color-pink .lyric-line {
+  color: #ff6b81;
+}
+.lyrics-content.highlight-color-blue .lyric-line {
+  color: #3498db;
+}
+.lyrics-content.highlight-color-green .lyric-line {
+  color: #2ecc71;
+}
+.lyrics-content.highlight-color-purple .lyric-line {
+  color: #9b59b6;
 }
 .lyrics-group {
   margin-bottom: 20px;
