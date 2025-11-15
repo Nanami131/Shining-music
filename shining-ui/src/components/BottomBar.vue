@@ -360,6 +360,18 @@ export default {
   background: #edf1f6;
   text-align: center;
 }
+.lyrics-content.highlight-color-pink .lyric-line {
+  color: #ff6b81;
+}
+.lyrics-content.highlight-color-blue .lyric-line {
+  color: #3498db;
+}
+.lyrics-content.highlight-color-green .lyric-line {
+  color: #2ecc71;
+}
+.lyrics-content.highlight-color-purple .lyric-line {
+  color: #9b59b6;
+}
 .lyrics-content.highlight-color-pink .lyric-line.active {
   --highlight-color: #ff6b81;
   --highlight-bg: rgba(255, 107, 129, 0.2);
