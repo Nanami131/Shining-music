@@ -12,6 +12,7 @@ export default defineConfig({
         changeOrigin: true,
       },
     },
+    allowedHosts: true, // 这一行会允许任何 Host，包括每次变的 trycloudflare 域名
   },
   resolve: {
     alias: {
