@@ -1,10 +1,10 @@
 package org.L2.user.controller;
 
 import org.L2.common.R;
-import org.L2.user.application.requset.LoginRequest;
-import org.L2.user.application.requset.RegisterRequest;
-import org.L2.user.application.requset.ResetPasswordRequest;
-import org.L2.user.application.requset.UpdateProfileRequest;
+import org.L2.user.application.request.LoginRequest;
+import org.L2.user.application.request.RegisterRequest;
+import org.L2.user.application.request.ResetPasswordRequest;
+import org.L2.user.application.request.UpdateProfileRequest;
 import org.L2.user.application.service.UserAppService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;

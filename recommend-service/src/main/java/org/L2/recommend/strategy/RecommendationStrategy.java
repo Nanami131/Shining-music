@@ -1,4 +1,4 @@
-package org.L2.recommend.starategy;
+package org.L2.recommend.strategy;
 
 public interface RecommendationStrategy {
 }

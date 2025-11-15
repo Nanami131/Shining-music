@@ -1,4 +1,4 @@
-package org.L2.user.application.requset;
+package org.L2.user.application.request;
 
 
 
