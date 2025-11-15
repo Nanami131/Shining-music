@@ -89,7 +89,7 @@ public class MusicAppService {
      * 歌单相关
      */
     public R deletePlaylist(Long playlistId) {
-        return null;
+        return playlistService.deletePlaylist(playlistId);
     }
 
     public R createPlaylist(PlaylistCreateRequest playlistCreateRequest) {

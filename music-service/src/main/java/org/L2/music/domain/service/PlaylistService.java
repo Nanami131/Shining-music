@@ -9,7 +9,6 @@ import org.L2.common.minio.service.FileNameGenerateService;
 import org.L2.common.minio.service.SimpleMinioService;
 import org.L2.music.constant.Constants;
 import org.L2.music.domain.model.Playlist;
-import org.L2.music.domain.model.Singer;
 import org.L2.music.infrastructure.PlaylistMapper;
 import org.L2.music.infrastructure.SongMapper;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -36,50 +35,51 @@ public class PlaylistService {
     private SimpleMinioService simpleMinioService;
 
     public R managePlaylistSong(Long playlistId, Long songId) throws Exception {
-        if(playlistId==null || songId==null){
-            return R.error("歌单或歌曲不存在");
+        if (playlistId == null || songId == null) {
+            return R.error("歌单或歌曲不能为空");
         }
-        if(songMapper.selectById(songId)==null){
+        if (songMapper.selectById(songId) == null) {
             return R.error("歌曲不存在");
         }
-        if(playlistMapper.selectById(playlistId)==null){
+        if (playlistMapper.selectById(playlistId) == null) {
             return R.error("歌单不存在");
         }
-        boolean flag= stringRedisTemplate.opsForSet().isMember("playlist:"+playlistId, String.valueOf(songId));
-        if(flag){
+        boolean flag = stringRedisTemplate.opsForSet()
+                .isMember("playlist:" + playlistId, String.valueOf(songId));
+        if (flag) {
             stringRedisTemplate.opsForSet().remove("playlist:" + playlistId, String.valueOf(songId));
-        }
-        else{
-            if(stringRedisTemplate.opsForSet().size("playlist:" + playlistId)>= Constants.MAX_PLAYLIST_SIZE){
+        } else {
+            if (stringRedisTemplate.opsForSet().size("playlist:" + playlistId) >= Constants.MAX_PLAYLIST_SIZE) {
                 return R.error("歌单歌曲数量已达上限");
             }
-           stringRedisTemplate.opsForSet().add("playlist:" + playlistId, String.valueOf(songId));
+            stringRedisTemplate.opsForSet().add("playlist:" + playlistId, String.valueOf(songId));
         }
         return R.success("歌单歌曲修改成功");
     }
 
-
     @AutoFill(OperationType.INSERT)
     public R createPlaylist(Playlist playlist) {
-        if(playlist.getType()==null){
+        if (playlist.getType() == null) {
             return R.error("歌单信息不全");
         }
-        if(playlist.getType()== Constants.USER_FAVORITE||playlist.getType()== Constants.CURRENT_PLAYLIST){
-            List<Playlist> query = playlistMapper.query(new Playlist().setUserId(playlist.getUserId())
+        if (playlist.getType() == Constants.USER_FAVORITE
+                || playlist.getType() == Constants.CURRENT_PLAYLIST) {
+            List<Playlist> query = playlistMapper.query(new Playlist()
+                    .setUserId(playlist.getUserId())
                     .setType(playlist.getType()));
-            if(query!=null && !query.isEmpty()){
-                return R.error("非法的请求！");
+            if (query != null && !query.isEmpty()) {
+                return R.error("非法重复创建");
             }
-            playlist.setName("收藏歌单"+playlist.getUserId());
+            playlist.setName("收藏歌单" + playlist.getUserId());
         }
-        if(playlist.getName()==null||playlist.getName().isEmpty()){
+        if (playlist.getName() == null || playlist.getName().isEmpty()) {
             return R.error("歌单名称不能为空");
         }
         playlist.setVisibility((byte) 1);
         try {
             playlistMapper.insert(playlist);
         } catch (Exception e) {
-            return R.error("创建歌单失败"+e.getMessage());
+            return R.error("创建歌单失败" + e.getMessage());
         }
         return R.success("创建歌单成功");
     }
@@ -92,43 +92,57 @@ public class PlaylistService {
                 return R.error("歌单不存在");
             }
             return R.success("获取歌单信息成功", playlist);
-        }catch (Exception e) {
-            return R.error("获取歌单信息失败"+e.getMessage());
+        } catch (Exception e) {
+            return R.error("获取歌单信息失败" + e.getMessage());
         }
     }
 
     public R uploadPlaylistAvatar(Long id, MultipartFile file) {
         String originalFilename = file.getOriginalFilename();
-        String fileName= FileNameGenerateService.defineNamePath(originalFilename,"/playlist/cover/",id,5);
+        String fileName = FileNameGenerateService.defineNamePath(originalFilename, "/playlist/cover/", id, 5);
         String avatarUrl = minioProperties.getEndpoint() + "/" + minioProperties.getBucketName() + fileName;
-        Playlist playlist = new Playlist().
-                setId(id).
-                setUpdatedAt(LocalDateTime.now()).
-                setCoverUrl(avatarUrl);
-        String s = simpleMinioService.uploadFile(file,fileName);
-        if(!s.equals("上传成功")){
-            return R.error(s);
+        Playlist playlist = new Playlist()
+                .setId(id)
+                .setUpdatedAt(LocalDateTime.now())
+                .setCoverUrl(avatarUrl);
+        String result = simpleMinioService.uploadFile(file, fileName);
+        if (!"上传成功".equals(result)) {
+            return R.error(result);
         }
         try {
             playlistMapper.update(playlist);
         } catch (Exception e) {
-            return R.error("数据库操作失败："+e.getMessage());
+            return R.error("数据库更新失败" + e.getMessage());
         }
 
-        return R.success("头像修改成功",avatarUrl);
+        return R.success("封面修改成功", avatarUrl);
     }
 
     public R clearUserCurrentPlaylist(Playlist playlist) {
         try {
             List<Playlist> query = playlistMapper.query(playlist);
-            if(query==null || query.isEmpty()){
-                createPlaylist(playlist.setName("播放列表"+playlist.getUserId()));
+            if (query == null || query.isEmpty()) {
+                createPlaylist(playlist.setName("当前列表" + playlist.getUserId()));
                 return R.error("当前用户没有播放列表");
             }
             stringRedisTemplate.delete("playlist:" + query.get(0).getId());
-            return R.success("清除成功");
+            return R.success("清空成功");
         } catch (Exception e) {
-            return R.error("清除失败"+e.getMessage());
+            return R.error("清空失败" + e.getMessage());
+        }
+    }
+
+    public R deletePlaylist(Long playlistId) {
+        try {
+            Playlist playlist = playlistMapper.selectById(playlistId);
+            if (playlist == null) {
+                return R.error("歌单不存在");
+            }
+            playlistMapper.deleteById(playlistId);
+            stringRedisTemplate.delete("playlist:" + playlistId);
+            return R.success("删除歌单成功");
+        } catch (Exception e) {
+            return R.error("删除歌单失败" + e.getMessage());
         }
     }
 }
