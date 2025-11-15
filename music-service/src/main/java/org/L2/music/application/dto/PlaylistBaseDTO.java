@@ -7,6 +7,7 @@ import lombok.experimental.Accessors;
 @Accessors(chain = true)
 public class PlaylistBaseDTO {
     private Long id;
+    private Long userId;
     private String name;
     private Byte type;
     private Byte visibility;

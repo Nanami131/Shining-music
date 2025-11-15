@@ -1,6 +1,6 @@
 <template>
   <div class="dev-container">
-    <h2>歌单管理（开发者模式）</h2>
+    <h2>歌单管理（开发模式）</h2>
 
     <!-- 创建歌单 -->
     <div class="section">
@@ -21,8 +21,11 @@
         <div class="form-item">
           <label>类型</label>
           <select v-model="createForm.type" required>
-            <option :value="0">普通</option>
-            <option :value="1">收藏</option>
+            <!-- 普通歌单 -> PLAYLIST = 1 -->
+            <option :value="1">普通</option>
+            <!-- 收藏歌单 -> USER_FAVORITE = 3 -->
+            <option :value="3">收藏</option>
+            <!-- 专辑 -> ALBUM = 2 -->
             <option :value="2">专辑</option>
           </select>
         </div>
@@ -46,7 +49,7 @@
           <input v-model="coverForm.id" type="number" placeholder="请输入歌单 ID" required />
         </div>
         <div class="form-item">
-          <label>封面文件</label>
+          <label>图片文件</label>
           <input type="file" accept="image/*" @change="handleCoverChange" required />
         </div>
         <button type="submit" class="submit-btn">上传封面</button>
@@ -92,14 +95,15 @@ export default {
   data() {
     return {
       createForm: {
-        playlistId: null,
+        id: null,
         name: '',
         description: '',
-        type: 0,
+        // 默认普通歌单，对齐后端 Constants.PLAYLIST = 1
+        type: 1,
         visibility: 0,
       },
       coverForm: {
-        playlistId: null,
+        id: null,
         file: null,
         md5: '',
       },
@@ -116,12 +120,18 @@ export default {
         const response = await musicApi.createPlaylist(this.createForm);
         if (response.data.passed) {
           alert('创建歌单成功');
-          this.createForm = { id: null, name: '', description: '', type: 0, visibility: 0 };
+          this.createForm = {
+            id: null,
+            name: '',
+            description: '',
+            type: 1,
+            visibility: 0,
+          };
         } else {
           alert('创建歌单失败：' + response.data.message);
         }
       } catch (error) {
-        alert('创建歌单出错：' + error.message);
+        alert('创建歌单异常：' + error.message);
       }
     },
     handleCoverChange(event) {
@@ -138,18 +148,18 @@ export default {
     async handleUploadPlaylistCover() {
       try {
         const response = await musicApi.uploadPlaylistCover(
-            this.coverForm.id,
-            this.coverForm.file,
-            this.coverForm.md5
+          this.coverForm.id,
+          this.coverForm.file,
+          this.coverForm.md5
         );
         if (response.data.passed) {
           alert('上传歌单封面成功');
-          this.coverForm = { playlistId: null, file: null, md5: '' };
+          this.coverForm = { id: null, file: null, md5: '' };
         } else {
           alert('上传歌单封面失败：' + response.data.message);
         }
       } catch (error) {
-        alert('上传歌单封面出错：' + error.message);
+        alert('上传歌单封面异常：' + error.message);
       }
     },
     async handleDeletePlaylist() {
@@ -162,20 +172,20 @@ export default {
           alert('删除歌单失败：' + response.data.message);
         }
       } catch (error) {
-        alert('删除歌单出错：' + error.message);
+        alert('删除歌单异常：' + error.message);
       }
     },
     async handleManagePlaylistSong() {
       try {
         const response = await musicApi.managePlaylistSong(this.songForm);
         if (response.data.passed) {
-          alert('管理歌单歌曲成功');
+          alert('更新歌单歌曲成功');
           this.songForm = { playlistId: null, songId: null };
         } else {
-          alert('管理歌单歌曲失败：' + response.data.message);
+          alert('更新歌单歌曲失败：' + response.data.message);
         }
       } catch (error) {
-        alert('管理歌单歌曲出错：' + error.message);
+        alert('更新歌单歌曲异常：' + error.message);
       }
     },
   },
@@ -238,3 +248,4 @@ textarea {
   background: linear-gradient(to right, #ef4444, #f87171);
 }
 </style>
+

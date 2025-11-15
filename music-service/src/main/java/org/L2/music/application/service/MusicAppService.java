@@ -1,6 +1,5 @@
 package org.L2.music.application.service;
 
-
 import org.L2.common.R;
 import org.L2.music.application.dto.*;
 import org.L2.music.application.request.*;
@@ -34,7 +33,7 @@ public class MusicAppService {
     private LyricsService lyricsService;
 
     /*
-     * 歌曲相关
+     * 歌曲模块
      */
     public R createSong(SongCreateRequest songCreateRequest) {
         Song song = new Song();
@@ -44,29 +43,30 @@ public class MusicAppService {
 
     public R getSongBaseInfo(Long songId) {
         R result = songService.getSongInfo(songId);
-        if(!result.getPassed()){
+        if (!result.getPassed()) {
             return result;
         }
         SongBaseDTO songBaseDTO = new SongBaseDTO();
         BeanUtils.copyProperties(result.getData(), songBaseDTO);
-        return R.success("获取成功",songBaseDTO);
+        return R.success("获取成功", songBaseDTO);
     }
+
     public R getSongDetailsInfo(Long songId) {
         R result = songService.getSongInfo(songId);
-        if(!result.getPassed()){
+        if (!result.getPassed()) {
             return result;
         }
         SongDetailsDTO songDetailsDTO = new SongDetailsDTO();
         BeanUtils.copyProperties(result.getData(), songDetailsDTO);
-        //noinspection unchecked
-        songDetailsDTO.setAllLyrics((ArrayList<Lyrics>) lyricsService.getAllLyricsBySongId(songId).getData());
-
-        return R.success("获取成功",songDetailsDTO);
+        @SuppressWarnings("unchecked")
+        ArrayList<Lyrics> allLyrics =
+                (ArrayList<Lyrics>) lyricsService.getAllLyricsBySongId(songId).getData();
+        songDetailsDTO.setAllLyrics(allLyrics);
+        return R.success("获取成功", songDetailsDTO);
     }
 
-
-    public R uploadLyrics(Long songId, MultipartFile file,String msg) {
-        return lyricsService.uploadLyrics(songId, file,msg);
+    public R uploadLyrics(Long songId, MultipartFile file, String msg) {
+        return lyricsService.uploadLyrics(songId, file, msg);
     }
 
     public R getAllLyricsBySongId(Long songId) {
@@ -77,16 +77,16 @@ public class MusicAppService {
         return lyricsService.getLyrics(lyricsId);
     }
 
-    public R uploadSong(Long id, MultipartFile file, String md5){
-        return songService.uploadSong(id,file);
+    public R uploadSong(Long id, MultipartFile file, String md5) {
+        return songService.uploadSong(id, file);
     }
 
-    public R uploadSongAvatar(Long id, MultipartFile avatarFile, String md5){
-        return songService.uploadSongAvatar(id,avatarFile);
+    public R uploadSongAvatar(Long id, MultipartFile avatarFile, String md5) {
+        return songService.uploadSongAvatar(id, avatarFile);
     }
 
     /*
-     * 歌单相关
+     * 歌单模块
      */
     public R deletePlaylist(Long playlistId) {
         return playlistService.deletePlaylist(playlistId);
@@ -95,41 +95,42 @@ public class MusicAppService {
     public R createPlaylist(PlaylistCreateRequest playlistCreateRequest) {
         Playlist playlist = new Playlist();
         BeanUtils.copyProperties(playlistCreateRequest, playlist);
+        // 前端传入的是用户 id 字段
         playlist.setUserId(playlistCreateRequest.getId());
         playlist.setId(null);
         return playlistService.createPlaylist(playlist);
     }
 
-    public R createUserCurrentPlaylist(Long userId){
-        Playlist playlist = new Playlist().
-                setUserId(userId).
-                setType(Constants.CURRENT_PLAYLIST).
-                setName("播放列表"+userId);
+    public R createUserCurrentPlaylist(Long userId) {
+        Playlist playlist = new Playlist()
+                .setUserId(userId)
+                .setType(Constants.CURRENT_PLAYLIST)
+                .setName("播放列表" + userId);
         return playlistService.createPlaylist(playlist);
-
     }
 
     public R getPlaylistBaseInfo(Long playlistId) {
         R result = playlistService.getPlaylistInfo(playlistId);
-        if(!result.getPassed()){
+        if (!result.getPassed()) {
             return result;
         }
         PlaylistBaseDTO playlistBaseDTO = new PlaylistBaseDTO();
         BeanUtils.copyProperties(result.getData(), playlistBaseDTO);
-        return R.success("获取成功",playlistBaseDTO);
+        return R.success("获取成功", playlistBaseDTO);
     }
 
     public R getPlaylistDetailsInfo(Long playlistId) {
         R result = playlistService.getPlaylistInfo(playlistId);
-        if(!result.getPassed()){
+        if (!result.getPassed()) {
             return result;
         }
         PlaylistDetailsDTO playlistDetailsDTO = new PlaylistDetailsDTO();
         BeanUtils.copyProperties(result.getData(), playlistDetailsDTO);
         R songs = songService.getPlaylistSongs(playlistId);
-        playlistDetailsDTO.setSongs((List<SongBaseDTO>)songs.getData());
-
-        return R.success("获取成功",playlistDetailsDTO);
+        @SuppressWarnings("unchecked")
+        List<SongBaseDTO> songList = (List<SongBaseDTO>) songs.getData();
+        playlistDetailsDTO.setSongs(songList);
+        return R.success("获取成功", playlistDetailsDTO);
     }
 
     public R managePlaylistSong(PlaylistSongRequest playlistSongRequest) {
@@ -138,51 +139,72 @@ public class MusicAppService {
         try {
             return playlistService.managePlaylistSong(playlistId, songId);
         } catch (Exception e) {
-            return R.error("操作失败"+e.getMessage());
+            return R.error("操作失败" + e.getMessage());
         }
     }
 
-    //    public R managePlaylistSongList(PlaylistSongRequestList playlistSongRequestlist) {
-//        Long playlistId = playlistSongRequestlist.getPlaylistId();
-//        for(Long songId: playlistSongRequestlist.getSongIds()){
-//            playlistService.managePlaylistSong(playlistId, songId);
-//        }
-//    }
-
-    public R uploadPlaylistAvatar(Long id, MultipartFile avatarFile, String md5){
-        return playlistService.uploadPlaylistAvatar(id,avatarFile);
+    public R uploadPlaylistAvatar(Long id, MultipartFile avatarFile, String md5) {
+        return playlistService.uploadPlaylistAvatar(id, avatarFile);
     }
 
-    public R clearUserCurrentPlaylist(Long userId){
-        Playlist playlist = new Playlist().
-                setUserId(userId).
-                setType(Constants.CURRENT_PLAYLIST);
+    public R clearUserCurrentPlaylist(Long userId) {
+        Playlist playlist = new Playlist()
+                .setUserId(userId)
+                .setType(Constants.CURRENT_PLAYLIST);
         return playlistService.clearUserCurrentPlaylist(playlist);
     }
 
+    /**
+     * 发现更多歌单（用于“更多歌单”板块）
+     *
+     * 只返回：
+     * - 类型为普通歌单（Constants.PLAYLIST）的记录
+     * - 当前用户自己的歌单（无论公私）
+     * - 其他用户的公开歌单
+     *
+     * @param userId 当前用户 ID，可为空
+     */
+    public R discoverPlaylists(Long userId) {
+        R result = playlistService.discoverPlaylists(userId);
+        if (!result.getPassed()) {
+            return result;
+        }
+        @SuppressWarnings("unchecked")
+        List<Playlist> playlists = (List<Playlist>) result.getData();
+        List<PlaylistBaseDTO> dtoList = new ArrayList<>();
+        for (Playlist playlist : playlists) {
+            PlaylistBaseDTO dto = new PlaylistBaseDTO();
+            BeanUtils.copyProperties(playlist, dto);
+            dtoList.add(dto);
+        }
+        return R.success("获取歌单列表成功", dtoList);
+    }
+
     /*
-     * 歌手相关
+     * 歌手模块
      */
     public R getSingerBaseInfo(Long singerId) {
         R result = singerService.getSingerInfo(singerId);
-        if(!result.getPassed()){
+        if (!result.getPassed()) {
             return result;
         }
         SingerBaseDTO singerBaseDTO = new SingerBaseDTO();
         BeanUtils.copyProperties(result.getData(), singerBaseDTO);
-        return R.success("获取成功",singerBaseDTO);
+        return R.success("获取成功", singerBaseDTO);
     }
 
     public R getSingerDetailsInfo(Long singerId) {
         R result = singerService.getSingerInfo(singerId);
-        if(!result.getPassed()){
+        if (!result.getPassed()) {
             return result;
         }
         SingerDetailsDTO singerDetailsDTO = new SingerDetailsDTO();
         BeanUtils.copyProperties(result.getData(), singerDetailsDTO);
         R songs = songService.getSingerSongs(singerId);
-        singerDetailsDTO.setSongs((List<SongBaseDTO>)songs.getData());
-        return R.success("获取成功",singerDetailsDTO);
+        @SuppressWarnings("unchecked")
+        List<SongBaseDTO> songList = (List<SongBaseDTO>) songs.getData();
+        singerDetailsDTO.setSongs(songList);
+        return R.success("获取成功", singerDetailsDTO);
     }
 
     public R createSinger(SingerCreateRequest singerCreateRequest) {
@@ -194,21 +216,21 @@ public class MusicAppService {
     public R deleteSinger(Long singerId) {
         try {
             singerService.deleteSinger(singerId);
-        }catch (Exception e) {
-            return R.error("删除失败"+e.getMessage());
+        } catch (Exception e) {
+            return R.error("删除失败" + e.getMessage());
         }
         return R.success("删除成功");
     }
 
-
-    public R updateSingerProfile(SingerFieldsUpdateRequest singerFieldsUpdateRequest){
+    public R updateSingerProfile(SingerFieldsUpdateRequest singerFieldsUpdateRequest) {
         Singer singer = new Singer();
         BeanUtils.copyProperties(singerFieldsUpdateRequest, singer);
         return singerService.updateSinger(singer);
     }
 
-    public R updateSingerAvatar(Long id, MultipartFile avatarFile, String md5){
-        return singerService.updateSingerAvatar(id,avatarFile);
+    public R updateSingerAvatar(Long id, MultipartFile avatarFile, String md5) {
+        return singerService.updateSingerAvatar(id, avatarFile);
     }
 
 }
+

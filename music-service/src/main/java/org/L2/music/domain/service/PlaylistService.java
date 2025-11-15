@@ -17,6 +17,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 
 @Service
@@ -44,12 +45,15 @@ public class PlaylistService {
         if (playlistMapper.selectById(playlistId) == null) {
             return R.error("歌单不存在");
         }
-        boolean flag = stringRedisTemplate.opsForSet()
-                .isMember("playlist:" + playlistId, String.valueOf(songId));
-        if (flag) {
+        boolean exists = Boolean.TRUE.equals(
+                stringRedisTemplate.opsForSet()
+                        .isMember("playlist:" + playlistId, String.valueOf(songId))
+        );
+        if (exists) {
             stringRedisTemplate.opsForSet().remove("playlist:" + playlistId, String.valueOf(songId));
         } else {
-            if (stringRedisTemplate.opsForSet().size("playlist:" + playlistId) >= Constants.MAX_PLAYLIST_SIZE) {
+            Long size = stringRedisTemplate.opsForSet().size("playlist:" + playlistId);
+            if (size != null && size >= Constants.MAX_PLAYLIST_SIZE) {
                 return R.error("歌单歌曲数量已达上限");
             }
             stringRedisTemplate.opsForSet().add("playlist:" + playlistId, String.valueOf(songId));
@@ -75,7 +79,10 @@ public class PlaylistService {
         if (playlist.getName() == null || playlist.getName().isEmpty()) {
             return R.error("歌单名称不能为空");
         }
-        playlist.setVisibility((byte) 1);
+        if (playlist.getVisibility() == null) {
+            // 默认设为私有
+            playlist.setVisibility((byte) 1);
+        }
         try {
             playlistMapper.insert(playlist);
         } catch (Exception e) {
@@ -87,7 +94,7 @@ public class PlaylistService {
     public R getPlaylistInfo(Long playlistId) {
         try {
             Playlist playlist = playlistMapper.selectById(playlistId);
-            // TODO: 需要鉴权；还要考虑可见性的情况
+            // TODO: 这里后续可以加上基于 visibility 的权限校验
             if (playlist == null) {
                 return R.error("歌单不存在");
             }
@@ -126,9 +133,42 @@ public class PlaylistService {
                 return R.error("当前用户没有播放列表");
             }
             stringRedisTemplate.delete("playlist:" + query.get(0).getId());
-            return R.success("清空成功");
+            return R.success("清除成功");
         } catch (Exception e) {
-            return R.error("清空失败" + e.getMessage());
+            return R.error("清除失败" + e.getMessage());
+        }
+    }
+
+    /**
+     * 发现更多歌单：只返回普通歌单类型，排除其他用户的私人歌单。
+     *
+     * @param currentUserId 当前用户 ID，可以为 null
+     */
+    public R discoverPlaylists(Long currentUserId) {
+        try {
+            Playlist condition = new Playlist().setType(Constants.PLAYLIST);
+            List<Playlist> all = playlistMapper.query(condition);
+            if (all == null || all.isEmpty()) {
+                return R.success("获取歌单列表成功", List.of());
+            }
+
+            List<Playlist> result = new ArrayList<>();
+            for (Playlist playlist : all) {
+                Byte visibility = playlist.getVisibility();
+                Long ownerId = playlist.getUserId();
+
+                boolean isPrivate = visibility != null && Byte.valueOf((byte) 1).equals(visibility);
+                boolean isOwner = currentUserId != null && ownerId != null && ownerId.equals(currentUserId);
+
+                // 别人的私人歌单不展示
+                if (isPrivate && !isOwner) {
+                    continue;
+                }
+                result.add(playlist);
+            }
+            return R.success("获取歌单列表成功", result);
+        } catch (Exception e) {
+            return R.error("获取歌单列表失败" + e.getMessage());
         }
     }
 
@@ -146,3 +186,4 @@ public class PlaylistService {
         }
     }
 }
+

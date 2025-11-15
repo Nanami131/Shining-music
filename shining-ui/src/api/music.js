@@ -60,6 +60,11 @@ export default {
     managePlaylistSong(data) {
         return api.post('/music/playlist/song', data);
     },
+    discoverPlaylists(userId) {
+        return api.get('/music/discover/playlists', {
+            params: { userId },
+        });
+    },
     getPlaylistBaseInfo(playlistId) {
         return api.get(`/music/info/playlist/${playlistId}`);
     },

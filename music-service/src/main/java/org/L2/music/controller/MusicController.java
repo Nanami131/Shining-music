@@ -198,6 +198,16 @@ public class MusicController {
         return musicAppService.getPlaylistDetailsInfo(playlistId);
     }
 
+    /**
+     * 发现更多歌单
+     * @param userId 当前用户 ID，可选
+     * @return 符合条件的歌单列表
+     */
+    @GetMapping("/discover/playlists")
+    public R discoverPlaylists(@RequestParam(value = "userId", required = false) Long userId) {
+        return musicAppService.discoverPlaylists(userId);
+    }
+
     /*
      * 歌手相关
      */
