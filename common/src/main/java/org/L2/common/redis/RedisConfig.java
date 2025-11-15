@@ -1,4 +1,4 @@
-package org.L2.common.config;
+package org.L2.common.redis;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.cache.annotation.CachingConfigurerSupport;

@@ -35,6 +35,7 @@
         <minio.version>8.5.10</minio.version>
         <aspectj.version>1.9.9.1</aspectj.version>
         <feign.version>4.1.1</feign.version>
+        <spring-amqp.version>3.1.6</spring-amqp.version>
     </properties>
 
     <dependencyManagement>
@@ -166,6 +167,12 @@
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-starter-aop</artifactId>
                 <version>${spring-boot.version}</version>
+            </dependency>
+            <!-- RabbitMQ -->
+            <dependency>
+                <groupId>org.springframework.boot</groupId>
+                <artifactId>spring-boot-starter-amqp</artifactId>
+                <version>${spring-amqp.version}</version>
             </dependency>
         </dependencies>
     </dependencyManagement>
