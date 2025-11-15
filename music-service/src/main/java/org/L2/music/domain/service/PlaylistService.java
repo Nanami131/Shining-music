@@ -45,9 +45,9 @@ public class PlaylistService {
         if(playlistMapper.selectById(playlistId)==null){
             return R.error("歌单不存在");
         }
-        boolean flag= stringRedisTemplate.opsForSet().isMember("playlist:"+playlistId,songId);
+        boolean flag= stringRedisTemplate.opsForSet().isMember("playlist:"+playlistId, String.valueOf(songId));
         if(flag){
-            stringRedisTemplate.opsForSet().remove("playlist:" + playlistId, songId);
+            stringRedisTemplate.opsForSet().remove("playlist:" + playlistId, String.valueOf(songId));
         }
         else{
             if(stringRedisTemplate.opsForSet().size("playlist:" + playlistId)>= Constants.MAX_PLAYLIST_SIZE){

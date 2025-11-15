@@ -71,7 +71,7 @@
       <form @submit.prevent="handleManagePlaylistSong">
         <div class="form-item">
           <label>歌单 ID</label>
-          <input v-model="songForm.Id" type="number" placeholder="请输入歌单 ID" required />
+          <input v-model="songForm.playlistId" type="number" placeholder="请输入歌单 ID" required />
         </div>
         <div class="form-item">
           <label>歌曲 ID</label>
@@ -92,20 +92,20 @@ export default {
   data() {
     return {
       createForm: {
-        id: null,
+        playlistId: null,
         name: '',
         description: '',
         type: 0,
         visibility: 0,
       },
       coverForm: {
-        id: null,
+        playlistId: null,
         file: null,
         md5: '',
       },
       deletePlaylistId: null,
       songForm: {
-        Id: null,
+        playlistId: null,
         songId: null,
       },
     };
@@ -144,7 +144,7 @@ export default {
         );
         if (response.data.passed) {
           alert('上传歌单封面成功');
-          this.coverForm = { id: null, file: null, md5: '' };
+          this.coverForm = { playlistId: null, file: null, md5: '' };
         } else {
           alert('上传歌单封面失败：' + response.data.message);
         }
@@ -170,7 +170,7 @@ export default {
         const response = await musicApi.managePlaylistSong(this.songForm);
         if (response.data.passed) {
           alert('管理歌单歌曲成功');
-          this.songForm = { Id: null, songId: null };
+          this.songForm = { playlistId: null, songId: null };
         } else {
           alert('管理歌单歌曲失败：' + response.data.message);
         }
