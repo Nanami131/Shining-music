@@ -1,24 +1,35 @@
 <template>
   <div class="singer-detail-container">
-    <h2>{{ singer.name || '未知歌手' }}</h2>
-    <div class="singer-content">
-      <img :src="singer.avatarUrl || defaultAvatar" class="singer-avatar" alt="歌手头像" />
-      <div class="singer-info">
-        <p><strong>流派：</strong>{{ singer.genre || '未知' }}</p>
-        <p><strong>地区：</strong>{{ singer.country || '未知' }}</p>
-        <p><strong>简介：</strong>{{ singer.profile || '无简介' }}</p>
-        <p><strong>状态：</strong>{{ singer.status === 0 ? '活跃' : '退役' }}</p>
-        <p><strong>性别：</strong>{{ singer.sex === 0 ? '男' : singer.sex === 1 ? '女' : '其他' }}</p>
-      </div>
-    </div>
-    <h3>歌曲列表</h3>
-    <div class="songs-list">
-      <div v-for="song in singer.songs" :key="song.id" class="song-card">
-        <img :src="song.coverUrl || defaultCover" class="song-cover" alt="歌曲封面" />
-        <div class="song-info">
-          <h4>{{ song.title || '未知歌曲' }}</h4>
+    <div v-if="isLoaded">
+      <h2>{{ singer.name || '未知歌手' }}</h2>
+      <div class="singer-content">
+        <img :src="singer.avatarUrl || defaultAvatar" class="singer-avatar" alt="歌手头像" />
+        <div class="singer-info">
+          <p><strong>风格：</strong>{{ singer.genre || '未知' }}</p>
+          <p><strong>国家：</strong>{{ singer.country || '未知' }}</p>
+          <p><strong>简介：</strong>{{ singer.profile || '暂无简介' }}</p>
+          <p><strong>状态：</strong>{{ singer.status === 0 ? '活跃' : '停更' }}</p>
+          <p><strong>性别：</strong>{{ singer.sex === 0 ? '男' : singer.sex === 1 ? '女' : '其他' }}</p>
         </div>
       </div>
+      <h3>歌曲列表</h3>
+      <div class="songs-list">
+        <div
+          v-for="song in singer.songs"
+          :key="song.id"
+          class="song-card"
+          @click="goToSong(song.id)"
+        >
+          <img :src="song.coverUrl || defaultCover" class="song-cover" alt="歌曲封面" />
+          <div class="song-info">
+            <h4>{{ song.title || '未知歌曲' }}</h4>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div v-else-if="hasError">
+      <h2>歌手信息加载失败</h2>
+      <p>请稍后重试。</p>
     </div>
   </div>
 </template>
@@ -32,9 +43,11 @@ export default {
   name: 'SingerDetail',
   data() {
     return {
-      singer: {},
+      singer: null,
       defaultAvatar,
       defaultCover,
+      isLoaded: false,
+      hasError: false,
     };
   },
   created() {
@@ -42,17 +55,25 @@ export default {
   },
   methods: {
     async loadSingerDetails() {
+      this.isLoaded = false;
+      this.hasError = false;
       try {
         const singerId = this.$route.params.id;
         const response = await musicApi.getSingerDetailsInfo(singerId);
         if (response.data.passed) {
           this.singer = response.data.data;
+          this.isLoaded = true;
         } else {
-          alert('获取歌手详情失败：' + response.data.message);
+          this.hasError = true;
+          alert('获取歌手信息失败：' + response.data.message);
         }
       } catch (error) {
-        alert('获取歌手详情出错：' + error.message);
+        this.hasError = true;
+        alert('获取歌手信息出错：' + error.message);
       }
+    },
+    goToSong(songId) {
+      this.$router.push(`/song/${songId}`);
     },
   },
 };
@@ -97,6 +118,11 @@ h3 {
   border-radius: 8px;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
   padding: 15px;
+  cursor: pointer;
+  transition: transform 0.2s;
+}
+.song-card:hover {
+  transform: scale(1.05);
 }
 .song-cover {
   width: 100%;
@@ -110,3 +136,4 @@ h3 {
   font-size: 16px;
 }
 </style>
+

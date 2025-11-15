@@ -1,51 +1,77 @@
 <template>
   <div class="song-detail-container">
-    <h2>{{ song.title || '未知歌曲' }}</h2>
-    <div class="song-content">
-      <img :src="song.coverUrl || defaultCover" class="song-cover" alt="歌曲封面" />
-      <div class="song-info">
-        <p><strong>歌手 ID：</strong>{{ song.artistId || '未知' }}</p>
-        <p><strong>专辑 ID：</strong>{{ song.albumId || '未知' }}</p>
-        <p><strong>状态：</strong>{{ song.status || '未知' }}</p>
-        <p><strong>创建时间：</strong>{{ song.createdAt || '未知' }}</p>
-        <p><strong>更新时间：</strong>{{ song.updatedAt || '未知' }}</p>
-        <button class="play-btn" @click="playSong">播放</button>
+    <div v-if="isLoaded">
+      <h2>{{ song.title || '未知歌曲' }}</h2>
+      <div class="song-content">
+        <img :src="song.coverUrl || defaultCover" class="song-cover" alt="歌曲封面" />
+        <div class="song-info">
+          <p><strong>歌手 ID：</strong>{{ song.artistId || '未知' }}</p>
+          <p><strong>专辑 ID：</strong>{{ song.albumId || '未知' }}</p>
+          <p><strong>状态：</strong>{{ song.status || '未知' }}</p>
+          <p><strong>创建时间：</strong>{{ song.createdAt || '未知' }}</p>
+          <p><strong>更新时间：</strong>{{ song.updatedAt || '未知' }}</p>
+          <button class="play-btn" @click="playSong">播放</button>
+        </div>
+      </div>
+      <h3>歌词</h3>
+      <div class="lyrics-panel">
+        <div class="lyric-header">
+          <div class="controls">
+            <div class="lyrics-select">
+              <select v-model="selectedLyricId" @change="loadSelectedLyrics">
+                <option v-for="lyric in allLyrics" :key="lyric.id" :value="lyric.id">
+                  歌词版本 {{ lyric.id }}
+                </option>
+              </select>
+            </div>
+            <div class="lang-select">
+              <span
+                class="lang-btn"
+                :class="{ active: selectedLang === 'zh' }"
+                @click="setLanguage('zh')"
+              >
+                中
+              </span>
+              <span
+                class="lang-btn"
+                :class="{ active: selectedLang === 'ja' }"
+                @click="setLanguage('ja')"
+              >
+                日
+              </span>
+              <span
+                class="lang-btn"
+                :class="{ active: selectedLang === 'all' }"
+                @click="setLanguage('all')"
+              >
+                全
+              </span>
+            </div>
+          </div>
+        </div>
+        <div class="lyrics-content">
+          <div v-for="(line, index) in parsedLyrics" :key="index" class="lyrics-group">
+            <div class="lyric-line">
+              <template v-if="selectedLang === 'all'">
+                <p v-if="line.zh">{{ line.zh }}</p>
+                <p v-if="line.ja">{{ line.ja }}</p>
+                <p v-if="!line.zh && !line.ja">暂无对应歌词</p>
+              </template>
+              <template v-else>
+                <p v-if="line[selectedLang]">{{ line[selectedLang] }}</p>
+                <p v-else>暂无对应歌词</p>
+              </template>
+            </div>
+          </div>
+          <p v-if="!parsedLyrics.length" class="no-lyric">
+            <span>暂无歌词</span>
+          </p>
+        </div>
       </div>
     </div>
-    <h3>歌词</h3>
-    <div class="lyrics-panel">
-      <div class="lyric-header">
-        <div class="controls">
-          <div class="lyrics-select">
-            <select v-model="selectedLyricId" @change="loadSelectedLyrics">
-              <option v-for="lyric in allLyrics" :key="lyric.id" :value="lyric.id">
-                歌词版本 {{ lyric.id }}
-              </option>
-            </select>
-          </div>
-          <div class="lang-select">
-            <span class="lang-btn" :class="{ active: selectedLang === 'zh' }" @click="setLanguage('zh')">中</span>
-            <span class="lang-btn" :class="{ active: selectedLang === 'ja' }" @click="setLanguage('ja')">日</span>
-            <span class="lang-btn" :class="{ active: selectedLang === 'all' }" @click="setLanguage('all')">全</span>
-          </div>
-        </div>
-      </div>
-      <div class="lyrics-content">
-        <div v-for="(line, index) in parsedLyrics" :key="index" class="lyrics-group">
-          <div class="lyric-line">
-            <template v-if="selectedLang === 'all'">
-              <p v-if="line.zh">{{ line.zh }}</p>
-              <p v-if="line.ja">{{ line.ja }}</p>
-              <p v-if="!line.zh && !line.ja">无歌词内容</p>
-            </template>
-            <template v-else>
-              <p v-if="line[selectedLang]">{{ line[selectedLang] }}</p>
-              <p v-else>无歌词内容</p>
-            </template>
-          </div>
-        </div>
-        <p v-if="!parsedLyrics.length" class="no-lyric"><span>暂无歌词</span></p>
-      </div>
+    <div v-else-if="hasError">
+      <h2>歌曲信息加载失败</h2>
+      <p>请稍后重试。</p>
     </div>
   </div>
 </template>
@@ -58,12 +84,14 @@ export default {
   name: 'SongDetail',
   data() {
     return {
-      song: {},
+      song: null,
       allLyrics: [],
       selectedLyricId: null,
       selectedLang: 'zh',
       parsedLyrics: [],
       defaultCover,
+      isLoaded: false,
+      hasError: false,
     };
   },
   created() {
@@ -71,16 +99,21 @@ export default {
   },
   methods: {
     async loadSongDetails() {
+      this.isLoaded = false;
+      this.hasError = false;
       try {
         const songId = this.$route.params.id;
         const response = await musicApi.getSongDetailsInfo(songId);
         if (response.data.passed) {
           this.song = response.data.data;
           await this.loadAllLyrics(songId);
+          this.isLoaded = true;
         } else {
+          this.hasError = true;
           alert('获取歌曲详情失败：' + response.data.message);
         }
       } catch (error) {
+        this.hasError = true;
         alert('获取歌曲详情出错：' + error.message);
       }
     },
@@ -95,13 +128,13 @@ export default {
           this.allLyrics = [];
           this.selectedLyricId = null;
           this.parsedLyrics = [];
-          alert('无歌词数据');
+          alert('暂无歌词数据');
         }
       } catch (error) {
         this.allLyrics = [];
         this.selectedLyricId = null;
         this.parsedLyrics = [];
-        alert('加载歌词出错：' + error.message);
+        alert('加载歌词失败：' + error.message);
       }
     },
     loadSelectedLyrics() {
@@ -267,3 +300,4 @@ h3 {
   color: #666;
 }
 </style>
+
