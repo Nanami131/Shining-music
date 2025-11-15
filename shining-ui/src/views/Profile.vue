@@ -101,21 +101,25 @@ export default {
     };
   },
   created() {
-    this.loadUserDetails();
     const userBase = JSON.parse(localStorage.getItem('userBase') || '{}');
+    if (!userBase.id) {
+      alert('请先登录后再查看个人信息');
+      this.$router.push('/login');
+      return;
+    }
     this.profileForm.id = userBase.id;
     this.passwordForm.id = userBase.id;
     this.avatarForm.id = userBase.id;
+    this.loadUserDetails();
   },
   methods: {
     async loadUserDetails() {
       try {
-        const userId = JSON.parse(localStorage.getItem('userBase') || '{}').id;
-        const response = await userApi.getUserDetailsInfo(userId);
+        const response = await userApi.getUserDetailsInfo(this.profileForm.id);
         if (response.data.passed) {
           this.userDetails = response.data.data;
           this.profileForm = {
-            id: userId,
+            id: this.profileForm.id,
             nickName: response.data.data.nickName || '', // 修复：确保 nickName 预加载
             email: response.data.data.email || '',
             phone: response.data.data.phone || '',
