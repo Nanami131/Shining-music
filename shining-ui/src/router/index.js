@@ -3,6 +3,8 @@ import ShiningHome from '../views/ShiningHome.vue';
 import Login from '../views/Login.vue';
 import Register from '../views/Register.vue';
 import Profile from '../views/Profile.vue';
+import MyMusic from '../views/MyMusic.vue';
+import Forum from '../views/Forum.vue';
 import SingerDetail from '../views/SingerDetail.vue';
 import PlaylistDetail from '../views/PlaylistDetail.vue';
 import SongDetail from '../views/SongDetail.vue';
@@ -34,6 +36,16 @@ const routes = [
         path: '/profile',
         name: 'profile',
         component: Profile,
+    },
+    {
+        path: '/my-music',
+        name: 'my-music',
+        component: MyMusic,
+    },
+    {
+        path: '/forum',
+        name: 'forum',
+        component: Forum,
     },
     {
         path: '/singers',
