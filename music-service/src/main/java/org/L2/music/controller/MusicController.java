@@ -104,11 +104,6 @@ public class MusicController {
         return musicAppService.getUserFavoriteSongs(userId);
     }
 
-    @GetMapping("/favorite/songs")
-    public R getUserFavoriteSongsCompat(@RequestParam("userId") Long userId) {
-        return musicAppService.getUserFavoriteSongs(userId);
-    }
-
     /**
      * 获取歌曲所有歌词
      * @param songId
