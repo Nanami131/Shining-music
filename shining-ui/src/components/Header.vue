@@ -1,6 +1,6 @@
 <template>
   <div class="header">
-    <div class="logo">音乐社区</div>
+    <div class="logo">Shining</div>
     <div class="nav">
       <span class="nav-item" @click="goToDiscover">发现音乐</span>
       <span class="nav-item" @click="goToMyMusic">我的音乐</span>
@@ -135,9 +135,11 @@ export default {
   gap: 14px;
   padding: 4px 10px;
   border-radius: 999px;
-  background: radial-gradient(circle at 50% 0%, rgba(148, 163, 184, 0.28), transparent 60%);
+  background:
+    radial-gradient(circle at 0 0, rgba(96, 165, 250, 0.55), transparent 55%),
+    radial-gradient(circle at 100% 100%, rgba(45, 212, 191, 0.45), transparent 55%);
   backdrop-filter: blur(18px);
-  box-shadow: 0 0 18px rgba(148, 163, 184, 0.45);
+  box-shadow: 0 0 22px rgba(56, 189, 248, 0.65);
 }
 .nav-item {
   position: relative;
@@ -145,26 +147,29 @@ export default {
   cursor: pointer;
   padding: 6px 14px;
   border-radius: 999px;
-  color: #e5e7eb;
-  transition: color 0.2s ease, transform 0.2s ease;
+  color: #f9fafb;
+  transition: color 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease;
 }
 .nav-item::before {
   content: '';
   position: absolute;
   inset: 0;
   border-radius: inherit;
-  background: radial-gradient(circle at 0 0, rgba(96, 165, 250, 0.85), transparent 55%),
-              radial-gradient(circle at 100% 100%, rgba(56, 189, 248, 0.85), transparent 55%);
+  background:
+    radial-gradient(circle at 0 0, rgba(129, 230, 217, 0.95), transparent 55%),
+    radial-gradient(circle at 100% 100%, rgba(96, 165, 250, 0.95), transparent 55%);
   opacity: 0;
-  transition: opacity 0.25s ease;
+  transition: opacity 0.25s ease, transform 0.25s ease;
   z-index: -1;
 }
 .nav-item:hover::before {
   opacity: 1;
+  transform: scale(1.06);
 }
 .nav-item:hover {
   color: #0f172a;
   transform: translateY(-1px);
+  box-shadow: 0 0 18px rgba(59, 130, 246, 0.75);
 }
 .actions {
   display: flex;
@@ -203,3 +208,4 @@ export default {
   background: radial-gradient(circle at 0% 0%, rgba(248, 250, 252, 0.7), transparent 60%);
 }
 </style>
+
