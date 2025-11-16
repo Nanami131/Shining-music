@@ -114,9 +114,10 @@ export default {
   justify-content: space-between;
   align-items: center;
   padding: 10px 24px;
-  background: radial-gradient(circle at 0% 0%, rgba(186, 230, 253, 0.85), transparent 55%),
-              radial-gradient(circle at 100% 0%, rgba(191, 219, 254, 0.9), transparent 55%),
-              linear-gradient(90deg, rgba(15, 23, 42, 0.85), rgba(15, 23, 42, 0.7));
+  background:
+    radial-gradient(circle at 0% 0%, rgba(186, 230, 253, 0.95), transparent 55%),
+    radial-gradient(circle at 100% 0%, rgba(244, 219, 255, 0.95), transparent 55%),
+    linear-gradient(90deg, rgba(15, 23, 42, 0.92), rgba(15, 23, 42, 0.78));
   backdrop-filter: blur(14px);
   border-bottom: 1px solid rgba(255, 255, 255, 0.18);
   box-shadow: 0 10px 30px rgba(15, 23, 42, 0.35);
@@ -127,8 +128,10 @@ export default {
   font-weight: 700;
   letter-spacing: 0.16em;
   text-transform: uppercase;
-  color: #f9fafb;
-  text-shadow: 0 0 12px rgba(191, 219, 254, 0.9);
+  color: #fdf2ff;
+  text-shadow:
+    0 0 8px rgba(244, 219, 255, 0.9),
+    0 0 16px rgba(56, 189, 248, 0.7);
 }
 .nav {
   display: flex;
@@ -162,9 +165,27 @@ export default {
   transition: opacity 0.25s ease, transform 0.25s ease;
   z-index: -1;
 }
+.nav-item::after {
+  content: '';
+  position: absolute;
+  left: 18%;
+  right: 18%;
+  bottom: -4px;
+  height: 3px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, rgba(56, 189, 248, 0.0), rgba(96, 165, 250, 0.9), rgba(251, 113, 133, 0.0));
+  opacity: 0;
+  transform: scaleX(0.6);
+  transition: opacity 0.25s ease, transform 0.25s ease;
+  pointer-events: none;
+}
 .nav-item:hover::before {
   opacity: 1;
   transform: scale(1.06);
+}
+.nav-item:hover::after {
+  opacity: 1;
+  transform: scaleX(1);
 }
 .nav-item:hover {
   color: #0f172a;
