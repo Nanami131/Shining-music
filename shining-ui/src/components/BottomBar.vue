@@ -1,5 +1,5 @@
 <template>
-  <div class="bottom-bar" :class="{ 'expanded': showLyrics }">
+  <div class="bottom-bar" :class="{ expanded: showLyrics }">
     <div class="fixed-bar">
       <div class="song-info">
         <img :src="currentSong.coverUrl || defaultCover" class="song-cover" alt="歌曲封面" />
@@ -16,24 +16,39 @@
           <span class="heart-icon"></span>
         </button>
       </div>
+
       <div class="player-controls">
         <div class="progress-bar">
           <span>{{ formatTime(currentTime) }}</span>
           <input
-              type="range"
-              v-model="currentTime"
-              :max="duration"
-              @input="seek"
-              class="progress-slider"
+            type="range"
+            v-model="currentTime"
+            :max="duration"
+            @input="seek"
+            class="progress-slider"
           />
           <span>{{ formatTime(duration) }}</span>
         </div>
+
         <div class="control-buttons">
-          <button disabled>上一曲</button>
-          <button @click="togglePlay">{{ isPlaying ? '暂停' : '播放' }}</button>
-          <button disabled>下一曲</button>
+          <button class="icon-btn" @click="playPrev" :disabled="!hasPrev">
+            <span class="icon prev"></span>
+          </button>
+          <button class="icon-btn play-btn" @click="togglePlay" :disabled="!audio.src">
+            <span class="icon" :class="isPlaying ? 'pause' : 'play'"></span>
+          </button>
+          <button class="icon-btn" @click="playNext" :disabled="!hasNext">
+            <span class="icon next"></span>
+          </button>
+
+          <button class="mode-btn" @click="cyclePlayMode" :title="playModeLabel">
+            <span v-if="playMode === 'single'" class="mode-icon">单曲循环</span>
+            <span v-else-if="playMode === 'sequential'" class="mode-icon">顺序播放</span>
+            <span v-else class="mode-icon">播完停止</span>
+          </button>
         </div>
       </div>
+
       <button class="toggle-lyrics" @click="toggleLyrics">
         {{ showLyrics ? '收起歌词' : '展开歌词' }}
       </button>
@@ -49,7 +64,7 @@
               <div class="lyrics-select">
                 <select v-model="selectedLyricId" @change="loadSelectedLyrics">
                   <option v-for="lyric in allLyrics" :key="lyric.id" :value="lyric.id">
-                    歌词版本 {{ lyric.id }}
+                    版本 {{ lyric.id }}
                   </option>
                 </select>
               </div>
@@ -69,18 +84,18 @@
           <div class="lyrics-content" ref="lyricsContent" :class="'highlight-color-' + highlightColor">
             <div v-for="(line, index) in parsedLyrics" :key="index" class="lyrics-group">
               <div
-                  :class="{ active: isActiveLine(line.time, index) }"
-                  class="lyric-line"
-                  ref="lyricLines"
+                :class="{ active: isActiveLine(line.time, index) }"
+                class="lyric-line"
+                ref="lyricLines"
               >
                 <template v-if="selectedLang === 'all'">
                   <p v-if="line.zh">{{ line.zh }}</p>
                   <p v-if="line.ja">{{ line.ja }}</p>
-                  <p v-if="!line.zh && !line.ja">无歌词内容</p>
+                  <p v-if="!line.zh && !line.ja">暂无对应歌词</p>
                 </template>
                 <template v-else>
                   <p v-if="line[selectedLang]">{{ line[selectedLang] }}</p>
-                  <p v-else>无歌词内容</p>
+                  <p v-else>暂无对应歌词</p>
                 </template>
               </div>
             </div>
@@ -113,7 +128,27 @@ export default {
       defaultCover,
       highlightColor: 'pink',
       userId: null,
+      playMode: 'stop', // stop | sequential | single
+      playlist: [],
+      currentIndex: -1,
     };
+  },
+  computed: {
+    hasPrev() {
+      return this.playlist.length > 0 && this.currentIndex > 0;
+    },
+    hasNext() {
+      return (
+        this.playlist.length > 0 &&
+        this.currentIndex >= 0 &&
+        this.currentIndex < this.playlist.length - 1
+      );
+    },
+    playModeLabel() {
+      if (this.playMode === 'single') return '单曲循环';
+      if (this.playMode === 'sequential') return '顺序播放';
+      return '播完停止';
+    },
   },
   created() {
     const userBase = JSON.parse(localStorage.getItem('userBase') || '{}');
@@ -121,18 +156,26 @@ export default {
     this.audio.addEventListener('timeupdate', this.updateProgress);
     this.audio.addEventListener('loadedmetadata', this.updateDuration);
     this.audio.addEventListener('ended', this.handleEnded);
-    this.$bus.on('playSong', this.playSong);
+    this.$bus.on('playSong', this.handlePlaySongEvent);
   },
   beforeDestroy() {
     this.audio.removeEventListener('timeupdate', this.updateProgress);
     this.audio.removeEventListener('loadedmetadata', this.updateDuration);
     this.audio.removeEventListener('ended', this.handleEnded);
-    this.$bus.off('playSong', this.playSong);
+    this.$bus.off('playSong', this.handlePlaySongEvent);
     this.audio.pause();
     this.audio.src = '';
   },
   methods: {
-    async playSong({ songId }) {
+    async handlePlaySongEvent({ songId, playlist, index }) {
+      if (Array.isArray(playlist)) {
+        this.playlist = playlist;
+        this.currentIndex =
+          typeof index === 'number' ? index : playlist.findIndex(id => id === songId);
+      }
+      await this.playSong(songId);
+    },
+    async playSong(songId) {
       try {
         this.audio.pause();
         this.audio.src = '';
@@ -147,10 +190,52 @@ export default {
           this.isPlaying = true;
           this.loadAllLyrics(songId);
         } else {
-          alert('获取歌曲详情失败：' + response.data.message);
+          alert('获取歌曲信息失败：' + response.data.message);
         }
       } catch (error) {
-        alert('播放歌曲出错：' + error.message);
+        alert('播放歌曲失败：' + error.message);
+      }
+    },
+    playPrev() {
+      if (!this.hasPrev) return;
+      this.currentIndex -= 1;
+      const prevId = this.playlist[this.currentIndex];
+      if (prevId != null) {
+        this.playSong(prevId);
+      }
+    },
+    playNext() {
+      if (!this.hasNext) return;
+      this.currentIndex += 1;
+      const nextId = this.playlist[this.currentIndex];
+      if (nextId != null) {
+        this.playSong(nextId);
+      }
+    },
+    handleEnded() {
+      if (this.playMode === 'single') {
+        if (this.currentSong && this.currentSong.id) {
+          this.playSong(this.currentSong.id);
+        }
+      } else if (this.playMode === 'sequential') {
+        if (this.hasNext) {
+          this.playNext();
+        } else {
+          this.isPlaying = false;
+          this.currentTime = 0;
+        }
+      } else {
+        this.isPlaying = false;
+        this.currentTime = 0;
+      }
+    },
+    cyclePlayMode() {
+      if (this.playMode === 'stop') {
+        this.playMode = 'sequential';
+      } else if (this.playMode === 'sequential') {
+        this.playMode = 'single';
+      } else {
+        this.playMode = 'stop';
       }
     },
     async toggleFavoriteFromPlayer() {
@@ -158,7 +243,7 @@ export default {
         return;
       }
       if (!this.userId) {
-        alert('请先登录后再收藏歌曲');
+        alert('请先登录再收藏歌曲');
         return;
       }
       try {
@@ -188,13 +273,11 @@ export default {
           this.allLyrics = [];
           this.selectedLyricId = null;
           this.parsedLyrics = [];
-          alert('无歌词数据');
         }
       } catch (error) {
         this.allLyrics = [];
         this.selectedLyricId = null;
         this.parsedLyrics = [];
-        alert('加载歌词出错：' + error.message);
       }
     },
     loadSelectedLyrics() {
@@ -229,8 +312,8 @@ export default {
     },
     isActiveLine(time, index) {
       const isActive =
-          this.currentTime >= time &&
-          (index + 1 >= this.parsedLyrics.length || this.currentTime < this.parsedLyrics[index + 1].time);
+        this.currentTime >= time &&
+        (index + 1 >= this.parsedLyrics.length || this.currentTime < this.parsedLyrics[index + 1].time);
       if (isActive && this.showLyrics) {
         this.$nextTick(() => this.scrollToActiveLine(index));
       }
@@ -259,171 +342,40 @@ export default {
       }
     },
     updateProgress() {
-      this.currentTime = this.audio.currentTime;
+      this.currentTime = this.audio.currentTime || 0;
     },
     updateDuration() {
       this.duration = this.audio.duration || 0;
     },
     seek() {
-      if (this.currentSong.fileUrl) {
-        this.audio.pause();
-        this.audio.src = this.currentSong.fileUrl;
+      if (this.audio.src) {
         this.audio.currentTime = this.currentTime;
-        if (this.currentTime < this.duration && this.isPlaying) {
-          this.audio.play();
-        }
       }
-    },
-    handleEnded() {
-      this.currentTime = 0;
-      this.isPlaying = false;
-      this.audio.currentTime = 0;
-    },
-    formatTime(seconds) {
-      if (!seconds) return '00:00';
-      const min = Math.floor(seconds / 60);
-      const sec = Math.floor(seconds % 60);
-      return `${min.toString().padStart(2, '0')}:${sec.toString().padStart(2, '0')}`;
     },
     toggleLyrics() {
       this.showLyrics = !this.showLyrics;
     },
+    setLanguage(lang) {
+      this.selectedLang = lang;
+    },
     setHighlightColor(color) {
       this.highlightColor = color;
     },
-    setLanguage(lang) {
-      this.selectedLang = lang;
+    formatTime(time) {
+      if (!time || isNaN(time)) return '00:00';
+      const minutes = Math.floor(time / 60)
+        .toString()
+        .padStart(2, '0');
+      const seconds = Math.floor(time % 60)
+        .toString()
+        .padStart(2, '0');
+      return `${minutes}:${seconds}`;
     },
   },
 };
 </script>
 
 <style scoped>
-.lyric-panel {
-  width: 100%;
-  overflow: hidden;
-  position: relative;
-  background: rgba(255, 255, 255, 0.1);
-  padding: 0 25px;
-}
-
-.lyric-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 15px 0;
-  height: 60px;
-}
-.lyric-header .title {
-  font-size: 20px;
-  color: #2c3e50;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 1px;
-}
-.lyric-header .controls {
-  display: flex;
-  gap: 20px;
-  align-items: center;
-}
-.lyrics-select select {
-  padding: 4px;
-  border-radius: 4px;
-  border: 1px solid #ccc;
-  font-size: 14px;
-  cursor: pointer;
-}
-.lang-select,
-.color-select {
-  display: flex;
-  gap: 10px;
-}
-.lang-btn {
-  width: 36px;
-  height: 36px;
-  line-height: 36px;
-  text-align: center;
-  border-radius: 50%;
-  background: #dfe6e9;
-  color: #636e72;
-  font-size: 14px;
-  cursor: pointer;
-  transition: all 0.3s ease;
-}
-.lang-btn:hover {
-  background: #b2bec3;
-  color: #fff;
-}
-.lang-btn.active {
-  background: var(--highlight-color);
-  color: #fff;
-  box-shadow: 0 0 8px rgba(0, 0, 0, 0.2);
-  transform: scale(1.1);
-}
-.color-btn {
-  width: 24px;
-  height: 24px;
-  border-radius: 50%;
-  cursor: pointer;
-  transition: all 0.3s ease;
-  border: 2px solid #fff;
-}
-.color-btn.pink {
-  background: #ff6b81;
-}
-.color-btn.blue {
-  background: #3498db;
-}
-.color-btn.purple {
-  background: #9b59b6;
-}
-.color-btn.green {
-  background: #2ecc71;
-}
-.color-btn:hover {
-  transform: scale(1.2);
-}
-.color-btn.active {
-  box-shadow: 0 0 6px rgba(0, 0, 0, 0.3);
-  transform: scale(1.2);
-}
-
-.lyrics-content {
-  max-height: 140px;
-  padding: 20px;
-  overflow-y: auto;
-  background: #edf1f6;
-  text-align: center;
-}
-.lyrics-content.highlight-color-pink .lyric-line {
-  color: #ff6b81;
-}
-.lyrics-content.highlight-color-blue .lyric-line {
-  color: #3498db;
-}
-.lyrics-content.highlight-color-green .lyric-line {
-  color: #2ecc71;
-}
-.lyrics-content.highlight-color-purple .lyric-line {
-  color: #9b59b6;
-}
-.lyrics-content.highlight-color-pink .lyric-line.active {
-  --highlight-color: #ff6b81;
-  --highlight-bg: rgba(255, 107, 129, 0.2);
-}
-.lyrics-content.highlight-color-blue .lyric-line.active {
-  --highlight-color: #3498db;
-  --highlight-bg: rgba(52, 152, 219, 0.2);
-}
-.lyrics-content.highlight-color-green .lyric-line.active {
-  --highlight-color: #2ecc71;
-  --highlight-bg: rgba(46, 204, 113, 0.2);
-}
-.lyrics-content.highlight-color-purple .lyric-line.active {
-  --highlight-color: #9b59b6;
-  --highlight-bg: rgba(155, 89, 182, 0.2);
-}
-
 .bottom-bar {
   position: fixed;
   bottom: 0;
@@ -537,21 +489,76 @@ export default {
 }
 .control-buttons {
   display: flex;
-  gap: 10px;
+  gap: 8px;
   justify-content: center;
+  align-items: center;
 }
-.control-buttons button {
-  padding: 6px 12px;
+.icon-btn {
+  width: 40px;
+  height: 40px;
+  border-radius: 20px;
+  border: 1px solid rgba(148, 163, 184, 0.7);
+  background: transparent;
+  box-shadow: 0 0 10px rgba(148, 163, 184, 0.35);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  padding: 0;
+  backdrop-filter: blur(4px);
+}
+.icon-btn:hover {
+  box-shadow: 0 0 14px rgba(79, 172, 254, 0.55);
+  border-color: rgba(79, 172, 254, 0.9);
+}
+.icon-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  box-shadow: none;
+}
+.play-btn {
+  width: 46px;
+  height: 46px;
+  border-radius: 23px;
+  border-color: rgba(79, 172, 254, 0.9);
+  box-shadow: 0 0 16px rgba(79, 172, 254, 0.6);
+}
+.icon {
+  display: block;
+  width: 24px;
+  height: 24px;
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: contain;
+}
+.icon.play {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M9 6l8 6-8 6z' fill='none' stroke='%234facfe' stroke-width='2.2' stroke-linejoin='round'/%3E%3C/svg%3E");
+}
+.icon.pause {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect x='7' y='6' width='3.5' height='12' rx='1.2' fill='none' stroke='%234facfe' stroke-width='2'/%3E%3Crect x='13.5' y='6' width='3.5' height='12' rx='1.2' fill='none' stroke='%234facfe' stroke-width='2'/%3E%3C/svg%3E");
+}
+.icon.prev,
+.icon.next {
+  width: 24px;
+  height: 24px;
+}
+.icon.prev {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M9 6v12' stroke='%234b5563' stroke-width='2' stroke-linecap='round'/%3E%3Cpath d='M17 6l-7 6 7 6z' fill='none' stroke='%234b5563' stroke-width='2' stroke-linejoin='round'/%3E%3C/svg%3E");
+}
+.icon.next {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M15 6v12' stroke='%234b5563' stroke-width='2' stroke-linecap='round'/%3E%3Cpath d='M7 6l7 6-7 6z' fill='none' stroke='%234b5563' stroke-width='2' stroke-linejoin='round'/%3E%3C/svg%3E");
+}
+.mode-btn {
+  padding: 4px 10px;
+  border-radius: 999px;
   border: none;
-  border-radius: 4px;
-  background: linear-gradient(to right, #4facfe, #00f2fe);
-  color: white;
-  font-size: 14px;
+  background: #f1f5f9;
+  color: #1e293b;
+  font-size: 12px;
   cursor: pointer;
 }
-.control-buttons button:disabled {
-  background: #ccc;
-  cursor: not-allowed;
+.mode-icon {
+  font-size: 12px;
 }
 .toggle-lyrics {
   padding: 6px 12px;
@@ -587,6 +594,117 @@ export default {
   display: flex;
   flex-direction: column;
 }
+.lyric-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 20px 0;
+}
+.lyric-header .title {
+  font-weight: bold;
+}
+.lyric-header .controls {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+.lyrics-select select {
+  padding: 4px;
+  border-radius: 4px;
+  border: 1px solid #ccc;
+  font-size: 14px;
+  cursor: pointer;
+}
+.lang-select {
+  display: flex;
+  gap: 6px;
+}
+.lang-btn {
+  width: 28px;
+  height: 28px;
+  line-height: 28px;
+  text-align: center;
+  border-radius: 50%;
+  background: #dfe6e9;
+  color: #636e72;
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+.lang-btn:hover {
+  background: #b2bec3;
+  color: #fff;
+}
+.lang-btn.active {
+  background: #4facfe;
+  color: #fff;
+  box-shadow: 0 0 8px rgba(0, 0, 0, 0.2);
+  transform: scale(1.1);
+}
+.color-btn {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  border: 2px solid #fff;
+}
+.color-btn.pink {
+  background: #ff6b81;
+}
+.color-btn.blue {
+  background: #3498db;
+}
+.color-btn.purple {
+  background: #9b59b6;
+}
+.color-btn.green {
+  background: #2ecc71;
+}
+.color-btn:hover {
+  transform: scale(1.2);
+}
+.color-btn.active {
+  box-shadow: 0 0 6px rgba(0, 0, 0, 0.3);
+  transform: scale(1.2);
+}
+
+.lyrics-content {
+  max-height: 140px;
+  padding: 20px;
+  overflow-y: auto;
+  background: #edf1f6;
+  text-align: center;
+}
+.lyrics-content.highlight-color-pink .lyric-line {
+  color: #ff6b81;
+}
+.lyrics-content.highlight-color-blue .lyric-line {
+  color: #3498db;
+}
+.lyrics-content.highlight-color-green .lyric-line {
+  color: #2ecc71;
+}
+.lyrics-content.highlight-color-purple .lyric-line {
+  color: #9b59b6;
+}
+.lyrics-content.highlight-color-pink .lyric-line.active {
+  --highlight-color: #ff6b81;
+  --highlight-bg: rgba(255, 107, 129, 0.2);
+}
+.lyrics-content.highlight-color-blue .lyric-line.active {
+  --highlight-color: #3498db;
+  --highlight-bg: rgba(52, 152, 219, 0.2);
+}
+.lyrics-content.highlight-color-green .lyric-line.active {
+  --highlight-color: #2ecc71;
+  --highlight-bg: rgba(46, 204, 113, 0.2);
+}
+.lyrics-content.highlight-color-purple .lyric-line.active {
+  --highlight-color: #9b59b6;
+  --highlight-bg: rgba(155, 89, 182, 0.2);
+}
+
 .lyrics-group {
   margin-bottom: 20px;
 }
@@ -612,4 +730,10 @@ export default {
   color: #666;
   font-family: 'KaiTi', 'STKaiti', '楷体', sans-serif;
 }
+.no-lyric {
+  text-align: center;
+  font-size: 16px;
+  color: #666;
+}
 </style>
+
