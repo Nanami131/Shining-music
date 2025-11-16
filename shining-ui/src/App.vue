@@ -1,5 +1,6 @@
 <template>
   <div id="app">
+    <CursorTrail />
     <Header v-if="!isAuthRoute" />
     <router-view />
     <bottom-bar />
@@ -9,12 +10,14 @@
 <script>
 import Header from '@/components/Header.vue';
 import BottomBar from '@/components/BottomBar.vue';
+import CursorTrail from '@/components/CursorTrail.vue';
 
 export default {
   name: 'App',
   components: {
     Header,
     BottomBar,
+    CursorTrail,
   },
   computed: {
     isAuthRoute() {
