@@ -1,6 +1,7 @@
 package org.L2.music.application.service;
 
 import org.L2.common.R;
+import org.L2.common.rpc.UserClient;
 import org.L2.music.application.dto.*;
 import org.L2.music.application.request.*;
 import org.L2.music.constant.Constants;
@@ -18,7 +19,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 @Service
 public class MusicAppService {
@@ -31,6 +34,8 @@ public class MusicAppService {
     private SingerService singerService;
     @Autowired
     private LyricsService lyricsService;
+    @Autowired
+    private UserClient userClient;
 
     /*
      * 歌曲模块
@@ -116,6 +121,7 @@ public class MusicAppService {
         }
         PlaylistBaseDTO playlistBaseDTO = new PlaylistBaseDTO();
         BeanUtils.copyProperties(result.getData(), playlistBaseDTO);
+        playlistBaseDTO.setNickName(resolveNickname(playlistBaseDTO.getUserId(), null));
         return R.success("获取成功", playlistBaseDTO);
     }
 
@@ -130,6 +136,7 @@ public class MusicAppService {
         @SuppressWarnings("unchecked")
         List<SongBaseDTO> songList = (List<SongBaseDTO>) songs.getData();
         playlistDetailsDTO.setSongs(songList);
+        playlistDetailsDTO.setNickName(resolveNickname(playlistDetailsDTO.getUserId(), null));
         return R.success("获取成功", playlistDetailsDTO);
     }
 
@@ -172,9 +179,11 @@ public class MusicAppService {
         @SuppressWarnings("unchecked")
         List<Playlist> playlists = (List<Playlist>) result.getData();
         List<PlaylistBaseDTO> dtoList = new ArrayList<>();
+        Map<Long, String> nicknameCache = new HashMap<>();
         for (Playlist playlist : playlists) {
             PlaylistBaseDTO dto = new PlaylistBaseDTO();
             BeanUtils.copyProperties(playlist, dto);
+            dto.setNickName(resolveNickname(playlist.getUserId(), nicknameCache));
             dtoList.add(dto);
         }
         return R.success("获取歌单列表成功", dtoList);
@@ -230,6 +239,49 @@ public class MusicAppService {
 
     public R updateSingerAvatar(Long id, MultipartFile avatarFile, String md5) {
         return singerService.updateSingerAvatar(id, avatarFile);
+    }
+
+    private String resolveNickname(Long userId, Map<Long, String> cache) {
+        if (userId == null) {
+            return null;
+        }
+        if (Long.valueOf(-1L).equals(userId)) {
+            if (cache != null) {
+                cache.put(userId, "官方");
+            }
+            return "官方";
+        }
+        if (cache != null) {
+            if (cache.containsKey(userId)) {
+                return cache.get(userId);
+            }
+            String nickname = requestNickname(userId);
+            cache.put(userId, nickname);
+            return nickname;
+        }
+        return requestNickname(userId);
+    }
+
+    private String requestNickname(Long userId) {
+        if (userId == null) {
+            return null;
+        }
+        if (Long.valueOf(-1L).equals(userId)) {
+            return "官方";
+        }
+        try {
+            R response = userClient.getUserBaseInfo(userId);
+            if (response != null && Boolean.TRUE.equals(response.getPassed())) {
+                Object data = response.getData();
+                if (data instanceof Map<?, ?> userData) {
+                    Object nickName = userData.get("nickName");
+                    return nickName != null ? String.valueOf(nickName) : null;
+                }
+            }
+        } catch (Exception ignored) {
+            // 忽略 RPC 异常，避免影响歌单查询
+        }
+        return null;
     }
 
 }

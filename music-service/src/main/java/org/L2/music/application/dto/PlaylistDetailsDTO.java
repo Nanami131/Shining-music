@@ -13,6 +13,7 @@ public class PlaylistDetailsDTO {
     private String name;
     private String description;
     private Long userId;
+    private String nickName;
     private Byte type;
     private Byte visibility;
     private String coverUrl;

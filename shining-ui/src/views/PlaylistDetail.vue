@@ -5,9 +5,10 @@
       <div class="playlist-content">
         <img :src="playlist.coverUrl || defaultCover" class="playlist-cover" alt="歌单封面" />
         <div class="playlist-info">
-          <p><strong>描述：</strong>{{ playlist.description || '暂无描述' }}</p>
-          <p><strong>类型：</strong>{{ playlist.type === 0 ? '普通' : playlist.type === 1 ? '收藏' : '专辑' }}</p>
-          <p><strong>可见性：</strong>{{ playlist.visibility === 0 ? '公开' : '私密' }}</p>
+          <p><strong>简介：</strong>{{ playlist.description || '暂无简介' }}</p>
+          <p v-if="playlist.nickName || playlist.userId"><strong>创建者：</strong>{{ creatorName }}</p>
+          <p><strong>类型：</strong>{{ formatType(playlist.type) }}</p>
+          <p><strong>可见性：</strong>{{ formatVisibility(playlist.visibility) }}</p>
           <p><strong>创建时间：</strong>{{ playlist.createdAt || '未知' }}</p>
         </div>
       </div>
@@ -27,8 +28,8 @@
       </div>
     </div>
     <div v-else-if="hasError">
-      <h2>歌单详情加载失败</h2>
-      <p>请稍后重试。</p>
+      <h2>歌单加载失败</h2>
+      <p>请稍后再试。</p>
     </div>
   </div>
 </template>
@@ -46,6 +47,20 @@ export default {
       isLoaded: false,
       hasError: false,
     };
+  },
+  computed: {
+    creatorName() {
+      if (!this.playlist) {
+        return '未知用户';
+      }
+      if (this.playlist.userId === -1) {
+        return '官方';
+      }
+      if (this.playlist.nickName) {
+        return this.playlist.nickName;
+      }
+      return this.playlist.userId ? `用户${this.playlist.userId}` : '未知用户';
+    },
   },
   created() {
     this.loadPlaylistDetails();
@@ -66,8 +81,19 @@ export default {
         }
       } catch (error) {
         this.hasError = true;
-        alert('获取歌单详情出错：' + error.message);
+        alert('获取歌单详情异常：' + error.message);
       }
+    },
+    formatType(type) {
+      if (type === 0) return '普通';
+      if (type === 1) return '收藏';
+      if (type === 2) return '专辑';
+      return '未知';
+    },
+    formatVisibility(visibility) {
+      if (visibility === 0) return '公开';
+      if (visibility === 1) return '私密';
+      return '未知';
     },
     goToSong(songId) {
       this.$router.push(`/song/${songId}`);
@@ -133,4 +159,3 @@ h3 {
   font-size: 16px;
 }
 </style>
-

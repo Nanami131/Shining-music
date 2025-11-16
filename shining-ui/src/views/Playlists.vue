@@ -1,23 +1,19 @@
 <template>
   <div class="playlists-container">
-    <!-- 搜索栏（装饰用） -->
+    <!-- 搜索区域当前仅做占位 -->
     <div class="search-bar">
-      <input
-        type="text"
-        placeholder="搜索歌单（暂未开通搜索功能）"
-        disabled
-      />
+      <input type="text" placeholder="歌单搜索功能开发中" disabled />
     </div>
 
-    <!-- 推荐歌单（占位，内容暂留空） -->
+    <!-- 推荐歌单占位 -->
     <section class="section section-recommend">
       <h2>推荐歌单</h2>
-      <p class="placeholder-text">推荐歌单功能开发中，敬请期待。</p>
+      <p class="placeholder-text">推荐歌单即将上线，敬请期待</p>
     </section>
 
-    <!-- 更多歌单（真实数据） -->
+    <!-- 更多歌单 -->
     <section class="section section-more">
-      <h2>更多歌单</h2>
+      <h2>全部歌单</h2>
       <div class="playlists-list">
         <div
           v-for="playlist in playlists"
@@ -32,8 +28,10 @@
           />
           <div class="playlist-info">
             <h3>{{ playlist.name || '未知歌单' }}</h3>
-            <p>{{ playlist.description || '暂无描述' }}</p>
-            <p class="creator" v-if="playlist.userId">创建者：{{ playlist.userId }}</p>
+            <p>{{ playlist.description || '暂无简介' }}</p>
+            <p class="creator" v-if="playlist.nickName || playlist.userId !== undefined">
+              创建者：{{ getCreatorName(playlist) }}
+            </p>
           </div>
         </div>
       </div>
@@ -72,6 +70,18 @@ export default {
       } catch (error) {
         alert('获取歌单列表失败：' + error.message);
       }
+    },
+    getCreatorName(playlist) {
+        if (!playlist) {
+          return '未知用户';
+        }
+        if (playlist.userId === -1) {
+          return '官方';
+        }
+        if (playlist.nickName) {
+          return playlist.nickName;
+        }
+        return playlist.userId ? `用户${playlist.userId}` : '未知用户';
     },
     goToPlaylist(playlistId) {
       this.$router.push(`/playlist/${playlistId}`);
@@ -160,4 +170,3 @@ export default {
   font-size: 12px;
 }
 </style>
-

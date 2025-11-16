@@ -8,6 +8,7 @@ import lombok.experimental.Accessors;
 public class PlaylistBaseDTO {
     private Long id;
     private Long userId;
+    private String nickName;
     private String name;
     private Byte type;
     private Byte visibility;
