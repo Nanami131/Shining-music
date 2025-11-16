@@ -2,18 +2,20 @@
   <div class="my-music-container">
     <h2>我的音乐</h2>
     <div v-if="!userId" class="empty-tip">
-      请先登录后查看收藏歌曲。
+      请先登录查看你的音乐内容
     </div>
     <div v-else>
       <section class="favorites-section">
         <div class="section-header">
           <h3>我的收藏</h3>
           <button class="refresh-btn" @click="loadFavorites" :disabled="loading">
-            {{ loading ? '加载中…' : '刷新' }}
+            {{ loading ? '加载中...' : '刷新' }}
           </button>
         </div>
-        <div v-if="loading" class="empty-tip">正在加载收藏歌曲，请稍候…</div>
-        <div v-else-if="favorites.length === 0" class="empty-tip">还没有收藏任何歌曲</div>
+        <div v-if="loading" class="empty-tip">正在加载收藏歌曲，请稍候</div>
+        <div v-else-if="favorites.length === 0" class="empty-tip">
+          你还没有收藏任何歌曲
+        </div>
         <div v-else class="songs-list">
           <div
             v-for="song in favorites"
@@ -24,16 +26,55 @@
             <img :src="song.coverUrl || defaultCover" class="song-cover" alt="歌曲封面" />
             <div class="song-info">
               <h3>{{ song.title || '未知歌曲' }}</h3>
-              <p>歌手 ID: {{ song.artistId || '未知' }}</p>
+              <p>
+                歌手：
+                {{
+                  artistNameMap[song.artistId] ||
+                    (song.artistId ? `歌手 ${song.artistId}` : '未知')
+                }}
+              </p>
             </div>
             <button
               class="favorite-btn"
               :class="{ active: song.favorite }"
               @click.stop="toggleFavorite(song)"
-              title="取消收藏"
+              title="从收藏中移除"
             >
               <span class="heart-icon"></span>
             </button>
+          </div>
+        </div>
+      </section>
+
+      <section class="playlists-section">
+        <div class="section-header">
+          <h3>我的歌单</h3>
+          <button class="refresh-btn" @click="loadMyPlaylists" :disabled="loadingPlaylists">
+            {{ loadingPlaylists ? '加载中...' : '刷新' }}
+          </button>
+        </div>
+        <div v-if="loadingPlaylists" class="empty-tip">
+          正在加载歌单，请稍候
+        </div>
+        <div v-else-if="myPlaylists.length === 0" class="empty-tip">
+          你还没有创建任何歌单
+        </div>
+        <div v-else class="playlists-list">
+          <div
+            v-for="playlist in myPlaylists"
+            :key="playlist.id"
+            class="playlist-card"
+            @click="goToPlaylist(playlist.id)"
+          >
+            <img
+              :src="playlist.coverUrl || defaultCover"
+              class="playlist-cover"
+              alt="歌单封面"
+            />
+            <div class="playlist-info">
+              <h3>{{ playlist.name || '未知歌单' }}</h3>
+              <p>{{ playlist.description || '暂无简介' }}</p>
+            </div>
           </div>
         </div>
       </section>
@@ -52,7 +93,10 @@ export default {
       favorites: [],
       loading: false,
       userId: null,
+      myPlaylists: [],
+      loadingPlaylists: false,
       defaultCover,
+      artistNameMap: {},
     };
   },
   created() {
@@ -60,6 +104,7 @@ export default {
     this.userId = userBase.id ?? null;
     if (this.userId) {
       this.loadFavorites();
+      this.loadMyPlaylists();
     }
   },
   methods: {
@@ -72,14 +117,64 @@ export default {
         const response = await musicApi.getUserFavoriteSongs(this.userId);
         if (response.data && response.data.passed) {
           this.favorites = response.data.data || [];
+          await this.loadFavoriteArtistNames();
         } else {
           const msg = response.data ? response.data.message : '未知错误';
-          alert('获取收藏歌曲失败：' + msg);
+          alert('获取收藏列表失败：' + msg);
         }
       } catch (error) {
-        alert('获取收藏歌曲失败：' + error.message);
+        alert('获取收藏列表失败：' + error.message);
       } finally {
         this.loading = false;
+      }
+    },
+    async loadFavoriteArtistNames() {
+      const ids = Array.from(
+        new Set(
+          this.favorites
+            .map(song => song.artistId)
+            .filter(id => id !== null && id !== undefined && id !== '')
+        )
+      ).filter(id => !(id in this.artistNameMap));
+
+      if (!ids.length) {
+        return;
+      }
+
+      const tasks = ids.map(async id => {
+        try {
+          const res = await musicApi.getSingerBaseInfo(id);
+          if (res.data && res.data.passed && res.data.data) {
+            const name = res.data.data.name || `歌手 ${id}`;
+            this.$set ? this.$set(this.artistNameMap, id, name) : (this.artistNameMap[id] = name);
+          } else {
+            this.artistNameMap[id] = `歌手 ${id}`;
+          }
+        } catch (e) {
+          this.artistNameMap[id] = `歌手 ${id}`;
+        }
+      });
+
+      await Promise.all(tasks);
+    },
+    async loadMyPlaylists() {
+      if (!this.userId) {
+        return;
+      }
+      this.loadingPlaylists = true;
+      try {
+        const response = await musicApi.discoverPlaylists(this.userId);
+        if (response.data && response.data.passed) {
+          const all = response.data.data || [];
+          this.myPlaylists = all.filter(p => p.userId === this.userId);
+        } else {
+          const msg = response.data ? response.data.message : '未知错误';
+          alert('获取歌单列表失败：' + msg);
+        }
+      } catch (error) {
+        alert('获取歌单列表失败：' + error.message);
+      } finally {
+        this.loadingPlaylists = false;
       }
     },
     async toggleFavorite(song) {
@@ -87,7 +182,7 @@ export default {
         return;
       }
       if (!this.userId) {
-        alert('请先登录后再收藏歌曲');
+        alert('请先登录后再管理收藏');
         return;
       }
       try {
@@ -111,6 +206,9 @@ export default {
     },
     goToSong(songId) {
       this.$router.push(`/song/${songId}`);
+    },
+    goToPlaylist(playlistId) {
+      this.$router.push(`/playlist/${playlistId}`);
     },
   },
 };
@@ -224,5 +322,45 @@ h2 {
 .favorite-btn:hover {
   transform: translateY(-2px);
   box-shadow: 0 10px 20px rgba(255, 99, 132, 0.3);
+}
+.playlists-section {
+  margin-top: 24px;
+  background: rgba(255, 255, 255, 0.9);
+  border-radius: 16px;
+  padding: 20px;
+  box-shadow: 0 10px 25px rgba(15, 23, 42, 0.08);
+}
+.playlists-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 20px;
+}
+.playlist-card {
+  background: #fff;
+  border-radius: 12px;
+  box-shadow: 0 8px 20px rgba(15, 23, 42, 0.08);
+  padding: 16px;
+  cursor: pointer;
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+.playlist-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 12px 26px rgba(15, 23, 42, 0.12);
+}
+.playlist-cover {
+  width: 100%;
+  height: 150px;
+  object-fit: cover;
+  border-radius: 10px;
+  margin-bottom: 12px;
+}
+.playlist-info h3 {
+  margin: 0;
+  font-size: 18px;
+}
+.playlist-info p {
+  margin: 4px 0 0;
+  color: #666;
+  font-size: 14px;
 }
 </style>

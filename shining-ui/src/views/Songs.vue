@@ -1,6 +1,6 @@
 <template>
   <div class="songs-container">
-    <!-- 搜索栏，占位即可 -->
+    <!-- 搜索占位，暂不支持 -->
     <div class="search-bar">
       <input type="text" placeholder="歌曲名称、歌手名等（暂不支持搜索）" disabled />
     </div>
@@ -8,7 +8,7 @@
     <!-- 推荐歌曲，占位 -->
     <section class="section section-recommend">
       <h2>推荐歌曲</h2>
-      <p class="placeholder-text">推荐歌曲模块还在路上，先随便听听吧～</p>
+      <p class="placeholder-text">推荐歌曲模块还在路上，先从全部里挑几首喜欢的吧～</p>
     </section>
 
     <!-- 全部歌曲：这里放原来的内容 -->
@@ -24,7 +24,13 @@
           <img :src="song.coverUrl || defaultCover" class="song-cover" alt="歌曲封面" />
           <div class="song-info">
             <h3>{{ song.title || '未知歌曲' }}</h3>
-            <p>歌手 ID: {{ song.artistId || '未知' }}</p>
+            <p>
+              歌手：
+              {{
+                artistNameMap[song.artistId] ||
+                  (song.artistId ? `歌手 ${song.artistId}` : '未知')
+              }}
+            </p>
           </div>
           <button
             class="favorite-btn"
@@ -51,6 +57,7 @@ export default {
       songs: [],
       defaultCover,
       userId: null,
+      artistNameMap: {},
     };
   },
   created() {
@@ -69,9 +76,39 @@ export default {
         this.songs = responses
           .filter(response => response && response.data.passed)
           .map(response => response.data.data);
+        await this.loadArtistNames();
       } catch (error) {
         alert('获取歌曲列表失败：' + error.message);
       }
+    },
+    async loadArtistNames() {
+      const ids = Array.from(
+        new Set(
+          this.songs
+            .map(song => song.artistId)
+            .filter(id => id !== null && id !== undefined && id !== '')
+        )
+      ).filter(id => !(id in this.artistNameMap));
+
+      if (!ids.length) {
+        return;
+      }
+
+      const tasks = ids.map(async id => {
+        try {
+          const res = await musicApi.getSingerBaseInfo(id);
+          if (res.data && res.data.passed && res.data.data) {
+            const name = res.data.data.name || `歌手 ${id}`;
+            this.$set ? this.$set(this.artistNameMap, id, name) : (this.artistNameMap[id] = name);
+          } else {
+            this.artistNameMap[id] = `歌手 ${id}`;
+          }
+        } catch (e) {
+          this.artistNameMap[id] = `歌手 ${id}`;
+        }
+      });
+
+      await Promise.all(tasks);
     },
     async toggleFavorite(song) {
       if (!song || !song.id) {
@@ -209,4 +246,3 @@ export default {
   box-shadow: 0 8px 18px rgba(255, 99, 132, 0.3);
 }
 </style>
-
