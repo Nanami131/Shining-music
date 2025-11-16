@@ -619,6 +619,11 @@ export default {
   display: flex;
   gap: 6px;
 }
+.color-select {
+  display: flex;
+  gap: 6px;
+  flex-shrink: 0;
+}
 .lang-btn {
   width: 28px;
   height: 28px;
