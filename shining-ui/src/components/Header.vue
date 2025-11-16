@@ -107,32 +107,64 @@ export default {
 
 <style scoped>
 .header {
+  position: sticky;
+  top: 0;
+  z-index: 100;
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 10px 20px;
-  background: linear-gradient(to right, #4facfe, #00f2fe);
-  color: white;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  padding: 10px 24px;
+  background: radial-gradient(circle at 0% 0%, rgba(186, 230, 253, 0.85), transparent 55%),
+              radial-gradient(circle at 100% 0%, rgba(191, 219, 254, 0.9), transparent 55%),
+              linear-gradient(90deg, rgba(15, 23, 42, 0.85), rgba(15, 23, 42, 0.7));
+  backdrop-filter: blur(14px);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.18);
+  box-shadow: 0 10px 30px rgba(15, 23, 42, 0.35);
+  color: #e5f0ff;
 }
 .logo {
-  font-size: 24px;
-  font-weight: bold;
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: #f9fafb;
+  text-shadow: 0 0 12px rgba(191, 219, 254, 0.9);
 }
 .nav {
   display: flex;
-  gap: 20px;
+  gap: 14px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: radial-gradient(circle at 50% 0%, rgba(148, 163, 184, 0.28), transparent 60%);
+  backdrop-filter: blur(18px);
+  box-shadow: 0 0 18px rgba(148, 163, 184, 0.45);
 }
 .nav-item {
-  font-size: 16px;
+  position: relative;
+  font-size: 14px;
   cursor: pointer;
-  padding: 8px 16px;
-  background: linear-gradient(to right, #6b7280, #9ca3af);
-  border-radius: 4px;
-  transition: transform 0.2s;
+  padding: 6px 14px;
+  border-radius: 999px;
+  color: #e5e7eb;
+  transition: color 0.2s ease, transform 0.2s ease;
+}
+.nav-item::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: radial-gradient(circle at 0 0, rgba(96, 165, 250, 0.85), transparent 55%),
+              radial-gradient(circle at 100% 100%, rgba(56, 189, 248, 0.85), transparent 55%);
+  opacity: 0;
+  transition: opacity 0.25s ease;
+  z-index: -1;
+}
+.nav-item:hover::before {
+  opacity: 1;
 }
 .nav-item:hover {
-  transform: scale(1.05);
+  color: #0f172a;
+  transform: translateY(-1px);
 }
 .actions {
   display: flex;
@@ -142,24 +174,32 @@ export default {
 .avatar {
   width: 32px;
   height: 32px;
-  border-radius: 50%;
+  border-radius: 999px;
   object-fit: cover;
   cursor: pointer;
+  box-shadow: 0 0 12px rgba(59, 130, 246, 0.55);
 }
 .nickname {
-  font-size: 16px;
-  margin-right: 10px;
+  font-size: 14px;
+  margin-right: 4px;
+  color: #e5f0ff;
 }
 .btn {
-  padding: 8px 16px;
-  border: none;
-  border-radius: 4px;
-  background: linear-gradient(to right, #ff6b6b, #ff8e53);
-  color: white;
+  padding: 6px 14px;
+  border: 1px solid rgba(248, 250, 252, 0.55);
+  border-radius: 999px;
+  background: radial-gradient(circle at 0% 0%, rgba(248, 250, 252, 0.45), transparent 60%);
+  color: #0f172a;
   cursor: pointer;
-  transition: transform 0.2s;
+  font-size: 13px;
+  font-weight: 500;
+  backdrop-filter: blur(10px);
+  box-shadow: 0 0 12px rgba(248, 250, 252, 0.6);
+  transition: transform 0.18s ease, box-shadow 0.18s ease, background 0.18s ease;
 }
 .btn:hover {
-  transform: scale(1.05);
+  transform: translateY(-1px);
+  box-shadow: 0 0 16px rgba(248, 250, 252, 0.85);
+  background: radial-gradient(circle at 0% 0%, rgba(248, 250, 252, 0.7), transparent 60%);
 }
 </style>
