@@ -1,8 +1,11 @@
 package org.L2.music.controller;
 
 import org.L2.common.R;
+import org.L2.common.mq.PlayRecordProducer;
 import org.L2.music.application.request.*;
 import org.L2.music.application.service.MusicAppService;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
@@ -11,8 +14,13 @@ import org.springframework.web.multipart.MultipartFile;
 @RequestMapping("/music")
 public class MusicController {
 
+    private static final Logger log = LoggerFactory.getLogger(MusicController.class);
+
     @Autowired
     private MusicAppService musicAppService;
+
+    @Autowired
+    private PlayRecordProducer playRecordProducer;
 
     /*
      * 歌曲相关
@@ -92,6 +100,29 @@ public class MusicController {
     @GetMapping("/details/song/{songId}")
     public R getSongDetailsInfo(@PathVariable("songId") Long songId,
                                 @RequestParam(value = "userId", required = false) Long userId) {
+        return musicAppService.getSongDetailsInfo(songId, userId);
+    }
+
+    /**
+     * 用户播放歌曲：
+     * 1. 发送一条播放记录到 RabbitMQ（目前只包含 userId）
+     * 2. 返回与 getSongDetailsInfo 相同的 SongDetailsDTO
+     */
+    @GetMapping("/play/song/{songId}")
+    public R playSong(@PathVariable("songId") Long songId,
+                      @RequestParam(value = "userId", required = false) Long userId) {
+        log.info("Received playSong request, songId={}, userId={}", songId, userId);
+        if (userId != null) {
+            try {
+                playRecordProducer.sendPlayRecord(userId);
+                log.info("Play record message sent via RabbitMQ, userId={}", userId);
+            } catch (Exception e) {
+                // 不因为 MQ 失败而影响播放本身
+                log.error("Failed to send play record message to RabbitMQ, userId={}", userId, e);
+            }
+        } else {
+            log.warn("playSong called without userId, skip MQ message");
+        }
         return musicAppService.getSongDetailsInfo(songId, userId);
     }
 

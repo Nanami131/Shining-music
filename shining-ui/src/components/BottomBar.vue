@@ -182,7 +182,7 @@ export default {
         this.currentTime = 0;
         this.isPlaying = false;
 
-        const response = await musicApi.getSongDetailsInfo(songId, this.userId);
+        const response = await musicApi.playSong(songId, this.userId);
         if (response.data.passed) {
           this.currentSong = response.data.data;
           this.audio.src = this.currentSong.fileUrl || '';
