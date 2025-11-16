@@ -46,23 +46,25 @@ public class MusicAppService {
         return songService.createSong(song);
     }
 
-    public R getSongBaseInfo(Long songId) {
+    public R getSongBaseInfo(Long songId, Long userId) {
         R result = songService.getSongInfo(songId);
         if (!result.getPassed()) {
             return result;
         }
         SongBaseDTO songBaseDTO = new SongBaseDTO();
         BeanUtils.copyProperties(result.getData(), songBaseDTO);
+        songBaseDTO.setFavorite(resolveFavoriteFlag(userId, songId));
         return R.success("获取成功", songBaseDTO);
     }
 
-    public R getSongDetailsInfo(Long songId) {
+    public R getSongDetailsInfo(Long songId, Long userId) {
         R result = songService.getSongInfo(songId);
         if (!result.getPassed()) {
             return result;
         }
         SongDetailsDTO songDetailsDTO = new SongDetailsDTO();
         BeanUtils.copyProperties(result.getData(), songDetailsDTO);
+        songDetailsDTO.setFavorite(resolveFavoriteFlag(userId, songId));
         @SuppressWarnings("unchecked")
         ArrayList<Lyrics> allLyrics =
                 (ArrayList<Lyrics>) lyricsService.getAllLyricsBySongId(songId).getData();
@@ -239,6 +241,43 @@ public class MusicAppService {
 
     public R updateSingerAvatar(Long id, MultipartFile avatarFile, String md5) {
         return singerService.updateSingerAvatar(id, avatarFile);
+    }
+
+    public R toggleFavoriteSong(Long userId, Long songId) {
+        return playlistService.toggleFavoriteSong(userId, songId);
+    }
+
+    public R getUserFavoriteSongs(Long userId) {
+        if (userId == null) {
+            return R.error("用户不能为空");
+        }
+        Playlist favorite = playlistService.ensureFavoritePlaylist(userId);
+        if (favorite == null) {
+            return R.error("初始化收藏歌单失败");
+        }
+        R songsResult = songService.getPlaylistSongs(favorite.getId());
+        if (!songsResult.getPassed()) {
+            return songsResult;
+        }
+        @SuppressWarnings("unchecked")
+        List<Song> songs = (List<Song>) songsResult.getData();
+        List<SongBaseDTO> dtoList = new ArrayList<>();
+        if (songs != null) {
+            for (Song song : songs) {
+                SongBaseDTO dto = new SongBaseDTO();
+                BeanUtils.copyProperties(song, dto);
+                dto.setFavorite(true);
+                dtoList.add(dto);
+            }
+        }
+        return R.success("获取收藏歌曲成功", dtoList);
+    }
+
+    private boolean resolveFavoriteFlag(Long userId, Long songId) {
+        if (userId == null || songId == null) {
+            return false;
+        }
+        return playlistService.isSongFavorite(userId, songId);
     }
 
     private String resolveNickname(Long userId, Map<Long, String> cache) {

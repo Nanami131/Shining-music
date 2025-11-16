@@ -79,8 +79,9 @@ public class MusicController {
      * @return 歌曲基本信息
      */
     @GetMapping("/info/song/{songId}")
-    public R getSongBaseInfo(@PathVariable("songId") Long songId) {
-        return musicAppService.getSongBaseInfo(songId);
+    public R getSongBaseInfo(@PathVariable("songId") Long songId,
+                             @RequestParam(value = "userId", required = false) Long userId) {
+        return musicAppService.getSongBaseInfo(songId, userId);
     }
 
     /**
@@ -89,8 +90,25 @@ public class MusicController {
      * @return 歌曲详细信息
      */
     @GetMapping("/details/song/{songId}")
-    public R getSongDetailsInfo(@PathVariable("songId") Long songId) {
-        return musicAppService.getSongDetailsInfo(songId);
+    public R getSongDetailsInfo(@PathVariable("songId") Long songId,
+                                @RequestParam(value = "userId", required = false) Long userId) {
+        return musicAppService.getSongDetailsInfo(songId, userId);
+    }
+
+    /**
+     * 收藏/取消收藏歌曲
+     */
+    @PostMapping("/song/favorite")
+    public R toggleSongFavorite(@RequestBody SongFavoriteRequest songFavoriteRequest) {
+        return musicAppService.toggleFavoriteSong(songFavoriteRequest.getUserId(), songFavoriteRequest.getSongId());
+    }
+
+    /**
+     * 获取用户收藏歌曲
+     */
+    @GetMapping("/user/favorite/songs")
+    public R getUserFavoriteSongs(@RequestParam("userId") Long userId) {
+        return musicAppService.getUserFavoriteSongs(userId);
     }
 
     /**

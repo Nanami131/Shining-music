@@ -39,11 +39,19 @@ export default {
             headers: { 'Content-Type': 'multipart/form-data' },
         });
     },
-    getSongBaseInfo(songId) {
-        return api.get(`/music/info/song/${songId}`);
+    getSongBaseInfo(songId, userId) {
+        const params = {};
+        if (userId !== null && userId !== undefined) {
+            params.userId = userId;
+        }
+        return api.get(`/music/info/song/${songId}`, { params });
     },
-    getSongDetailsInfo(songId) {
-        return api.get(`/music/details/song/${songId}`);
+    getSongDetailsInfo(songId, userId) {
+        const params = {};
+        if (userId !== null && userId !== undefined) {
+            params.userId = userId;
+        }
+        return api.get(`/music/details/song/${songId}`, { params });
     },
     getAllLyrics(songId) {
         return api.get(`/music/lyrics/all/${songId}`);
@@ -94,5 +102,13 @@ export default {
     },
     getSingerDetailsInfo(singerId) {
         return api.get(`/music/details/player/${singerId}`);
+    },
+    toggleFavoriteSong(data) {
+        return api.post('/music/song/favorite', data);
+    },
+    getUserFavoriteSongs(userId) {
+        return api.get('/music/user/favorite/songs', {
+            params: { userId },
+        });
     },
 };

@@ -12,4 +12,5 @@ public class SongBaseDTO {
     private String title;
     private Long artistId;
     private String coverUrl;
+    private Boolean favorite;
 }

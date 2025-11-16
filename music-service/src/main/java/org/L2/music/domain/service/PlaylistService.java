@@ -19,6 +19,7 @@ import org.springframework.web.multipart.MultipartFile;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 @Service
 public class PlaylistService {
@@ -59,6 +60,96 @@ public class PlaylistService {
             stringRedisTemplate.opsForSet().add("playlist:" + playlistId, String.valueOf(songId));
         }
         return R.success("歌单歌曲修改成功");
+    }
+
+    public boolean isSongFavorite(Long userId, Long songId) {
+        if (userId == null || songId == null) {
+            return false;
+        }
+        Playlist favorite = findUserPlaylist(userId, Constants.USER_FAVORITE);
+        if (favorite == null) {
+            return false;
+        }
+        return Boolean.TRUE.equals(stringRedisTemplate.opsForSet()
+                .isMember("playlist:" + favorite.getId(), String.valueOf(songId)));
+    }
+
+    public R toggleFavoriteSong(Long userId, Long songId) {
+        if (userId == null || songId == null) {
+            return R.error("用户或歌曲不能为空");
+        }
+        if (songMapper.selectById(songId) == null) {
+            return R.error("歌曲不存在");
+        }
+        Playlist favorite = ensureFavoritePlaylist(userId);
+        if (favorite == null) {
+            return R.error("初始化收藏歌单失败");
+        }
+        String key = "playlist:" + favorite.getId();
+        String songKey = String.valueOf(songId);
+        boolean exists = Boolean.TRUE.equals(stringRedisTemplate.opsForSet().isMember(key, songKey));
+        boolean favoriteNow;
+        if (exists) {
+            stringRedisTemplate.opsForSet().remove(key, songKey);
+            favoriteNow = false;
+        } else {
+            Long size = stringRedisTemplate.opsForSet().size(key);
+            if (size != null && size >= Constants.MAX_PLAYLIST_SIZE) {
+                return R.error("收藏歌单已满");
+            }
+            stringRedisTemplate.opsForSet().add(key, songKey);
+            favoriteNow = true;
+        }
+        return R.success("收藏状态更新成功", Map.of(
+                "favorite", favoriteNow,
+                "playlistId", favorite.getId()
+        ));
+    }
+
+    public Playlist ensureFavoritePlaylist(Long userId) {
+        if (userId == null) {
+            return null;
+        }
+        return ensureUserPlaylist(userId, Constants.USER_FAVORITE);
+    }
+
+    private Playlist ensureUserPlaylist(Long userId, byte type) {
+        Playlist playlist = findUserPlaylist(userId, type);
+        if (playlist != null) {
+            return playlist;
+        }
+        Playlist toCreate = new Playlist()
+                .setUserId(userId)
+                .setType(type)
+                .setVisibility((byte) 1)
+                .setName(defaultNameForType(type, userId))
+                .setCreatedAt(LocalDateTime.now())
+                .setUpdatedAt(LocalDateTime.now());
+        playlistMapper.insert(toCreate);
+        return toCreate;
+    }
+
+    private Playlist findUserPlaylist(Long userId, byte type) {
+        if (userId == null) {
+            return null;
+        }
+        List<Playlist> query = playlistMapper.query(new Playlist()
+                .setUserId(userId)
+                .setType(type));
+        if (query == null || query.isEmpty()) {
+            return null;
+        }
+        return query.get(0);
+    }
+
+    private String defaultNameForType(byte type, Long userId) {
+        if (type == Constants.USER_FAVORITE) {
+            return "收藏歌单" + userId;
+        }
+        if (type == Constants.CURRENT_PLAYLIST) {
+            return "当前列表" + userId;
+        }
+        return "歌单" + userId;
     }
 
     @AutoFill(OperationType.INSERT)
@@ -186,4 +277,3 @@ public class PlaylistService {
         }
     }
 }
-

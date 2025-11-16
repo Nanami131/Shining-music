@@ -19,6 +19,7 @@ public class SongDetailsDTO {
     private Byte status;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
+    private Boolean favorite;
 
     private List<Lyrics> allLyrics;
 
