@@ -95,19 +95,17 @@ public class MusicController {
         return musicAppService.getSongDetailsInfo(songId, userId);
     }
 
-    /**
-     * 收藏/取消收藏歌曲
-     */
-    @PostMapping("/song/favorite")
-    public R toggleSongFavorite(@RequestBody SongFavoriteRequest songFavoriteRequest) {
-        return musicAppService.toggleFavoriteSong(songFavoriteRequest.getUserId(), songFavoriteRequest.getSongId());
-    }
-
+   
     /**
      * 获取用户收藏歌曲
      */
     @GetMapping("/user/favorite/songs")
     public R getUserFavoriteSongs(@RequestParam("userId") Long userId) {
+        return musicAppService.getUserFavoriteSongs(userId);
+    }
+
+    @GetMapping("/favorite/songs")
+    public R getUserFavoriteSongsCompat(@RequestParam("userId") Long userId) {
         return musicAppService.getUserFavoriteSongs(userId);
     }
 
@@ -301,5 +299,13 @@ public class MusicController {
     @GetMapping("/test")
     public R test() {
         return R.success("Test successful", "Hello from music-service!");
+    }
+
+    @PostMapping("/song/favorite")
+    public R toggleSongFavorite(@RequestBody SongFavoriteRequest songFavoriteRequest) {
+        return musicAppService.toggleFavoriteSong(
+                songFavoriteRequest.getUserId(),
+                songFavoriteRequest.getSongId()
+        );
     }
 }
