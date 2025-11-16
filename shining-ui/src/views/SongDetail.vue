@@ -164,13 +164,11 @@ export default {
           this.allLyrics = [];
           this.selectedLyricId = null;
           this.parsedLyrics = [];
-          alert('暂无歌词数据');
         }
       } catch (error) {
         this.allLyrics = [];
         this.selectedLyricId = null;
         this.parsedLyrics = [];
-        alert('加载歌词失败：' + error.message);
       }
     },
     loadSelectedLyrics() {
