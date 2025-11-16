@@ -69,13 +69,13 @@ export default {
       const width = this.canvas.width / this.dpr;
       const height = this.canvas.height / this.dpr;
       ctx.clearRect(0, 0, width, height);
-      ctx.globalCompositeOperation = 'lighter';
+      ctx.globalCompositeOperation = 'source-over';
       this.particles.forEach(p => {
         p.x += p.vx;
         p.y += p.vy;
         p.life++;
         const t = p.life / p.maxLife;
-        const alpha = 1 - t;
+        const alpha = 0.4 * (1 - t);
         if (alpha <= 0) return;
         const radius = p.radius * (1 - t * 0.4);
         const gradient = ctx.createRadialGradient(
