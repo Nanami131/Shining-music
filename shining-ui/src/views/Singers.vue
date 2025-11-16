@@ -1,15 +1,34 @@
 <template>
   <div class="singers-container">
-    <h2>发现歌手</h2>
-    <div class="singers-list">
-      <div v-for="singer in singers" :key="singer.id" class="singer-card" @click="goToSinger(singer.id)">
-        <img :src="singer.avatarUrl || defaultAvatar" class="singer-avatar" alt="歌手头像" />
-        <div class="singer-info">
-          <h3>{{ singer.name || '未知歌手' }}</h3>
-          <p>{{ singer.genre || '未知流派' }} | {{ singer.country || '未知地区' }}</p>
+    <!-- 搜索栏，占位即可 -->
+    <div class="search-bar">
+      <input type="text" placeholder="歌手名称、地区等（暂不支持搜索）" disabled />
+    </div>
+
+    <!-- 推荐歌手，占位 -->
+    <section class="section section-recommend">
+      <h2>推荐歌手</h2>
+      <p class="placeholder-text">推荐歌手模块还在路上，先从全部里挑几个喜欢的吧～</p>
+    </section>
+
+    <!-- 全部歌手：这里放原来的内容 -->
+    <section class="section section-more">
+      <h2>全部歌手</h2>
+      <div class="singers-list">
+        <div
+          v-for="singer in singers"
+          :key="singer.id"
+          class="singer-card"
+          @click="goToSinger(singer.id)"
+        >
+          <img :src="singer.avatarUrl || defaultAvatar" class="singer-avatar" alt="歌手头像" />
+          <div class="singer-info">
+            <h3>{{ singer.name || '未知歌手' }}</h3>
+            <p>{{ singer.genre || '未知风格' }} | {{ singer.country || '未知地区' }}</p>
+          </div>
         </div>
       </div>
-    </div>
+    </section>
   </div>
 </template>
 
@@ -37,10 +56,10 @@ export default {
         }
         const responses = await Promise.all(singerPromises);
         this.singers = responses
-            .filter(response => response && response.data.passed)
-            .map(response => response.data.data);
+          .filter(response => response && response.data.passed)
+          .map(response => response.data.data);
       } catch (error) {
-        alert('获取歌手列表出错：' + error.message);
+        alert('获取歌手列表失败：' + error.message);
       }
     },
     goToSinger(singerId) {
@@ -57,10 +76,36 @@ export default {
   margin: 0 auto;
   background: linear-gradient(to bottom, #e0f7fa, #ffffff);
 }
-h2 {
-  text-align: center;
-  margin-bottom: 20px;
+
+.search-bar {
+  max-width: 400px;
+  margin: 0 auto 24px;
 }
+
+.search-bar input {
+  width: 100%;
+  padding: 10px 14px;
+  border-radius: 999px;
+  border: 1px solid #cbd5e1;
+  background-color: #f1f5f9;
+  color: #64748b;
+  font-size: 14px;
+}
+
+.section {
+  margin-bottom: 28px;
+}
+
+.section h2 {
+  margin-bottom: 16px;
+  text-align: left;
+}
+
+.placeholder-text {
+  color: #94a3b8;
+  font-size: 14px;
+}
+
 .singers-list {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
@@ -94,3 +139,4 @@ h2 {
   font-size: 14px;
 }
 </style>
+

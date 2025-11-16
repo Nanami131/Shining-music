@@ -1,23 +1,42 @@
 <template>
   <div class="songs-container">
-    <h2>发现歌曲</h2>
-    <div class="songs-list">
-      <div v-for="song in songs" :key="song.id" class="song-card" @click="goToSong(song.id)">
-        <img :src="song.coverUrl || defaultCover" class="song-cover" alt="歌曲封面" />
-        <div class="song-info">
-          <h3>{{ song.title || '未知歌曲' }}</h3>
-          <p>歌手 ID: {{ song.artistId || '未知' }}</p>
-        </div>
-        <button
-          class="favorite-btn"
-          :class="{ active: song.favorite }"
-          @click.stop="toggleFavorite(song)"
-          :title="song.favorite ? '取消收藏' : '收藏歌曲'"
-        >
-          <span class="heart-icon"></span>
-        </button>
-      </div>
+    <!-- 搜索栏，占位即可 -->
+    <div class="search-bar">
+      <input type="text" placeholder="歌曲名称、歌手名等（暂不支持搜索）" disabled />
     </div>
+
+    <!-- 推荐歌曲，占位 -->
+    <section class="section section-recommend">
+      <h2>推荐歌曲</h2>
+      <p class="placeholder-text">推荐歌曲模块还在路上，先随便听听吧～</p>
+    </section>
+
+    <!-- 全部歌曲：这里放原来的内容 -->
+    <section class="section section-more">
+      <h2>全部歌曲</h2>
+      <div class="songs-list">
+        <div
+          v-for="song in songs"
+          :key="song.id"
+          class="song-card"
+          @click="goToSong(song.id)"
+        >
+          <img :src="song.coverUrl || defaultCover" class="song-cover" alt="歌曲封面" />
+          <div class="song-info">
+            <h3>{{ song.title || '未知歌曲' }}</h3>
+            <p>歌手 ID: {{ song.artistId || '未知' }}</p>
+          </div>
+          <button
+            class="favorite-btn"
+            :class="{ active: song.favorite }"
+            @click.stop="toggleFavorite(song)"
+            :title="song.favorite ? '取消收藏' : '收藏歌曲'"
+          >
+            <span class="heart-icon"></span>
+          </button>
+        </div>
+      </div>
+    </section>
   </div>
 </template>
 
@@ -48,10 +67,10 @@ export default {
         }
         const responses = await Promise.all(songPromises);
         this.songs = responses
-            .filter(response => response && response.data.passed)
-            .map(response => response.data.data);
+          .filter(response => response && response.data.passed)
+          .map(response => response.data.data);
       } catch (error) {
-        alert('获取歌曲列表出错：' + error.message);
+        alert('获取歌曲列表失败：' + error.message);
       }
     },
     async toggleFavorite(song) {
@@ -59,7 +78,7 @@ export default {
         return;
       }
       if (!this.userId) {
-        alert('请先登录后再收藏歌曲');
+        alert('请先登录再收藏歌曲');
         return;
       }
       try {
@@ -92,10 +111,36 @@ export default {
   margin: 0 auto;
   background: linear-gradient(to bottom, #e0f7fa, #ffffff);
 }
-h2 {
-  text-align: center;
-  margin-bottom: 20px;
+
+.search-bar {
+  max-width: 400px;
+  margin: 0 auto 24px;
 }
+
+.search-bar input {
+  width: 100%;
+  padding: 10px 14px;
+  border-radius: 999px;
+  border: 1px solid #cbd5e1;
+  background-color: #f1f5f9;
+  color: #64748b;
+  font-size: 14px;
+}
+
+.section {
+  margin-bottom: 28px;
+}
+
+.section h2 {
+  margin-bottom: 16px;
+  text-align: left;
+}
+
+.placeholder-text {
+  color: #94a3b8;
+  font-size: 14px;
+}
+
 .songs-list {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
@@ -164,3 +209,4 @@ h2 {
   box-shadow: 0 8px 18px rgba(255, 99, 132, 0.3);
 }
 </style>
+
