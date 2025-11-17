@@ -25,7 +25,6 @@
           <div class="song-info">
             <h3>{{ song.title || '未知歌曲' }}</h3>
             <p>
-              歌手：
               {{
                 artistNameMap[song.artistId] ||
                   (song.artistId ? `歌手 ${song.artistId}` : '未知')

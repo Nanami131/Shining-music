@@ -5,7 +5,7 @@
       <div class="song-content">
         <img :src="song.coverUrl || defaultCover" class="song-cover" alt="歌曲封面" />
         <div class="song-info">
-          <p><strong>歌手 ID：</strong>{{ song.artistId || '未知' }}</p>
+          <p><strong>歌手：</strong>{{ artistName || '未知' }}</p>
           <p><strong>专辑 ID：</strong>{{ song.albumId || '未知' }}</p>
           <p><strong>状态：</strong>{{ song.status || '未知' }}</p>
           <p><strong>创建时间：</strong>{{ song.createdAt || '未知' }}</p>
@@ -126,6 +126,7 @@ export default {
       hasError: false,
       highlightColor: 'pink',
       userId: null,
+      artistName: null,
     };
   },
   created() {
@@ -142,6 +143,7 @@ export default {
         const response = await musicApi.getSongDetailsInfo(songId, this.userId);
         if (response.data.passed) {
           this.song = response.data.data;
+          await this.loadArtistName();
           await this.loadAllLyrics(songId);
           this.isLoaded = true;
         } else {
@@ -151,6 +153,24 @@ export default {
       } catch (error) {
         this.hasError = true;
         alert('获取歌曲详情出错：' + error.message);
+      }
+    },
+    async loadArtistName() {
+      const artistId = this.song && this.song.artistId;
+      if (!artistId) {
+        this.artistName = null;
+        return;
+      }
+      try {
+        const res = await musicApi.getSingerBaseInfo(artistId);
+        if (res.data && res.data.passed && res.data.data) {
+          const name = res.data.data.name || `Artist ${artistId}`;
+          this.artistName = name;
+        } else {
+          this.artistName = `Artist ${artistId}`;
+        }
+      } catch (e) {
+        this.artistName = `Artist ${artistId}`;
       }
     },
     async loadAllLyrics(songId) {
