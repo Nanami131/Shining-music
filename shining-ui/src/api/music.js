@@ -86,6 +86,11 @@ export default {
     getPlaylistDetailsInfo(playlistId) {
         return api.get(`/music/details/playlist/${playlistId}`);
     },
+    getCurrentPlaylist(userId) {
+        return api.get('/music/playlist/current', {
+            params: { userId },
+        });
+    },
     createSinger(data) {
         return api.post('/music/singer', data);
     },

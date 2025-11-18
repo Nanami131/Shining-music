@@ -250,6 +250,16 @@ public class MusicController {
         return musicAppService.discoverPlaylists(userId);
     }
 
+    /**
+     * 获取用户当前播放列表
+     * @param userId 用户ID
+     * @return 当前列表信息
+     */
+    @GetMapping("/playlist/current")
+    public R getCurrentPlaylist(@RequestParam("userId") Long userId) {
+        return musicAppService.getCurrentPlaylist(userId);
+    }
+
     /*
      * 歌手相关
      */
@@ -335,3 +345,4 @@ public class MusicController {
         );
     }
 }
+

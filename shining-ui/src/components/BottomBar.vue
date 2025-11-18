@@ -56,7 +56,38 @@
 
     <div class="lyrics-panel" v-if="showLyrics">
       <div class="panel-content">
-        <div class="playlist-placeholder"></div>
+        <div class="playlist-panel">
+          <div class="playlist-header">
+            <div class="title">当前播放列表</div>
+            <div class="subtitle" v-if="userId">
+              共 {{ currentPlaylistSongs.length }} 首
+            </div>
+            <div class="subtitle" v-else>登录后自动保存播放记录</div>
+          </div>
+          <div v-if="userId && currentPlaylistSongs.length" class="playlist-list">
+            <div
+              v-for="(song, idx) in currentPlaylistSongs"
+              :key="song.id || idx"
+              :class="['playlist-item', { active: currentSong && song.id === currentSong.id }]"
+              @click="playFromCurrentList(idx)"
+            >
+              <div class="order">{{ idx + 1 }}</div>
+              <div class="info">
+                <p class="name">{{ song.title || '未知歌曲' }}</p>
+                <p class="artist">歌手 ID: {{ song.artistId || '未知' }}</p>
+              </div>
+              <button
+                class="remove-btn"
+                @click.stop="removeSongFromPlaylist(song.id)"
+                :disabled="!currentPlaylistId"
+              >
+                移除
+              </button>
+            </div>
+          </div>
+          <p v-else-if="userId" class="playlist-empty">播放任意歌曲后会自动加入此处～</p>
+          <p v-else class="playlist-empty">登录账号后可同步播放列表</p>
+        </div>
         <div class="lyrics-right">
           <div class="lyric-header">
             <div class="title">歌词</div>
@@ -128,6 +159,8 @@ export default {
       defaultCover,
       highlightColor: 'pink',
       userId: null,
+      currentPlaylistId: null,
+      currentPlaylistSongs: [],
       playMode: 'stop', // stop | sequential | single
       playlist: [],
       currentIndex: -1,
@@ -153,6 +186,9 @@ export default {
   created() {
     const userBase = JSON.parse(localStorage.getItem('userBase') || '{}');
     this.userId = userBase.id ?? null;
+    if (this.userId) {
+      this.loadCurrentPlaylist();
+    }
     this.audio.addEventListener('timeupdate', this.updateProgress);
     this.audio.addEventListener('loadedmetadata', this.updateDuration);
     this.audio.addEventListener('ended', this.handleEnded);
@@ -168,10 +204,16 @@ export default {
   },
   methods: {
     async handlePlaySongEvent({ songId, playlist, index }) {
-      if (Array.isArray(playlist)) {
+      if (this.userId) {
+        await this.ensureCurrentPlaylistReady();
+      }
+      if (Array.isArray(playlist) && playlist.length) {
         this.playlist = playlist;
         this.currentIndex =
           typeof index === 'number' ? index : playlist.findIndex(id => id === songId);
+      } else if (this.userId && this.currentPlaylistSongs.length) {
+        this.playlist = this.currentPlaylistSongs.map(song => song.id);
+        this.currentIndex = this.playlist.indexOf(songId);
       }
       await this.playSong(songId);
     },
@@ -185,6 +227,10 @@ export default {
         const response = await musicApi.playSong(songId, this.userId);
         if (response.data.passed) {
           this.currentSong = response.data.data;
+          if (this.userId) {
+            await this.ensureCurrentPlaylistReady();
+            await this.addSongToCurrentPlaylist(this.currentSong);
+          }
           this.audio.src = this.currentSong.fileUrl || '';
           this.audio.play();
           this.isPlaying = true;
@@ -237,6 +283,114 @@ export default {
       } else {
         this.playMode = 'stop';
       }
+    },
+    async loadCurrentPlaylist() {
+      if (!this.userId) {
+        this.currentPlaylistId = null;
+        this.currentPlaylistSongs = [];
+        this.syncPlaylistQueue();
+        return;
+      }
+      try {
+        const response = await musicApi.getCurrentPlaylist(this.userId);
+        if (response.data && response.data.passed) {
+          const data = response.data.data || {};
+          this.currentPlaylistId = data.id || null;
+          this.currentPlaylistSongs = Array.isArray(data.songs) ? data.songs : [];
+          this.syncPlaylistQueue();
+        }
+      } catch (error) {
+        console.error('加载播放列表失败', error);
+      }
+    },
+    async ensureCurrentPlaylistReady() {
+      if (!this.userId) {
+        return;
+      }
+      if (this.currentPlaylistId) {
+        return;
+      }
+      await this.loadCurrentPlaylist();
+    },
+    syncPlaylistQueue() {
+      if (this.userId) {
+        this.playlist = this.currentPlaylistSongs.map(song => song.id);
+        if (this.currentSong && this.currentSong.id) {
+          this.currentIndex = this.playlist.indexOf(this.currentSong.id);
+        } else if (this.playlist.length === 0) {
+          this.currentIndex = -1;
+        } else if (this.currentIndex >= this.playlist.length) {
+          this.currentIndex = this.playlist.length - 1;
+        }
+      } else if (this.playlist.length === 0) {
+        this.currentIndex = -1;
+      }
+    },
+    async addSongToCurrentPlaylist(song) {
+      if (!this.userId || !this.currentPlaylistId || !song || !song.id) {
+        return;
+      }
+      const exists = this.currentPlaylistSongs.some(item => item.id === song.id);
+      if (!exists) {
+        this.currentPlaylistSongs.push({
+          id: song.id,
+          title: song.title,
+          artistId: song.artistId,
+          coverUrl: song.coverUrl,
+          favorite: song.favorite,
+        });
+        this.syncPlaylistQueue();
+        try {
+          const response = await musicApi.managePlaylistSong({
+            playlistId: this.currentPlaylistId,
+            songId: song.id,
+          });
+          if (!response.data || !response.data.passed) {
+            throw new Error(response.data ? response.data.message : '未知错误');
+          }
+        } catch (error) {
+          console.error('添加歌曲到播放列表失败', error);
+          await this.loadCurrentPlaylist();
+        }
+      } else {
+        this.syncPlaylistQueue();
+      }
+    },
+    async removeSongFromPlaylist(songId) {
+      if (!this.userId || !this.currentPlaylistId) {
+        return;
+      }
+      const index = this.currentPlaylistSongs.findIndex(song => song.id === songId);
+      if (index === -1) {
+        return;
+      }
+      const removedSong = this.currentPlaylistSongs.splice(index, 1)[0];
+      this.syncPlaylistQueue();
+      if (removedSong && this.currentSong && removedSong.id === this.currentSong.id) {
+        this.isPlaying = false;
+        this.audio.pause();
+        this.currentTime = 0;
+      }
+      try {
+        const response = await musicApi.managePlaylistSong({
+          playlistId: this.currentPlaylistId,
+          songId,
+        });
+        if (!response.data || !response.data.passed) {
+          throw new Error(response.data ? response.data.message : '未知错误');
+        }
+      } catch (error) {
+        alert('移除歌曲失败：' + error.message);
+        await this.loadCurrentPlaylist();
+      }
+    },
+    playFromCurrentList(index) {
+      const song = this.currentPlaylistSongs[index];
+      if (!song) {
+        return;
+      }
+      this.currentIndex = index;
+      this.playSong(song.id);
     },
     async toggleFavoriteFromPlayer() {
       if (!this.currentSong || !this.currentSong.id) {
@@ -585,9 +739,93 @@ export default {
   flex-direction: row;
   height: 200px;
 }
-.playlist-placeholder {
-  width: 30%;
+.playlist-panel {
+  width: 35%;
+  padding: 16px;
+  border-right: 1px solid #e2e8f0;
   background: #fefeff;
+  overflow-y: auto;
+}
+.playlist-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-bottom: 10px;
+}
+.playlist-header .title {
+  font-size: 16px;
+  font-weight: 600;
+  color: #1e293b;
+}
+.playlist-header .subtitle {
+  font-size: 12px;
+  color: #94a3b8;
+}
+.playlist-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-height: 160px;
+  overflow-y: auto;
+  padding-right: 6px;
+}
+.playlist-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: #f8fafc;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+.playlist-item:hover {
+  background: #e2e8f0;
+}
+.playlist-item.active {
+  background: #dbeafe;
+  box-shadow: 0 0 8px rgba(59, 130, 246, 0.35);
+}
+.playlist-item .order {
+  width: 18px;
+  text-align: center;
+  font-size: 12px;
+  color: #94a3b8;
+}
+.playlist-item .info {
+  flex: 1;
+  min-width: 0;
+}
+.playlist-item .info .name {
+  margin: 0;
+  font-size: 14px;
+  color: #0f172a;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.playlist-item .info .artist {
+  margin: 0;
+  font-size: 12px;
+  color: #94a3b8;
+}
+.remove-btn {
+  border: none;
+  background: transparent;
+  color: #ef4444;
+  font-size: 12px;
+  cursor: pointer;
+  padding: 4px 6px;
+  border-radius: 4px;
+}
+.remove-btn:disabled {
+  color: #cbd5f5;
+  cursor: not-allowed;
+}
+.playlist-empty {
+  font-size: 12px;
+  color: #94a3b8;
+  margin-top: 20px;
 }
 .lyrics-right {
   flex: 1;

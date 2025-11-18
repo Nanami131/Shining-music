@@ -142,6 +142,17 @@ public class MusicAppService {
         return R.success("获取成功", playlistDetailsDTO);
     }
 
+    public R getCurrentPlaylist(Long userId) {
+        if (userId == null) {
+            return R.error("用户ID不能为空");
+        }
+        Playlist playlist = playlistService.ensureCurrentPlaylist(userId);
+        if (playlist == null) {
+            return R.error("初始化当前列表失败");
+        }
+        return getPlaylistDetailsInfo(playlist.getId());
+    }
+
     public R managePlaylistSong(PlaylistSongRequest playlistSongRequest) {
         Long playlistId = playlistSongRequest.getPlaylistId();
         Long songId = playlistSongRequest.getSongId();
@@ -324,4 +335,6 @@ public class MusicAppService {
     }
 
 }
+
+
 

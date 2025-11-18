@@ -113,6 +113,13 @@ public class PlaylistService {
         return ensureUserPlaylist(userId, Constants.USER_FAVORITE);
     }
 
+    public Playlist ensureCurrentPlaylist(Long userId) {
+        if (userId == null) {
+            return null;
+        }
+        return ensureUserPlaylist(userId, Constants.CURRENT_PLAYLIST);
+    }
+
     private Playlist ensureUserPlaylist(Long userId, byte type) {
         Playlist playlist = findUserPlaylist(userId, type);
         if (playlist != null) {
@@ -165,7 +172,7 @@ public class PlaylistService {
             if (query != null && !query.isEmpty()) {
                 return R.error("非法重复创建");
             }
-            playlist.setName("收藏歌单" + playlist.getUserId());
+            playlist.setName(defaultNameForType(playlist.getType(), playlist.getUserId()));
         }
         if (playlist.getName() == null || playlist.getName().isEmpty()) {
             return R.error("歌单名称不能为空");
@@ -277,3 +284,5 @@ public class PlaylistService {
         }
     }
 }
+
+
