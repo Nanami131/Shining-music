@@ -11,12 +11,17 @@ export default defineConfig({
         target: 'http://localhost:8080',
         changeOrigin: true,
       },
+      '/minio': {
+        target: 'http://localhost:9000',
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/minio/, ''),
+      },
     },
-    allowedHosts: true, // 这一行会允许任何 Host，包括每次变的 trycloudflare 域名
+    allowedHosts: true,
   },
   resolve: {
     alias: {
-      '@': path.resolve(__dirname, './src'), // 配置 @ 指向 src 目录
+      '@': path.resolve(__dirname, './src'),
     },
   },
 });
