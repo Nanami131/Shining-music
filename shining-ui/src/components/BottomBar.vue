@@ -8,10 +8,10 @@
           <span class="artist">歌手 ID: {{ currentSong.artistId || '未知' }}</span>
         </div>
         <button
-          class="favorite-btn"
-          :class="{ active: currentSong && currentSong.favorite }"
-          @click.stop="toggleFavoriteFromPlayer"
-          :title="currentSong && currentSong.favorite ? '取消收藏' : '收藏歌曲'"
+            class="favorite-btn"
+            :class="{ active: currentSong && currentSong.favorite }"
+            @click.stop="toggleFavoriteFromPlayer"
+            :title="currentSong && currentSong.favorite ? '取消收藏' : '收藏歌曲'"
         >
           <span class="heart-icon"></span>
         </button>
@@ -21,11 +21,11 @@
         <div class="progress-bar">
           <span>{{ formatTime(currentTime) }}</span>
           <input
-            type="range"
-            v-model="currentTime"
-            :max="duration"
-            @input="seek"
-            class="progress-slider"
+              type="range"
+              v-model="currentTime"
+              :max="duration"
+              @input="seek"
+              class="progress-slider"
           />
           <span>{{ formatTime(duration) }}</span>
         </div>
@@ -41,11 +41,40 @@
             <span class="icon next"></span>
           </button>
 
-          <button class="mode-btn" @click="cyclePlayMode" :title="playModeLabel">
-            <span v-if="playMode === 'single'" class="mode-icon">单曲循环</span>
-            <span v-else-if="playMode === 'sequential'" class="mode-icon">顺序播放</span>
-            <span v-else class="mode-icon">播完停止</span>
-          </button>
+          <div class="mode-dropdown">
+            <button class="mode-btn" @click="cyclePlayMode" :title="playModeLabel">
+              <span class="mode-current">{{ playModeLabel }}</span>
+              <span class="mode-arrow"></span>
+            </button>
+            <transition name="fade">
+              <div v-if="showPlayModeMenu" class="mode-menu">
+                <div
+                    class="mode-menu-item"
+                    :class="{ active: playMode === 'sequential' }"
+                    @click="setPlayMode('sequential')"
+                >
+                  <div class="mode-menu-label">列表循环</div>
+                  <div class="mode-menu-desc">按顺序播放并循环整个列表</div>
+                </div>
+                <div
+                    class="mode-menu-item"
+                    :class="{ active: playMode === 'single' }"
+                    @click="setPlayMode('single')"
+                >
+                  <div class="mode-menu-label">单曲循环</div>
+                  <div class="mode-menu-desc">当前歌曲循环播放</div>
+                </div>
+                <div
+                    class="mode-menu-item"
+                    :class="{ active: playMode === 'stop' }"
+                    @click="setPlayMode('stop')"
+                >
+                  <div class="mode-menu-label">播完停止</div>
+                  <div class="mode-menu-desc">当前歌曲结束后停止播放</div>
+                </div>
+              </div>
+            </transition>
+          </div>
         </div>
       </div>
 
@@ -66,10 +95,10 @@
           </div>
           <div v-if="userId && currentPlaylistSongs.length" class="playlist-list">
             <div
-              v-for="(song, idx) in currentPlaylistSongs"
-              :key="song.id || idx"
-              :class="['playlist-item', { active: currentSong && song.id === currentSong.id }]"
-              @click="playFromCurrentList(idx)"
+                v-for="(song, idx) in currentPlaylistSongs"
+                :key="song.id || idx"
+                :class="['playlist-item', { active: currentSong && song.id === currentSong.id }]"
+                @click="playFromCurrentList(idx)"
             >
               <div class="order">{{ idx + 1 }}</div>
               <div class="info">
@@ -77,9 +106,9 @@
                 <p class="artist">歌手 ID: {{ song.artistId || '未知' }}</p>
               </div>
               <button
-                class="remove-btn"
-                @click.stop="removeSongFromPlaylist(song.id)"
-                :disabled="!currentPlaylistId"
+                  class="remove-btn"
+                  @click.stop="removeSongFromPlaylist(song.id)"
+                  :disabled="!currentPlaylistId"
               >
                 移除
               </button>
@@ -115,9 +144,9 @@
           <div class="lyrics-content" ref="lyricsContent" :class="'highlight-color-' + highlightColor">
             <div v-for="(line, index) in parsedLyrics" :key="index" class="lyrics-group">
               <div
-                :class="{ active: isActiveLine(line.time, index) }"
-                class="lyric-line"
-                ref="lyricLines"
+                  :class="{ active: isActiveLine(line.time, index) }"
+                  class="lyric-line"
+                  ref="lyricLines"
               >
                 <template v-if="selectedLang === 'all'">
                   <p v-if="line.zh">{{ line.zh }}</p>
@@ -164,6 +193,7 @@ export default {
       playMode: 'stop', // stop | sequential | single
       playlist: [],
       currentIndex: -1,
+      showPlayModeMenu: false,
     };
   },
   computed: {
@@ -172,14 +202,14 @@ export default {
     },
     hasNext() {
       return (
-        this.playlist.length > 0 &&
-        this.currentIndex >= 0 &&
-        this.currentIndex < this.playlist.length - 1
+          this.playlist.length > 0 &&
+          this.currentIndex >= 0 &&
+          this.currentIndex < this.playlist.length - 1
       );
     },
     playModeLabel() {
       if (this.playMode === 'single') return '单曲循环';
-      if (this.playMode === 'sequential') return '顺序播放';
+      if (this.playMode === 'sequential') return '列表循环';
       return '播完停止';
     },
   },
@@ -210,7 +240,7 @@ export default {
       if (Array.isArray(playlist) && playlist.length) {
         this.playlist = playlist;
         this.currentIndex =
-          typeof index === 'number' ? index : playlist.findIndex(id => id === songId);
+            typeof index === 'number' ? index : playlist.findIndex(id => id === songId);
       } else if (this.userId && this.currentPlaylistSongs.length) {
         this.playlist = this.currentPlaylistSongs.map(song => song.id);
         this.currentIndex = this.playlist.indexOf(songId);
@@ -266,23 +296,30 @@ export default {
       } else if (this.playMode === 'sequential') {
         if (this.hasNext) {
           this.playNext();
+        } else if (this.playlist.length > 0) {
+          this.currentIndex = 0;
+          const firstId = this.playlist[0];
+          if (firstId != null) {
+            this.playSong(firstId);
+          }
         } else {
           this.isPlaying = false;
           this.currentTime = 0;
         }
       } else {
+        // 播完停止：当前歌曲播完后不再自动播放下一首
         this.isPlaying = false;
         this.currentTime = 0;
       }
     },
     cyclePlayMode() {
-      if (this.playMode === 'stop') {
-        this.playMode = 'sequential';
-      } else if (this.playMode === 'sequential') {
-        this.playMode = 'single';
-      } else {
-        this.playMode = 'stop';
+      this.showPlayModeMenu = !this.showPlayModeMenu;
+    },
+    setPlayMode(mode) {
+      if (mode === 'single' || mode === 'sequential' || mode === 'stop') {
+        this.playMode = mode;
       }
+      this.showPlayModeMenu = false;
     },
     async loadCurrentPlaylist() {
       if (!this.userId) {
@@ -466,8 +503,8 @@ export default {
     },
     isActiveLine(time, index) {
       const isActive =
-        this.currentTime >= time &&
-        (index + 1 >= this.parsedLyrics.length || this.currentTime < this.parsedLyrics[index + 1].time);
+          this.currentTime >= time &&
+          (index + 1 >= this.parsedLyrics.length || this.currentTime < this.parsedLyrics[index + 1].time);
       if (isActive && this.showLyrics) {
         this.$nextTick(() => this.scrollToActiveLine(index));
       }
@@ -518,11 +555,11 @@ export default {
     formatTime(time) {
       if (!time || isNaN(time)) return '00:00';
       const minutes = Math.floor(time / 60)
-        .toString()
-        .padStart(2, '0');
+          .toString()
+          .padStart(2, '0');
       const seconds = Math.floor(time % 60)
-        .toString()
-        .padStart(2, '0');
+          .toString()
+          .padStart(2, '0');
       return `${minutes}:${seconds}`;
     },
   },
@@ -554,7 +591,7 @@ export default {
   padding: 10px 20px;
   gap: 20px;
   height: 90px;
-  z-index: 1;
+  z-index: 3; /* 提高到高于 lyrics-panel */
 }
 .song-info {
   display: flex;
@@ -702,18 +739,89 @@ export default {
 .icon.next {
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M15 6v12' stroke='%234b5563' stroke-width='2' stroke-linecap='round'/%3E%3Cpath d='M7 6l7 6-7 6z' fill='none' stroke='%234b5563' stroke-width='2' stroke-linejoin='round'/%3E%3C/svg%3E");
 }
+
+/* 播放模式下拉样式 */
+.mode-dropdown {
+  position: relative;
+}
 .mode-btn {
-  padding: 4px 10px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
   border-radius: 999px;
   border: none;
-  background: #f1f5f9;
+  background: linear-gradient(135deg, #e0f2fe, #f5f3ff);
   color: #1e293b;
   font-size: 12px;
   cursor: pointer;
+  box-shadow: 0 4px 10px rgba(148, 163, 184, 0.35);
+  transition: all 0.2s ease;
+}
+.mode-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 14px rgba(148, 163, 184, 0.5);
+}
+.mode-current {
+  font-weight: 500;
+}
+.mode-arrow {
+  width: 0;
+  height: 0;
+  border-left: 4px solid transparent;
+  border-right: 4px solid transparent;
+  border-top: 5px solid #64748b;
 }
 .mode-icon {
   font-size: 12px;
 }
+.mode-menu {
+  position: absolute;
+  right: 0;
+  bottom: 110%; /* 向上展开 */
+  min-width: 180px;
+  background: #ffffff;
+  border-radius: 12px;
+  box-shadow: 0 12px 30px rgba(15, 23, 42, 0.18);
+  padding: 8px;
+  z-index: 9999; /* 播放模式面板置于最上层 */
+}
+.mode-menu-item {
+  padding: 8px 10px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+.mode-menu-item + .mode-menu-item {
+  margin-top: 4px;
+}
+.mode-menu-item:hover {
+  background: #eff6ff;
+}
+.mode-menu-item.active {
+  background: linear-gradient(135deg, #4facfe, #38bdf8);
+  color: #ffffff;
+}
+.mode-menu-label {
+  font-size: 13px;
+  font-weight: 500;
+}
+.mode-menu-desc {
+  font-size: 11px;
+  opacity: 0.8;
+  margin-top: 2px;
+}
+
+.fade-enter-active,
+.fade-leave-active {
+  transition: opacity 0.15s ease, transform 0.15s ease;
+}
+.fade-enter,
+.fade-leave-to {
+  opacity: 0;
+  transform: translateY(4px);
+}
+
 .toggle-lyrics {
   padding: 6px 12px;
   border: none;
@@ -730,7 +838,7 @@ export default {
   right: 0;
   max-height: 200px;
   width: 100%;
-  z-index: 2;
+  z-index: 1; /* 调低到 fixed-bar 下面 */
   display: flex;
   flex-direction: column;
 }
@@ -979,4 +1087,3 @@ export default {
   color: #666;
 }
 </style>
-
