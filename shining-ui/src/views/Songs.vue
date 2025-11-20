@@ -68,7 +68,7 @@ export default {
     async loadSongs() {
       try {
         const songPromises = [];
-        for (let id = 1; id <= 20; id++) {
+        for (let id = 1; id <= 40; id++) {
           songPromises.push(musicApi.getSongBaseInfo(id, this.userId).catch(() => null));
         }
         const responses = await Promise.all(songPromises);
