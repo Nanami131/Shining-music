@@ -40,6 +40,8 @@ export default {
           localStorage.setItem('token', token || '');
           localStorage.setItem('deviceCode', deviceCode || '');
           localStorage.setItem('userBase', JSON.stringify(userBaseDTO || {}));
+          // 新登录成功，重置“登录已过期”提示标记
+          window.__LOGIN_EXPIRED_ALERT_SHOWN__ = false;
           // 通知头部组件以及底部栏更新登录状态
           window.dispatchEvent(new Event('userBaseUpdated'));
           alert('登录成功');

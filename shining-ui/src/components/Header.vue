@@ -44,7 +44,7 @@ export default {
   created() {
     this.updateLoginState();
     window.addEventListener('storage', this.updateLoginState);
-    window.addEventListener('userBaseUpdated', this.updateLoginState); // 监听更新事件
+    window.addEventListener('userBaseUpdated', this.updateLoginState);
   },
   beforeDestroy() {
     window.removeEventListener('storage', this.updateLoginState);
@@ -54,6 +54,22 @@ export default {
     updateLoginState() {
       this.isLoggedIn = !!localStorage.getItem('token');
       this.userBase = JSON.parse(localStorage.getItem('userBase') || '{}');
+    },
+    // 统一处理接口错误，“登录已过期，请重新登录”只弹一次
+    showApiError(message, prefix = '') {
+      const loginExpiredText = '登录已过期，请重新登录';
+      const msg = message || '';
+      const fullMessage = prefix ? prefix + msg : msg;
+      const sourceText = msg || fullMessage;
+      if (sourceText && sourceText.indexOf(loginExpiredText) !== -1) {
+        if (window.__LOGIN_EXPIRED_ALERT_SHOWN__) {
+          return;
+        }
+        window.__LOGIN_EXPIRED_ALERT_SHOWN__ = true;
+        alert(loginExpiredText);
+      } else {
+        alert(fullMessage || prefix || '未知错误');
+      }
     },
     goToLogin() {
       this.$router.push('/login');
@@ -92,15 +108,14 @@ export default {
           localStorage.removeItem('deviceCode');
           localStorage.removeItem('userBase');
           this.updateLoginState();
-          // 通知全局（包括底部栏）用户已退出
           window.dispatchEvent(new Event('userBaseUpdated'));
           alert('退出成功');
           this.$router.push('/login');
         } else {
-          alert('退出失败：' + response.data.message);
+          this.showApiError(response.data.message, '退出失败：');
         }
       } catch (error) {
-        alert('退出出错：' + error.message);
+        this.showApiError(error.message, '退出出错：');
       }
     },
   },

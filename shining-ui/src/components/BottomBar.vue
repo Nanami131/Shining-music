@@ -224,7 +224,6 @@ export default {
     this.audio.addEventListener('loadedmetadata', this.updateDuration);
     this.audio.addEventListener('ended', this.handleEnded);
     this.$bus.on('playSong', this.handlePlaySongEvent);
-    // 登录/退出时刷新底部栏
     window.addEventListener('userBaseUpdated', this.handleUserStateChange);
   },
   beforeDestroy() {
@@ -237,6 +236,23 @@ export default {
     window.removeEventListener('userBaseUpdated', this.handleUserStateChange);
   },
   methods: {
+    // 统一处理接口错误，“登录已过期，请重新登录”全局只弹一次
+    showApiError(message, prefix = '') {
+      const loginExpiredText = '登录已过期，请重新登录';
+      const msg = message || '';
+      const fullMessage = prefix ? prefix + msg : msg;
+      const sourceText = msg || fullMessage;
+      if (sourceText && sourceText.indexOf(loginExpiredText) !== -1) {
+        if (window.__LOGIN_EXPIRED_ALERT_SHOWN__) {
+          return;
+        }
+        window.__LOGIN_EXPIRED_ALERT_SHOWN__ = true;
+        alert(loginExpiredText);
+      } else {
+        alert(fullMessage || prefix || '未知错误');
+      }
+    },
+
     // 登录/退出后响应：登录拉取播放列表，退出只清空前端状态
     async handleUserStateChange() {
       const token = localStorage.getItem('token');
@@ -244,11 +260,9 @@ export default {
       const newUserId = userBase.id ?? null;
 
       if (token && newUserId) {
-        // 登录或切换用户：更新 userId 并拉取播放列表
         this.userId = newUserId;
         await this.loadCurrentPlaylist();
       } else {
-        // 退出登录：仅前端清空，不调用后端
         this.userId = null;
         this.currentPlaylistId = null;
         this.currentPlaylistSongs = [];
@@ -293,10 +307,10 @@ export default {
           this.isPlaying = true;
           this.loadAllLyrics(songId);
         } else {
-          alert('获取歌曲信息失败：' + response.data.message);
+          this.showApiError(response.data.message, '获取歌曲信息失败：');
         }
       } catch (error) {
-        alert('播放歌曲失败：' + error.message);
+        this.showApiError(error.message, '播放歌曲失败：');
       }
     },
     playPrev() {
@@ -334,7 +348,6 @@ export default {
           this.currentTime = 0;
         }
       } else {
-        // 播完停止：当前歌曲播完后不再自动播放下一首
         this.isPlaying = false;
         this.currentTime = 0;
       }
@@ -444,7 +457,7 @@ export default {
           throw new Error(response.data ? response.data.message : '未知错误');
         }
       } catch (error) {
-        alert('移除歌曲失败：' + error.message);
+        this.showApiError(error.message, '移除歌曲失败：');
         await this.loadCurrentPlaylist();
       }
     },
@@ -474,10 +487,10 @@ export default {
           this.currentSong.favorite = favorite;
         } else {
           const msg = response.data ? response.data.message : '未知错误';
-          alert('更新收藏状态失败：' + msg);
+          this.showApiError(msg, '更新收藏状态失败：');
         }
       } catch (error) {
-        alert('更新收藏状态失败：' + error.message);
+        this.showApiError(error.message, '更新收藏状态失败：');
       }
     },
     async loadAllLyrics(songId) {
@@ -618,7 +631,7 @@ export default {
   padding: 10px 20px;
   gap: 20px;
   height: 90px;
-  z-index: 3; /* 高于 lyrics-panel，确保播放模式菜单在最上方 */
+  z-index: 3;
 }
 .song-info {
   display: flex;
@@ -805,13 +818,13 @@ export default {
 .mode-menu {
   position: absolute;
   right: 0;
-  bottom: 110%; /* 向上展开 */
+  bottom: 110%;
   min-width: 180px;
   background: #ffffff;
   border-radius: 12px;
   box-shadow: 0 12px 30px rgba(15, 23, 42, 0.18);
   padding: 8px;
-  z-index: 9999; /* 播放模式面板置于最上层 */
+  z-index: 9999;
 }
 .mode-menu-item {
   padding: 8px 10px;
@@ -865,7 +878,7 @@ export default {
   right: 0;
   max-height: 200px;
   width: 100%;
-  z-index: 1; /* 在 fixed-bar 之下 */
+  z-index: 1;
   display: flex;
   flex-direction: column;
 }
