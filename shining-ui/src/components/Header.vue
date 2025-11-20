@@ -92,6 +92,8 @@ export default {
           localStorage.removeItem('deviceCode');
           localStorage.removeItem('userBase');
           this.updateLoginState();
+          // 通知全局（包括底部栏）用户已退出
+          window.dispatchEvent(new Event('userBaseUpdated'));
           alert('退出成功');
           this.$router.push('/login');
         } else {
@@ -115,9 +117,9 @@ export default {
   align-items: center;
   padding: 10px 24px;
   background:
-    radial-gradient(circle at 0% 0%, rgba(186, 230, 253, 0.95), transparent 55%),
-    radial-gradient(circle at 100% 0%, rgba(244, 219, 255, 0.95), transparent 55%),
-    linear-gradient(90deg, rgba(15, 23, 42, 0.92), rgba(15, 23, 42, 0.78));
+      radial-gradient(circle at 0% 0%, rgba(186, 230, 253, 0.95), transparent 55%),
+      radial-gradient(circle at 100% 0%, rgba(244, 219, 255, 0.95), transparent 55%),
+      linear-gradient(90deg, rgba(15, 23, 42, 0.92), rgba(15, 23, 42, 0.78));
   backdrop-filter: blur(14px);
   border-bottom: 1px solid rgba(255, 255, 255, 0.18);
   box-shadow: 0 10px 30px rgba(15, 23, 42, 0.35);
@@ -130,8 +132,8 @@ export default {
   text-transform: uppercase;
   color: #fdf2ff;
   text-shadow:
-    0 0 8px rgba(244, 219, 255, 0.9),
-    0 0 16px rgba(56, 189, 248, 0.7);
+      0 0 8px rgba(244, 219, 255, 0.9),
+      0 0 16px rgba(56, 189, 248, 0.7);
 }
 .nav {
   display: flex;
@@ -139,8 +141,8 @@ export default {
   padding: 4px 10px;
   border-radius: 999px;
   background:
-    radial-gradient(circle at 0 0, rgba(96, 165, 250, 0.55), transparent 55%),
-    radial-gradient(circle at 100% 100%, rgba(45, 212, 191, 0.45), transparent 55%);
+      radial-gradient(circle at 0 0, rgba(96, 165, 250, 0.55), transparent 55%),
+      radial-gradient(circle at 100% 100%, rgba(45, 212, 191, 0.45), transparent 55%);
   backdrop-filter: blur(18px);
   box-shadow: 0 0 22px rgba(56, 189, 248, 0.65);
 }
@@ -159,8 +161,8 @@ export default {
   inset: 0;
   border-radius: inherit;
   background:
-    radial-gradient(circle at 0 0, rgba(129, 230, 217, 0.95), transparent 55%),
-    radial-gradient(circle at 100% 100%, rgba(96, 165, 250, 0.95), transparent 55%);
+      radial-gradient(circle at 0 0, rgba(129, 230, 217, 0.95), transparent 55%),
+      radial-gradient(circle at 100% 100%, rgba(96, 165, 250, 0.95), transparent 55%);
   opacity: 0;
   transition: opacity 0.25s ease, transform 0.25s ease;
   z-index: -1;
@@ -229,4 +231,3 @@ export default {
   background: radial-gradient(circle at 0% 0%, rgba(248, 250, 252, 0.7), transparent 60%);
 }
 </style>
-

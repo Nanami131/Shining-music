@@ -41,6 +41,7 @@
             <span class="icon next"></span>
           </button>
 
+          <!-- 播放模式下拉 -->
           <div class="mode-dropdown">
             <button class="mode-btn" @click="cyclePlayMode" :title="playModeLabel">
               <span class="mode-current">{{ playModeLabel }}</span>
@@ -223,6 +224,8 @@ export default {
     this.audio.addEventListener('loadedmetadata', this.updateDuration);
     this.audio.addEventListener('ended', this.handleEnded);
     this.$bus.on('playSong', this.handlePlaySongEvent);
+    // 登录/退出时刷新底部栏
+    window.addEventListener('userBaseUpdated', this.handleUserStateChange);
   },
   beforeDestroy() {
     this.audio.removeEventListener('timeupdate', this.updateProgress);
@@ -231,8 +234,32 @@ export default {
     this.$bus.off('playSong', this.handlePlaySongEvent);
     this.audio.pause();
     this.audio.src = '';
+    window.removeEventListener('userBaseUpdated', this.handleUserStateChange);
   },
   methods: {
+    // 登录/退出后响应：登录拉取播放列表，退出只清空前端状态
+    async handleUserStateChange() {
+      const token = localStorage.getItem('token');
+      const userBase = JSON.parse(localStorage.getItem('userBase') || '{}');
+      const newUserId = userBase.id ?? null;
+
+      if (token && newUserId) {
+        // 登录或切换用户：更新 userId 并拉取播放列表
+        this.userId = newUserId;
+        await this.loadCurrentPlaylist();
+      } else {
+        // 退出登录：仅前端清空，不调用后端
+        this.userId = null;
+        this.currentPlaylistId = null;
+        this.currentPlaylistSongs = [];
+        this.playlist = [];
+        this.currentIndex = -1;
+        this.isPlaying = false;
+        this.audio.pause();
+        this.currentTime = 0;
+      }
+    },
+
     async handlePlaySongEvent({ songId, playlist, index }) {
       if (this.userId) {
         await this.ensureCurrentPlaylistReady();
@@ -591,7 +618,7 @@ export default {
   padding: 10px 20px;
   gap: 20px;
   height: 90px;
-  z-index: 3; /* 提高到高于 lyrics-panel */
+  z-index: 3; /* 高于 lyrics-panel，确保播放模式菜单在最上方 */
 }
 .song-info {
   display: flex;
@@ -838,7 +865,7 @@ export default {
   right: 0;
   max-height: 200px;
   width: 100%;
-  z-index: 1; /* 调低到 fixed-bar 下面 */
+  z-index: 1; /* 在 fixed-bar 之下 */
   display: flex;
   flex-direction: column;
 }

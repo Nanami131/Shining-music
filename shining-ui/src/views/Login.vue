@@ -40,7 +40,7 @@ export default {
           localStorage.setItem('token', token || '');
           localStorage.setItem('deviceCode', deviceCode || '');
           localStorage.setItem('userBase', JSON.stringify(userBaseDTO || {}));
-          // 通知头部组件更新登录状态
+          // 通知头部组件以及底部栏更新登录状态
           window.dispatchEvent(new Event('userBaseUpdated'));
           alert('登录成功');
           this.$router.push('/');
@@ -112,4 +112,3 @@ input {
   text-decoration: none;
 }
 </style>
-
