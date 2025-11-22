@@ -1,0 +1,158 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="org.L2.community.infrastructure.mapper.ForumCommentMapper">
+
+    <resultMap id="ForumCommentResultMap" type="org.L2.community.domain.model.ForumComment">
+        <id     column="id"               property="id"/>
+        <result column="post_id"          property="postId"/>
+        <result column="root_id"          property="rootId"/>
+        <result column="parent_id"        property="parentId"/>
+        <result column="comment_type"     property="commentType"/>
+        <result column="user_id"          property="userId"/>
+        <result column="reply_to_user_id" property="replyToUserId"/>
+        <result column="content"          property="content"/>
+        <result column="floor_no"         property="floorNo"/>
+        <result column="reply_count"      property="replyCount"/>
+        <result column="STATUS"           property="status"/>
+        <result column="created_at"       property="createdAt"/>
+        <result column="updated_at"       property="updatedAt"/>
+    </resultMap>
+
+    <sql id="Base_Column_List">
+        id,
+        post_id,
+        root_id,
+        parent_id,
+        comment_type,
+        user_id,
+        reply_to_user_id,
+        content,
+        floor_no,
+        reply_count,
+        STATUS,
+        created_at,
+        updated_at
+    </sql>
+
+    <select id="selectById" parameterType="long" resultMap="ForumCommentResultMap">
+        SELECT
+        <include refid="Base_Column_List"/>
+        FROM post_comments
+        WHERE id = #{id}
+    </select>
+
+    <insert id="insert"
+            parameterType="org.L2.community.domain.model.ForumComment"
+            useGeneratedKeys="true"
+            keyProperty="id">
+        INSERT INTO post_comments (
+        post_id,
+        root_id,
+        parent_id,
+        comment_type,
+        user_id,
+        reply_to_user_id,
+        content,
+        floor_no,
+        STATUS,
+        created_at,
+        updated_at
+        ) VALUES (
+        #{postId},
+        #{rootId},
+        #{parentId},
+        #{commentType},
+        #{userId},
+        #{replyToUserId},
+        #{content},
+        #{floorNo},
+        #{status},
+        #{createdAt},
+        #{updatedAt}
+        )
+        <!--。
+            root_id / floor_no / reply_count 的具体维护逻辑留待 TODO
+        -->
+    </insert>
+
+    <update id="update" parameterType="org.L2.community.domain.model.ForumComment">
+        UPDATE post_comments
+        <set>
+            <if test="postId != null">
+                post_id = #{postId},
+            </if>
+            <if test="rootId != null">
+                root_id = #{rootId},
+            </if>
+            <if test="parentId != null">
+                parent_id = #{parentId},
+            </if>
+            <if test="commentType != null">
+                comment_type = #{commentType},
+            </if>
+            <if test="userId != null">
+                user_id = #{userId},
+            </if>
+            <if test="replyToUserId != null">
+                reply_to_user_id = #{replyToUserId},
+            </if>
+            <if test="content != null">
+                content = #{content},
+            </if>
+            <if test="floorNo != null">
+                floor_no = #{floorNo},
+            </if>
+            <if test="replyCount != null">
+                reply_count = #{replyCount},
+            </if>
+            <if test="status != null">
+                STATUS = #{status},
+            </if>
+            <if test="createdAt != null">
+                created_at = #{createdAt},
+            </if>
+            <if test="updatedAt != null">
+                updated_at = #{updatedAt},
+            </if>
+        </set>
+        WHERE id = #{id}
+    </update>
+
+    <delete id="deleteById" parameterType="long">
+        DELETE FROM post_comments WHERE id = #{id}
+    </delete>
+
+    <select id="query"
+            parameterType="org.L2.community.domain.model.ForumComment"
+            resultMap="ForumCommentResultMap">
+        SELECT
+        <include refid="Base_Column_List"/>
+        FROM post_comments
+        <where>
+            <if test="id != null">
+                AND id = #{id}
+            </if>
+            <if test="postId != null">
+                AND post_id = #{postId}
+            </if>
+            <if test="userId != null">
+                AND user_id = #{userId}
+            </if>
+            <if test="commentType != null">
+                AND comment_type = #{commentType}
+            </if>
+            <if test="parentId != null">
+                AND parent_id = #{parentId}
+            </if>
+            <if test="rootId != null">
+                AND root_id = #{rootId}
+            </if>
+            <if test="status != null">
+                AND STATUS = #{status}
+            </if>
+        </where>
+        ORDER BY created_at ASC
+    </select>
+</mapper>

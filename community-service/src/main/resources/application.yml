@@ -1,0 +1,8 @@
+spring:
+  application:
+    name: community-service
+  config:
+    import:
+      - nacos:community-service.yaml?serverAddr=127.0.0.1:8848&namespace=Shining&group=Shining
+      - nacos:common.yaml?serverAddr=127.0.0.1:8848&namespace=Shining&group=Shining
+      - nacos:secret.yaml?serverAddr=127.0.0.1:8848&namespace=Shining&group=Shining

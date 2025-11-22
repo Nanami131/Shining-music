@@ -1,0 +1,116 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="org.L2.community.infrastructure.mapper.ForumPostMapper">
+
+    <resultMap id="ForumPostResultMap" type="org.L2.community.domain.model.ForumPost">
+        <id     column="id"               property="id"/>
+        <result column="user_id"          property="userId"/>
+        <result column="title"            property="title"/>
+        <result column="content"          property="content"/>
+        <result column="STATUS"           property="status"/>
+        <result column="comment_count"    property="commentCount"/>
+        <result column="last_comment_at"  property="lastCommentAt"/>
+        <result column="created_at"       property="createdAt"/>
+        <result column="updated_at"       property="updatedAt"/>
+    </resultMap>
+
+    <sql id="Base_Column_List">
+        id,
+        user_id,
+        title,
+        content,
+        STATUS,
+        comment_count,
+        last_comment_at,
+        created_at,
+        updated_at
+    </sql>
+
+    <select id="selectById" parameterType="long" resultMap="ForumPostResultMap">
+        SELECT
+        <include refid="Base_Column_List"/>
+        FROM posts
+        WHERE id = #{id}
+    </select>
+
+    <insert id="insert"
+            parameterType="org.L2.community.domain.model.ForumPost"
+            useGeneratedKeys="true"
+            keyProperty="id">
+        INSERT INTO posts (
+        user_id,
+        title,
+        content,
+        STATUS,
+        created_at,
+        updated_at
+        ) VALUES (
+        #{userId},
+        #{title},
+        #{content},
+        #{status},
+        #{createdAt},
+        #{updatedAt}
+        )
+    </insert>
+
+    <update id="update" parameterType="org.L2.community.domain.model.ForumPost">
+        UPDATE posts
+        <set>
+            <if test="userId != null">
+                user_id = #{userId},
+            </if>
+            <if test="title != null">
+                title = #{title},
+            </if>
+            <if test="content != null">
+                content = #{content},
+            </if>
+            <if test="status != null">
+                STATUS = #{status},
+            </if>
+            <if test="commentCount != null">
+                comment_count = #{commentCount},
+            </if>
+            <if test="lastCommentAt != null">
+                last_comment_at = #{lastCommentAt},
+            </if>
+            <if test="createdAt != null">
+                created_at = #{createdAt},
+            </if>
+            <if test="updatedAt != null">
+                updated_at = #{updatedAt},
+            </if>
+        </set>
+        WHERE id = #{id}
+    </update>
+
+    <delete id="deleteById" parameterType="long">
+        DELETE FROM posts WHERE id = #{id}
+    </delete>
+
+    <select id="query"
+            parameterType="org.L2.community.domain.model.ForumPost"
+            resultMap="ForumPostResultMap">
+        SELECT
+        <include refid="Base_Column_List"/>
+        FROM posts
+        <where>
+            <if test="id != null">
+                AND id = #{id}
+            </if>
+            <if test="userId != null">
+                AND user_id = #{userId}
+            </if>
+            <if test="title != null and title != ''">
+                AND title LIKE CONCAT('%', #{title}, '%')
+            </if>
+            <if test="status != null">
+                AND STATUS = #{status}
+            </if>
+        </where>
+        ORDER BY created_at DESC
+    </select>
+</mapper>

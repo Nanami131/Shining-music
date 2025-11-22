@@ -1,4 +1,4 @@
-package org.L2.community.domain.model;
+package org.L2.community.application.dto;
 
 import lombok.Data;
 import lombok.experimental.Accessors;
@@ -6,17 +6,16 @@ import lombok.experimental.Accessors;
 import java.time.LocalDateTime;
 
 /**
- * 论坛帖子实体
+ * 帖子列表用 DTO。
  */
 @Data
 @Accessors(chain = true)
-public class Post {
+public class PostDTO {
+
     private Long id;
     private Long userId;
     private String title;
-    private String content;
-    private Long likes;
-    private Byte status;
+    private Integer commentCount;
+    private LocalDateTime lastCommentAt;
     private LocalDateTime createdAt;
-    private LocalDateTime updatedAt;
 }
