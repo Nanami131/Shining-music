@@ -5,6 +5,8 @@ const api = axios.create({
     timeout: 5000,
 });
 
+const LOGIN_EXPIRED_TEXT = '登录已过期，请重新登录';
+
 // MinIO 地址统一替换：把 http://localhost:9000 换成 /minio
 const MINIO_LOCAL_PREFIX = 'http://localhost:9000';
 const MINIO_PROXY_PREFIX = '/minio';
@@ -35,6 +37,24 @@ function replaceMinioUrlDeep(data) {
     return data;
 }
 
+function handleLoginExpiredOnce() {
+    if (typeof localStorage !== 'undefined') {
+        localStorage.removeItem('token');
+        localStorage.removeItem('deviceCode');
+        localStorage.removeItem('userBase');
+    }
+
+    if (typeof window === 'undefined') {
+        return;
+    }
+
+    if (!window.__LOGIN_EXPIRED_ALERT_SHOWN__) {
+        window.__LOGIN_EXPIRED_ALERT_SHOWN__ = true;
+        window.alert(LOGIN_EXPIRED_TEXT);
+    }
+    window.location.href = '/login';
+}
+
 // 请求拦截器，添加 token
 api.interceptors.request.use(
     (config) => {
@@ -57,11 +77,7 @@ api.interceptors.response.use(
     },
     (error) => {
         if (error.response?.status === 401) {
-            localStorage.removeItem('token');
-            localStorage.removeItem('deviceCode');
-            localStorage.removeItem('userBase');
-            alert('登录已过期，请重新登录');
-            window.location.href = '/login';
+            handleLoginExpiredOnce();
         }
         return Promise.reject(error);
     }
