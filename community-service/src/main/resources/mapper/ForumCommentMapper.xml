@@ -56,7 +56,6 @@
         reply_to_user_id,
         content,
         floor_no,
-        STATUS,
         created_at,
         updated_at
         ) VALUES (
@@ -68,7 +67,6 @@
         #{replyToUserId},
         #{content},
         #{floorNo},
-        #{status},
         #{createdAt},
         #{updatedAt}
         )

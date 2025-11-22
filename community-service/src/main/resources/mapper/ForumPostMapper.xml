@@ -43,14 +43,12 @@
         user_id,
         title,
         content,
-        STATUS,
         created_at,
         updated_at
         ) VALUES (
         #{userId},
         #{title},
         #{content},
-        #{status},
         #{createdAt},
         #{updatedAt}
         )
