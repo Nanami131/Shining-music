@@ -2,14 +2,14 @@ import { createApp } from 'vue';
 import App from './App.vue';
 import router from './router';
 import mitt from 'mitt';
-import lotusCursor from '@/assets/sward.png';
+import customCursorAsset from '@/assets/sward.png';
 
-function applyLotusCursor() {
+function applyCustomCursor() {
   if (typeof document === 'undefined') return;
-  const size = 64;
-  // lotus.png 是 1024x1024，需要先压缩成浏览器可用的尺寸再作为鼠标指针
+  const size = 32; // 缩小到接近系统指针的尺寸，操作更精确
+  const hotSpot = { x: 6, y: 6 }; // 将热点放到激光剑尖端附近
   const img = new Image();
-  img.src = lotusCursor;
+  img.src = customCursorAsset;
   img.onload = () => {
     const canvas = document.createElement('canvas');
     canvas.width = size;
@@ -17,18 +17,18 @@ function applyLotusCursor() {
     const ctx = canvas.getContext('2d');
     ctx.drawImage(img, 0, 0, size, size);
     const dataUrl = canvas.toDataURL('image/png');
-    const cursorStyle = document.getElementById('global-lotus-cursor-style') || document.createElement('style');
-    cursorStyle.id = 'global-lotus-cursor-style';
+    const cursorStyle = document.getElementById('global-custom-cursor-style') || document.createElement('style');
+    cursorStyle.id = 'global-custom-cursor-style';
     cursorStyle.innerHTML = `
       body, body * {
-        cursor: url('${dataUrl}') 16 16, auto !important;
+        cursor: url('${dataUrl}') ${hotSpot.x} ${hotSpot.y}, auto !important;
       }
     `;
     document.head.appendChild(cursorStyle);
   };
 }
 
-applyLotusCursor();
+applyCustomCursor();
 
 const app = createApp(App);
 app.config.devtools = false;
