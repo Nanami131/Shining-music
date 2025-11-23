@@ -59,6 +59,14 @@
                 </div>
                 <div
                     class="mode-menu-item"
+                    :class="{ active: playMode === 'shuffle' }"
+                    @click="setPlayMode('shuffle')"
+                >
+                  <div class="mode-menu-label">随机播放</div>
+                  <div class="mode-menu-desc">从列表中随机选择下一首</div>
+                </div>
+                <div
+                    class="mode-menu-item"
                     :class="{ active: playMode === 'single' }"
                     @click="setPlayMode('single')"
                 >
@@ -191,7 +199,7 @@ export default {
       userId: null,
       currentPlaylistId: null,
       currentPlaylistSongs: [],
-      playMode: 'stop', // stop | sequential | single
+      playMode: 'sequential', // stop | sequential | single | shuffle
       playlist: [],
       currentIndex: -1,
       showPlayModeMenu: false,
@@ -211,6 +219,7 @@ export default {
     playModeLabel() {
       if (this.playMode === 'single') return '单曲循环';
       if (this.playMode === 'sequential') return '列表循环';
+      if (this.playMode === 'shuffle') return '随机播放';
       return '播完停止';
     },
   },
@@ -347,6 +356,25 @@ export default {
           this.isPlaying = false;
           this.currentTime = 0;
         }
+      } else if (this.playMode === 'shuffle') {
+        if (this.playlist.length > 0) {
+          let nextIndex;
+          if (this.playlist.length === 1) {
+            nextIndex = 0;
+          } else {
+            do {
+              nextIndex = Math.floor(Math.random() * this.playlist.length);
+            } while (nextIndex === this.currentIndex);
+          }
+          this.currentIndex = nextIndex;
+          const nextId = this.playlist[this.currentIndex];
+          if (nextId != null) {
+            this.playSong(nextId);
+          }
+        } else {
+          this.isPlaying = false;
+          this.currentTime = 0;
+        }
       } else {
         this.isPlaying = false;
         this.currentTime = 0;
@@ -356,7 +384,7 @@ export default {
       this.showPlayModeMenu = !this.showPlayModeMenu;
     },
     setPlayMode(mode) {
-      if (mode === 'single' || mode === 'sequential' || mode === 'stop') {
+      if (mode === 'single' || mode === 'sequential' || mode === 'stop' || mode === 'shuffle') {
         this.playMode = mode;
       }
       this.showPlayModeMenu = false;
