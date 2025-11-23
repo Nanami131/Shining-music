@@ -19,6 +19,11 @@ public class PlayRecordConsumer {
 
     private final UserPlayStatisticsService userPlayStatisticsService;
 
+    /**
+     * 消费播放事件消息。
+     *
+     * @param message MQ 中的播放事件
+     */
     @RabbitListener(queues = RabbitMQConfig.PLAY_RECORD_QUEUE)
     public void onMessage(PlaybackEventMessage message) {
         try {

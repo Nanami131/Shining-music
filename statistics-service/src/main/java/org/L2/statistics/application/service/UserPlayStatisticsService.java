@@ -26,6 +26,8 @@ public class UserPlayStatisticsService {
 
     /**
      * 根据播放事件保存一条听歌记录。
+     *
+     * @param message 播放事件消息，内部包含用户与歌曲信息
      */
     @Transactional(rollbackFor = Exception.class)
     public void saveFromEvent(PlaybackEventMessage message) {
@@ -54,9 +56,10 @@ public class UserPlayStatisticsService {
     /**
      * 统计某用户在指定时间范围内的听歌次数。
      *
-     * startTime / endTime 都可以为 null：
-     *  - startTime 为空：不限制起始时间
-     *  - endTime 为空：不限制结束时间
+     * @param userId    用户 ID，不能为空
+     * @param startTime 起始时间，可为空表示不限制
+     * @param endTime   结束时间，可为空表示不限制
+     * @return 包含统计结果的统一返回对象
      */
     public R getUserPlayCount(Long userId, LocalDateTime startTime, LocalDateTime endTime) {
         if (userId == null) {
@@ -70,7 +73,10 @@ public class UserPlayStatisticsService {
     /**
      * 统计某用户在指定时间范围内，按天分组的听歌次数。
      *
-     * 时间范围仍然是任意的，只是最终用 DATE(played_at) 做聚合。
+     * @param userId    用户 ID，不能为空
+     * @param startTime 起始时间，可为空表示不限制
+     * @param endTime   结束时间，可为空表示不限制
+     * @return 每日听歌次数 DTO 列表
      */
     public R getUserDailyPlayStats(Long userId, LocalDateTime startTime, LocalDateTime endTime) {
         if (userId == null) {

@@ -21,6 +21,10 @@ public class UserPlayRecordDomainService {
 
     /**
      * 保存一条听歌记录。
+     *
+     * @param userId   用户 ID
+     * @param songId   歌曲 ID
+     * @param playedAt 播放时间
      */
     public void saveRecord(Long userId, Long songId, LocalDateTime playedAt) {
         UserSongPlayRecord record = new UserSongPlayRecord()
@@ -32,6 +36,11 @@ public class UserPlayRecordDomainService {
 
     /**
      * 统计时间范围内的总听歌次数。
+     *
+     * @param userId    用户 ID
+     * @param startTime 起始时间，可为空
+     * @param endTime   结束时间，可为空
+     * @return 区间内的总播放次数
      */
     public long countByUserAndRange(Long userId, LocalDateTime startTime, LocalDateTime endTime) {
         Long count = userSongPlayRecordMapper.countByUserAndTimeRange(userId, startTime, endTime);
@@ -40,6 +49,11 @@ public class UserPlayRecordDomainService {
 
     /**
      * 获取时间范围内按天聚合的听歌次数。
+     *
+     * @param userId    用户 ID
+     * @param startTime 起始时间，可为空
+     * @param endTime   结束时间，可为空
+     * @return 每日播放次数的列表
      */
     public List<UserDailyPlayCount> listUserDailyStats(Long userId,
                                                        LocalDateTime startTime,
