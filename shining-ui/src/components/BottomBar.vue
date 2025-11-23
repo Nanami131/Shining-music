@@ -1,5 +1,9 @@
 <template>
-  <div class="bottom-bar" :class="{ expanded: showLyrics }">
+  <div
+      class="bottom-bar"
+      :class="{ expanded: showLyrics }"
+      :style="bottomBarStyle"
+  >
     <div class="fixed-bar">
       <div class="song-info">
         <img :src="currentSong.coverUrl || defaultCover" class="song-cover" alt="歌曲封面" />
@@ -92,7 +96,14 @@
       </button>
     </div>
 
-    <div class="lyrics-panel" v-if="showLyrics">
+    <div
+        class="lyrics-panel"
+        v-if="showLyrics"
+        :style="{ height: lyricsPanelHeight + 'px' }"
+    >
+      <!-- 顶部拖拽区域 -->
+      <div class="lyrics-resize-handle" @mousedown="startLyricsResize"></div>
+
       <div class="panel-content">
         <div class="playlist-panel">
           <div class="playlist-header">
@@ -203,6 +214,15 @@ export default {
       playlist: [],
       currentIndex: -1,
       showPlayModeMenu: false,
+
+      // 歌词区域拖拽相关状态
+      lyricsPanelHeight: 200,      // 顶部区域总高度（包含拖拽条 + 内容）
+      lyricsMinHeight: 130,        // 最小高度，避免把内容压没
+      lyricsMaxHeight: 450,        // 最大高度
+      isResizingLyrics: false,
+      resizeStartY: 0,
+      resizeStartHeight: 200,
+      bottomFixedHeight: 90        // 固定播放条高度
     };
   },
   computed: {
@@ -222,6 +242,13 @@ export default {
       if (this.playMode === 'shuffle') return '随机播放';
       return '播完停止';
     },
+    bottomBarStyle() {
+      const base = this.bottomFixedHeight;
+      const total = this.showLyrics ? base + this.lyricsPanelHeight : base;
+      return {
+        height: total + 'px'
+      };
+    }
   },
   created() {
     const userBase = JSON.parse(localStorage.getItem('userBase') || '{}');
@@ -243,6 +270,8 @@ export default {
     this.audio.pause();
     this.audio.src = '';
     window.removeEventListener('userBaseUpdated', this.handleUserStateChange);
+    window.removeEventListener('mousemove', this.onLyricsResizing);
+    window.removeEventListener('mouseup', this.stopLyricsResize);
   },
   methods: {
     // 统一处理接口错误，“登录已过期，请重新登录”全局只弹一次
@@ -442,13 +471,13 @@ export default {
           title: song.title,
           artistId: song.artistId,
           coverUrl: song.coverUrl,
-          favorite: song.favorite,
+          favorite: song.favorite
         });
         this.syncPlaylistQueue();
         try {
           const response = await musicApi.managePlaylistSong({
             playlistId: this.currentPlaylistId,
-            songId: song.id,
+            songId: song.id
           });
           if (!response.data || !response.data.passed) {
             throw new Error(response.data ? response.data.message : '未知错误');
@@ -479,7 +508,7 @@ export default {
       try {
         const response = await musicApi.managePlaylistSong({
           playlistId: this.currentPlaylistId,
-          songId,
+          songId
         });
         if (!response.data || !response.data.passed) {
           throw new Error(response.data ? response.data.message : '未知错误');
@@ -508,7 +537,7 @@ export default {
       try {
         const response = await musicApi.toggleFavoriteSong({
           userId: this.userId,
-          songId: this.currentSong.id,
+          songId: this.currentSong.id
         });
         if (response.data && response.data.passed) {
           const favorite = response.data.data?.favorite ?? false;
@@ -586,7 +615,7 @@ export default {
         if (scrollTop >= 0 && scrollTop <= lyricsContent.scrollHeight - lyricsContent.clientHeight) {
           lyricsContent.scrollTo({
             top: scrollTop,
-            behavior: 'smooth',
+            behavior: 'smooth'
           });
         }
       }
@@ -630,7 +659,35 @@ export default {
           .padStart(2, '0');
       return `${minutes}:${seconds}`;
     },
-  },
+
+    // 歌词区域拖拽相关方法
+    startLyricsResize(event) {
+      event.preventDefault();
+      this.isResizingLyrics = true;
+      this.resizeStartY = event.clientY;
+      this.resizeStartHeight = this.lyricsPanelHeight;
+      window.addEventListener('mousemove', this.onLyricsResizing);
+      window.addEventListener('mouseup', this.stopLyricsResize);
+    },
+    onLyricsResizing(event) {
+      if (!this.isResizingLyrics) return;
+      const delta = this.resizeStartY - event.clientY; // 向上拖动为正
+      let newHeight = this.resizeStartHeight + delta;
+      if (newHeight < this.lyricsMinHeight) {
+        newHeight = this.lyricsMinHeight;
+      }
+      if (newHeight > this.lyricsMaxHeight) {
+        newHeight = this.lyricsMaxHeight;
+      }
+      this.lyricsPanelHeight = newHeight;
+    },
+    stopLyricsResize() {
+      if (!this.isResizingLyrics) return;
+      this.isResizingLyrics = false;
+      window.removeEventListener('mousemove', this.onLyricsResizing);
+      window.removeEventListener('mouseup', this.stopLyricsResize);
+    }
+  }
 };
 </script>
 
@@ -647,7 +704,7 @@ export default {
   transition: height 0.3s ease;
 }
 .bottom-bar.expanded {
-  height: 290px;
+  /* 高度通过行内样式控制，这里保留类名以兼容原有逻辑 */
 }
 .fixed-bar {
   position: absolute;
@@ -899,28 +956,54 @@ export default {
   font-size: 14px;
   cursor: pointer;
 }
+
+/* 歌词区域和拖拽条 */
 .lyrics-panel {
   position: absolute;
   top: 0;
   left: 0;
   right: 0;
-  max-height: 200px;
   width: 100%;
   z-index: 1;
   display: flex;
   flex-direction: column;
 }
+.lyrics-resize-handle {
+  height: 10px;
+  flex-shrink: 0;
+  cursor: row-resize;
+  position: relative;
+}
+.lyrics-resize-handle::before {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 2px;
+  width: 40px;
+  height: 4px;
+  border-radius: 999px;
+  background: #cbd5e1;
+  transform: translateX(-50%);
+}
+
+/* 顶部区域内部布局 */
 .panel-content {
   display: flex;
   flex-direction: row;
-  height: 200px;
+  flex: 1;
+  min-height: 0; /* 允许子元素在容器内收缩 */
 }
+
+/* 播放列表列 */
 .playlist-panel {
   width: 35%;
   padding: 16px;
   border-right: 1px solid #e2e8f0;
   background: #fefeff;
-  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
 }
 .playlist-header {
   display: flex;
@@ -938,10 +1021,10 @@ export default {
   color: #94a3b8;
 }
 .playlist-list {
+  flex: 1;
   display: flex;
   flex-direction: column;
   gap: 8px;
-  max-height: 160px;
   overflow-y: auto;
   padding-right: 6px;
 }
@@ -1003,10 +1086,13 @@ export default {
   color: #94a3b8;
   margin-top: 20px;
 }
+
+/* 歌词列 */
 .lyrics-right {
   flex: 1;
   display: flex;
   flex-direction: column;
+  min-height: 0;
 }
 .lyric-header {
   display: flex;
@@ -1088,8 +1174,9 @@ export default {
   transform: scale(1.2);
 }
 
+/* 歌词内容区域随高度伸缩 */
 .lyrics-content {
-  max-height: 140px;
+  flex: 1;
   padding: 20px;
   overflow-y: auto;
   background: #edf1f6;
