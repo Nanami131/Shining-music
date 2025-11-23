@@ -11,7 +11,7 @@
         <result column="played_at" property="playedAt"/>
     </resultMap>
 
-    <resultMap id="UserPlayCountByDateMap" type="org.L2.statistics.application.dto.UserPlayCountByDateDTO">
+    <resultMap id="UserPlayCountByDateMap" type="org.L2.statistics.domain.model.UserDailyPlayCount">
         <result column="stat_date"  property="statDate"/>
         <result column="play_count" property="playCount"/>
     </resultMap>

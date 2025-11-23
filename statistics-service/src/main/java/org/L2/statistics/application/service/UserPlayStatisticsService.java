@@ -5,14 +5,14 @@ import lombok.extern.slf4j.Slf4j;
 import org.L2.common.R;
 import org.L2.common.event.PlaybackEventMessage;
 import org.L2.statistics.application.dto.UserPlayCountByDateDTO;
-import org.L2.statistics.domain.model.UserSongPlayRecord;
-import org.L2.statistics.infrastructure.mapper.UserSongPlayRecordMapper;
+import org.L2.statistics.domain.model.UserDailyPlayCount;
+import org.L2.statistics.domain.service.UserPlayRecordDomainService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
-import java.util.Collections;
 import java.util.List;
+import java.util.stream.Collectors;
 
 /**
  * 用户听歌统计应用服务。
@@ -22,7 +22,7 @@ import java.util.List;
 @Slf4j
 public class UserPlayStatisticsService {
 
-    private final UserSongPlayRecordMapper userSongPlayRecordMapper;
+    private final UserPlayRecordDomainService userPlayRecordDomainService;
 
     /**
      * 根据播放事件保存一条听歌记录。
@@ -48,12 +48,7 @@ public class UserPlayStatisticsService {
             playedAt = LocalDateTime.now();
         }
 
-        UserSongPlayRecord record = new UserSongPlayRecord()
-                .setUserId(userId)
-                .setSongId(songId)
-                .setPlayedAt(playedAt);
-
-        userSongPlayRecordMapper.insert(record);
+        userPlayRecordDomainService.saveRecord(userId, songId, playedAt);
     }
 
     /**
@@ -68,9 +63,8 @@ public class UserPlayStatisticsService {
             return R.error("用户ID不能为空");
         }
 
-        Long count = userSongPlayRecordMapper.countByUserAndTimeRange(userId, startTime, endTime);
-        long safeCount = count != null ? count : 0L;
-        return R.success("获取用户听歌次数成功", safeCount);
+        long count = userPlayRecordDomainService.countByUserAndRange(userId, startTime, endTime);
+        return R.success("获取用户听歌次数成功", count);
     }
 
     /**
@@ -83,11 +77,13 @@ public class UserPlayStatisticsService {
             return R.error("用户ID不能为空");
         }
 
-        List<UserPlayCountByDateDTO> list =
-                userSongPlayRecordMapper.countByUserGroupByDate(userId, startTime, endTime);
-        if (list == null) {
-            list = Collections.emptyList();
-        }
-        return R.success("获取用户按天听歌次数成功", list);
+        List<UserDailyPlayCount> stats =
+                userPlayRecordDomainService.listUserDailyStats(userId, startTime, endTime);
+        List<UserPlayCountByDateDTO> dtoList = stats.stream()
+                .map(stat -> new UserPlayCountByDateDTO()
+                        .setStatDate(stat.getStatDate())
+                        .setPlayCount(stat.getPlayCount()))
+                .collect(Collectors.toList());
+        return R.success("获取用户按天听歌次数成功", dtoList);
     }
 }
