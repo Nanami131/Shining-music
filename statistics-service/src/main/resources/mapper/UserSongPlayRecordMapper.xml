@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="org.L2.statistics.infrastructure.mapper.UserSongPlayRecordMapper">
+
+    <resultMap id="UserSongPlayRecordResultMap" type="org.L2.statistics.domain.model.UserSongPlayRecord">
+        <id     column="id"        property="id"/>
+        <result column="user_id"   property="userId"/>
+        <result column="song_id"   property="songId"/>
+        <result column="played_at" property="playedAt"/>
+    </resultMap>
+
+    <resultMap id="UserPlayCountByDateMap" type="org.L2.statistics.application.dto.UserPlayCountByDateDTO">
+        <result column="stat_date"  property="statDate"/>
+        <result column="play_count" property="playCount"/>
+    </resultMap>
+
+    <insert id="insert" parameterType="org.L2.statistics.domain.model.UserSongPlayRecord"
+            useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO user_song_play_record (
+            user_id,
+            song_id,
+            played_at
+        ) VALUES (
+                     #{userId},
+                     #{songId},
+                     #{playedAt}
+                 )
+    </insert>
+
+    <select id="countByUserAndTimeRange" resultType="java.lang.Long">
+        SELECT COUNT(*) AS cnt
+        FROM user_song_play_record
+        <where>
+            <if test="userId != null">
+                AND user_id = #{userId}
+            </if>
+            <if test="start != null">
+                AND played_at &gt;= #{start}
+            </if>
+            <if test="end != null">
+                AND played_at &lt; #{end}
+            </if>
+        </where>
+    </select>
+
+    <select id="countByUserGroupByDate" resultMap="UserPlayCountByDateMap">
+        SELECT
+        DATE(played_at) AS stat_date,
+        COUNT(*)        AS play_count
+        FROM user_song_play_record
+        <where>
+            <if test="userId != null">
+                AND user_id = #{userId}
+            </if>
+            <if test="start != null">
+                AND played_at &gt;= #{start}
+            </if>
+            <if test="end != null">
+                AND played_at &lt; #{end}
+            </if>
+        </where>
+        GROUP BY DATE(played_at)
+        ORDER BY stat_date
+    </select>
+
+</mapper>

@@ -16,6 +16,7 @@
         <module>music-service</module>
         <module>community-service</module>
         <module>recommend-service</module>
+        <module>statistics-service</module>
     </modules>
 
     <properties>

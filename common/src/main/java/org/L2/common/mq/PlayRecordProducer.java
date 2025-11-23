@@ -5,6 +5,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.L2.common.constant.EventType;
 import org.L2.common.event.EventInfo;
 import org.L2.common.event.PlaybackEventMessage;
+import org.L2.common.event.PlaybackInfo;
 import org.L2.common.event.UserInfo;
 import org.L2.common.mq.config.RabbitMQConfig;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
@@ -25,7 +26,7 @@ public class PlayRecordProducer {
     /**
      * 发送播放事件到 MQ
      */
-    public void sendPlayRecord(Long userId) {
+    public void sendPlayRecord(Long userId, Long songId) {
         // 组装事件元信息
         EventInfo eventInfo = new EventInfo()
                 .setEventId(UUID.randomUUID().toString()) // todo
@@ -37,24 +38,28 @@ public class PlayRecordProducer {
         UserInfo userInfo = new UserInfo()
                 .setUserId(userId);
 
+        PlaybackInfo playbackInfo = new PlaybackInfo()
+                .setSongId(songId);
+
         // 顶层消息
         PlaybackEventMessage message = new PlaybackEventMessage()
                 .setEvent(eventInfo)
-                .setUser(userInfo);
+                .setUser(userInfo)
+                .setPlayback(playbackInfo);;
 
         try {
-            log.info("Sending playback event to RabbitMQ, userId={}, eventId={}",
-                    userId, eventInfo.getEventId());
+            log.info("Sending playback event to RabbitMQ, userId={}, songId={}, eventId={}",
+                    userId, songId, eventInfo.getEventId());
             rabbitTemplate.convertAndSend(
                     RabbitMQConfig.PLAY_RECORD_EXCHANGE,
                     RabbitMQConfig.PLAY_RECORD_ROUTING_KEY,
                     message
             );
-            log.info("Playback event sent successfully, userId={}, eventId={}",
-                    userId, eventInfo.getEventId());
+            log.info("Playback event sent successfully, userId={}, songId={}, eventId={}",
+                    userId, songId, eventInfo.getEventId());
         } catch (Exception e) {
-            log.error("Failed to send playback event, userId={}, eventId={}",
-                    userId, eventInfo.getEventId(), e);
+            log.error("Failed to send playback event, userId={}, songId={}, eventId={}",
+                    userId, songId, eventInfo.getEventId(), e);
             throw e;
         }
     }
