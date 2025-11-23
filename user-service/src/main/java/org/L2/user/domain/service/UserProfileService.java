@@ -5,7 +5,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
 import org.L2.common.R;
 import org.L2.common.annotation.AutoFill;
-import org.L2.common.constant.CommonConstants;
+import org.L2.common.constant.Common;
 import org.L2.common.constant.OperationType;
 import org.L2.common.minio.MinioProperties;
 import org.L2.common.minio.service.FileNameGenerateService;
@@ -115,7 +115,7 @@ public class UserProfileService {
         User user = query.get(0);
         try {
             String jsonStr = objectMapper.writeValueAsString(user);
-            stringRedisTemplate.opsForValue().set(key, jsonStr, CommonConstants.CACHE_TTL_HOURS, TimeUnit.HOURS);
+            stringRedisTemplate.opsForValue().set(key, jsonStr, Common.CACHE_TTL_HOURS, TimeUnit.HOURS);
         } catch (JsonProcessingException e) {
             log.error("写入用户基础信息缓存失败, userId={}", userId, e);
         }

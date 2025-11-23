@@ -2,7 +2,7 @@ package org.L2.common.mq;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.L2.common.config.RabbitMQConfig;
+import org.L2.common.mq.config.RabbitMQConfig;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.stereotype.Component;
 

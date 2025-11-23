@@ -3,7 +3,7 @@ package org.L2.common;
 
 import lombok.Data;
 import lombok.experimental.Accessors;
-import org.L2.common.constant.RetTypeConstants;
+import org.L2.common.constant.RetType;
 
 /**
  * 通用响应结果类，支持链式编程。
@@ -52,7 +52,7 @@ public class R {
                 .setCode(200)
                 .setMessage(message)
                 .setPassed(true)
-                .setType(RetTypeConstants.success)
+                .setType(RetType.success)
                 .setData(null);
     }
 
@@ -76,7 +76,7 @@ public class R {
                 .setCode(code)
                 .setMessage(message)
                 .setPassed(false)
-                .setType(RetTypeConstants.warning)
+                .setType(RetType.warning)
                 .setData(null);
     }
 
@@ -90,7 +90,7 @@ public class R {
                 .setCode(500) // 默认错误码
                 .setMessage(message)
                 .setPassed(false)
-                .setType(RetTypeConstants.error)
+                .setType(RetType.error)
                 .setData(null);
     }
 

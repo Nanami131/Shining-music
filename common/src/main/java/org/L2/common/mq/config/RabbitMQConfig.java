@@ -1,4 +1,4 @@
-package org.L2.common.config;
+package org.L2.common.mq.config;
 
 import org.springframework.amqp.core.Binding;
 import org.springframework.amqp.core.BindingBuilder;
