@@ -1,7 +1,7 @@
 <template>
   <div
       class="bottom-bar"
-      :class="{ expanded: showLyrics }"
+      :class="{ expanded: showLyrics, resizing: isResizingLyrics }"
       :style="bottomBarStyle"
   >
     <div class="fixed-bar">
@@ -161,7 +161,14 @@
               </div>
             </div>
           </div>
-          <div class="lyrics-content" ref="lyricsContent" :class="'highlight-color-' + highlightColor">
+          <div
+              class="lyrics-content"
+              ref="lyricsContent"
+              :class="[
+              'highlight-color-' + highlightColor,
+              { empty: !parsedLyrics.length }
+            ]"
+          >
             <div v-for="(line, index) in parsedLyrics" :key="index" class="lyrics-group">
               <div
                   :class="{ active: isActiveLine(line.time, index) }"
@@ -179,7 +186,9 @@
                 </template>
               </div>
             </div>
-            <p v-if="!parsedLyrics.length" class="no-lyric"><span>暂无歌词</span></p>
+            <p v-if="!parsedLyrics.length" class="no-lyric">
+              <span>暂无歌词</span>
+            </p>
           </div>
         </div>
       </div>
@@ -216,13 +225,13 @@ export default {
       showPlayModeMenu: false,
 
       // 歌词区域拖拽相关状态
-      lyricsPanelHeight: 200,      // 顶部区域总高度（包含拖拽条 + 内容）
-      lyricsMinHeight: 130,        // 最小高度，避免把内容压没
-      lyricsMaxHeight: 450,        // 最大高度
+      lyricsPanelHeight: 200,
+      lyricsMinHeight: 130,
+      lyricsMaxHeight: 450,
       isResizingLyrics: false,
       resizeStartY: 0,
       resizeStartHeight: 200,
-      bottomFixedHeight: 90        // 固定播放条高度
+      bottomFixedHeight: 90
     };
   },
   computed: {
@@ -274,7 +283,6 @@ export default {
     window.removeEventListener('mouseup', this.stopLyricsResize);
   },
   methods: {
-    // 统一处理接口错误，“登录已过期，请重新登录”全局只弹一次
     showApiError(message, prefix = '') {
       const loginExpiredText = '登录已过期，请重新登录';
       const msg = message || '';
@@ -291,7 +299,6 @@ export default {
       }
     },
 
-    // 登录/退出后响应：登录拉取播放列表，退出只清空前端状态
     async handleUserStateChange() {
       const token = localStorage.getItem('token');
       const userBase = JSON.parse(localStorage.getItem('userBase') || '{}');
@@ -671,7 +678,7 @@ export default {
     },
     onLyricsResizing(event) {
       if (!this.isResizingLyrics) return;
-      const delta = this.resizeStartY - event.clientY; // 向上拖动为正
+      const delta = this.resizeStartY - event.clientY;
       let newHeight = this.resizeStartHeight + delta;
       if (newHeight < this.lyricsMinHeight) {
         newHeight = this.lyricsMinHeight;
@@ -704,8 +711,13 @@ export default {
   transition: height 0.3s ease;
 }
 .bottom-bar.expanded {
-  /* 高度通过行内样式控制，这里保留类名以兼容原有逻辑 */
+  /* 高度通过行内样式控制 */
 }
+/* 拖动过程中关闭过渡，避免“变形”感 */
+.bottom-bar.resizing {
+  transition: none;
+}
+
 .fixed-bar {
   position: absolute;
   bottom: 0;
@@ -991,7 +1003,7 @@ export default {
   display: flex;
   flex-direction: row;
   flex: 1;
-  min-height: 0; /* 允许子元素在容器内收缩 */
+  min-height: 0;
 }
 
 /* 播放列表列 */
@@ -1174,14 +1186,24 @@ export default {
   transform: scale(1.2);
 }
 
-/* 歌词内容区域随高度伸缩 */
+/* 歌词内容区域随高度伸缩，并支持空状态垂直居中 */
 .lyrics-content {
   flex: 1;
   padding: 20px;
   overflow-y: auto;
   background: #edf1f6;
   text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
 }
+.lyrics-content.empty {
+  justify-content: center;
+}
+.lyrics-content.empty .no-lyric {
+  margin: 0;
+}
+
 .lyrics-content.highlight-color-pink .lyric-line {
   color: #ff6b81;
 }
