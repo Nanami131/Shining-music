@@ -114,7 +114,7 @@ public class MusicController {
         log.info("Received playSong request, songId={}, userId={}", songId, userId);
         if (userId != null) {
             try {
-                playRecordProducer.sendPlayRecord(userId);
+                playRecordProducer.sendPlayRecord(userId,songId);
                 log.info("Play record message sent via RabbitMQ, userId={}", userId);
             } catch (Exception e) {
                 // 不因为 MQ 失败而影响播放本身
