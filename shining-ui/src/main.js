@@ -2,7 +2,7 @@ import { createApp } from 'vue';
 import App from './App.vue';
 import router from './router';
 import mitt from 'mitt';
-import customCursorAsset from '@/assets/sward.png';
+import customCursorAsset from '@/assets/rose.png';
 
 function applyCustomCursor() {
   if (typeof document === 'undefined') return;
@@ -12,8 +12,8 @@ function applyCustomCursor() {
   img.src = customCursorAsset;
   img.onload = () => {
     const canvas = document.createElement('canvas');
-    canvas.width = size;
-    canvas.height = size;
+    canvas.width = size*0.8;
+    canvas.height = size*1.5;
     const ctx = canvas.getContext('2d');
     ctx.drawImage(img, 0, 0, size, size);
     const dataUrl = canvas.toDataURL('image/png');
