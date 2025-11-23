@@ -6,6 +6,7 @@ import Register from '../views/Register.vue';
 import Profile from '../views/Profile.vue';
 import MyMusic from '../views/MyMusic.vue';
 import Forum from '../views/Forum.vue';
+import ForumCreate from '../views/ForumCreate.vue';
 import PostDetail from '../views/PostDetail.vue';
 import SingerDetail from '../views/SingerDetail.vue';
 import PlaylistDetail from '../views/PlaylistDetail.vue';
@@ -49,6 +50,11 @@ const routes = [
         path: '/forum',
         name: 'forum',
         component: Forum,
+    },
+    {
+        path: '/forum/create',
+        name: 'forum-create',
+        component: ForumCreate,
     },
     {
         path: '/forum/:id',
