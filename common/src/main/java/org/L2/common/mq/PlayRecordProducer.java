@@ -23,7 +23,7 @@ public class PlayRecordProducer {
     private final RabbitTemplate rabbitTemplate;
 
     /**
-     * 发送播放事件到 MQ。
+     * 发送播放事件到 MQ
      */
     public void sendPlayRecord(Long userId) {
         // 组装事件元信息
