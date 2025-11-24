@@ -2,6 +2,7 @@ package org.L2.statistics.infrastructure.mapper;
 
 import org.L2.statistics.domain.model.UserDailyPlayCount;
 import org.L2.statistics.domain.model.UserSongPlayRecord;
+import org.L2.statistics.domain.model.UserTopSong;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 
@@ -25,4 +26,9 @@ public interface UserSongPlayRecordMapper {
     List<UserDailyPlayCount> countByUserGroupByDate(@Param("userId") Long userId,
                                                     @Param("start") LocalDateTime start,
                                                     @Param("end") LocalDateTime end);
+
+    List<UserTopSong> topSongsByUserAndRange(@Param("userId") Long userId,
+                                             @Param("start") LocalDateTime start,
+                                             @Param("end") LocalDateTime end,
+                                             @Param("limit") int limit);
 }

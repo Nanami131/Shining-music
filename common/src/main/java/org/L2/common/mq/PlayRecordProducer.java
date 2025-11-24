@@ -45,7 +45,7 @@ public class PlayRecordProducer {
         PlaybackEventMessage message = new PlaybackEventMessage()
                 .setEvent(eventInfo)
                 .setUser(userInfo)
-                .setPlayback(playbackInfo);;
+                .setPlayback(playbackInfo);
 
         try {
             log.info("Sending playback event to RabbitMQ, userId={}, songId={}, eventId={}",

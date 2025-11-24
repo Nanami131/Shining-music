@@ -3,6 +3,7 @@ package org.L2.statistics.domain.service;
 import lombok.RequiredArgsConstructor;
 import org.L2.statistics.domain.model.UserDailyPlayCount;
 import org.L2.statistics.domain.model.UserSongPlayRecord;
+import org.L2.statistics.domain.model.UserTopSong;
 import org.L2.statistics.infrastructure.mapper.UserSongPlayRecordMapper;
 import org.springframework.stereotype.Service;
 
@@ -61,5 +62,17 @@ public class UserPlayRecordDomainService {
         List<UserDailyPlayCount> list =
                 userSongPlayRecordMapper.countByUserGroupByDate(userId, startTime, endTime);
         return list == null ? Collections.emptyList() : list;
+    }
+
+    /**
+     * 查询某个用户在时间范围内播放次数最多的歌曲。
+     */
+    public List<UserTopSong> listTopSongsByUser(Long userId,
+                                                LocalDateTime startTime,
+                                                LocalDateTime endTime,
+                                                int limit) {
+        List<UserTopSong> songs =
+                userSongPlayRecordMapper.topSongsByUserAndRange(userId, startTime, endTime, limit);
+        return songs == null ? Collections.emptyList() : songs;
     }
 }

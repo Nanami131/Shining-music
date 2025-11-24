@@ -53,4 +53,19 @@ public class UserPlayStatisticsController {
                                    @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime endTime) {
         return userPlayStatisticsService.getUserDailyPlayStats(userId, startTime, endTime);
     }
+
+    /**
+     * 获取某位用户播放次数最多的歌曲。
+     *
+     * @param userId    用户 ID
+     * @param dimension 时间维度
+     * @param limit     返回条数
+     * @return 歌曲播放统计
+     */
+    @GetMapping("/{userId}/plays/top-songs")
+    public R getUserTopSongs(@PathVariable("userId") Long userId,
+                             @RequestParam(value = "dimension", required = false) String dimension,
+                             @RequestParam(value = "limit", required = false) Integer limit) {
+        return userPlayStatisticsService.getUserTopSongs(userId, dimension, limit);
+    }
 }

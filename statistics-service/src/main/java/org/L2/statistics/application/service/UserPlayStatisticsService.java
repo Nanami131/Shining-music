@@ -5,7 +5,10 @@ import lombok.extern.slf4j.Slf4j;
 import org.L2.common.R;
 import org.L2.common.event.PlaybackEventMessage;
 import org.L2.statistics.application.dto.UserPlayCountByDateDTO;
+import org.L2.statistics.application.dto.UserTopSongDTO;
+import org.L2.statistics.application.enums.PlayStatDimension;
 import org.L2.statistics.domain.model.UserDailyPlayCount;
+import org.L2.statistics.domain.model.UserTopSong;
 import org.L2.statistics.domain.service.UserPlayRecordDomainService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -21,6 +24,9 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 @Slf4j
 public class UserPlayStatisticsService {
+
+    private static final int DEFAULT_TOP_LIMIT = 10;
+    private static final int MAX_TOP_LIMIT = 20;
 
     private final UserPlayRecordDomainService userPlayRecordDomainService;
 
@@ -91,5 +97,33 @@ public class UserPlayStatisticsService {
                         .setPlayCount(stat.getPlayCount()))
                 .collect(Collectors.toList());
         return R.success("获取用户按天听歌次数成功", dtoList);
+    }
+
+    /**
+     * 获取某位用户在指定时间范围内最常播放的歌曲。
+     *
+     * @param userId    用户 ID
+     * @param dimension 时间维度（TODAY/WEEK/MONTH/TOTAL）
+     * @param limit     返回条数
+     * @return 歌曲播放次数列表
+     */
+    public R getUserTopSongs(Long userId, String dimension, Integer limit) {
+        if (userId == null) {
+            return R.error("用户ID不能为空");
+        }
+        PlayStatDimension statDimension = PlayStatDimension.from(dimension);
+        int size = (limit == null || limit <= 0) ? DEFAULT_TOP_LIMIT : Math.min(limit, MAX_TOP_LIMIT);
+        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime startTime = statDimension.resolveStart(now);
+        LocalDateTime endTime = statDimension.resolveEnd(now);
+
+        List<UserTopSong> songs =
+                userPlayRecordDomainService.listTopSongsByUser(userId, startTime, endTime, size);
+        List<UserTopSongDTO> dtoList = songs.stream()
+                .map(song -> new UserTopSongDTO()
+                        .setSongId(song.getSongId())
+                        .setPlayCount(song.getPlayCount()))
+                .collect(Collectors.toList());
+        return R.success("获取用户常听歌曲成功", dtoList);
     }
 }

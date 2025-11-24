@@ -15,6 +15,10 @@
         <result column="stat_date"  property="statDate"/>
         <result column="play_count" property="playCount"/>
     </resultMap>
+    <resultMap id="UserTopSongMap" type="org.L2.statistics.domain.model.UserTopSong">
+        <result column="song_id" property="songId"/>
+        <result column="play_count" property="playCount"/>
+    </resultMap>
 
     <insert id="insert" parameterType="org.L2.statistics.domain.model.UserSongPlayRecord"
             useGeneratedKeys="true" keyProperty="id">
@@ -63,6 +67,27 @@
         </where>
         GROUP BY DATE(played_at)
         ORDER BY stat_date
+    </select>
+
+    <select id="topSongsByUserAndRange" resultMap="UserTopSongMap">
+        SELECT
+            song_id,
+            COUNT(*) AS play_count
+        FROM user_song_play_record
+        <where>
+            <if test="userId != null">
+                AND user_id = #{userId}
+            </if>
+            <if test="start != null">
+                AND played_at &gt;= #{start}
+            </if>
+            <if test="end != null">
+                AND played_at &lt; #{end}
+            </if>
+        </where>
+        GROUP BY song_id
+        ORDER BY play_count DESC
+        LIMIT #{limit}
     </select>
 
 </mapper>
