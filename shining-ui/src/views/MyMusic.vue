@@ -194,21 +194,7 @@ export default {
         return;
       }
 
-      const tasks = ids.map(async id => {
-        try {
-          const res = await musicApi.getSingerBaseInfo(id);
-          if (res.data && res.data.passed && res.data.data) {
-            const name = res.data.data.name || `歌手 ${id}`;
-            this.$set ? this.$set(this.artistNameMap, id, name) : (this.artistNameMap[id] = name);
-          } else {
-            this.artistNameMap[id] = `歌手 ${id}`;
-          }
-        } catch (e) {
-          this.artistNameMap[id] = `歌手 ${id}`;
-        }
-      });
-
-      await Promise.all(tasks);
+      await Promise.all(ids.map(id => this.fetchArtistName(id)));
     },
     async loadMyPlaylists() {
       if (!this.userId) {
@@ -270,6 +256,27 @@ export default {
       this.selectedTopSongDimension = value;
       this.loadTopSongs();
     },
+    async fetchArtistName(artistId) {
+      if (!artistId) {
+        return '';
+      }
+      if (this.artistNameMap[artistId]) {
+        return this.artistNameMap[artistId];
+      }
+      try {
+        const res = await musicApi.getSingerBaseInfo(artistId);
+        const name =
+            res.data && res.data.passed && res.data.data && res.data.data.name
+                ? res.data.data.name
+                : `歌手 ${artistId}`;
+        this.artistNameMap[artistId] = name;
+        return name;
+      } catch (error) {
+        const fallback = `歌手 ${artistId}`;
+        this.artistNameMap[artistId] = fallback;
+        return fallback;
+      }
+    },
     async fetchSongBaseInfo(songId) {
       if (!songId) {
         return {};
@@ -277,7 +284,11 @@ export default {
       try {
         const res = await musicApi.getSongBaseInfo(songId, this.userId);
         if (res.data && res.data.passed) {
-          return res.data.data || {};
+          const song = res.data.data || {};
+          if (song.artistId) {
+            song.artistName = await this.fetchArtistName(song.artistId);
+          }
+          return song;
         }
       } catch (error) {
         console.warn('获取歌曲信息失败', songId, error);

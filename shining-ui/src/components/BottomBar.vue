@@ -9,7 +9,7 @@
         <img :src="currentSong.coverUrl || defaultCover" class="song-cover" alt="歌曲封面" />
         <div class="song-details">
           <span>{{ currentSong.title || '未知歌曲' }}</span>
-          <span class="artist">歌手 ID: {{ currentSong.artistId || '未知' }}</span>
+          <span class="artist">歌手：{{ getArtistName(currentSong.artistId) }}</span>
         </div>
         <button
             class="favorite-btn"
@@ -123,7 +123,7 @@
               <div class="order">{{ idx + 1 }}</div>
               <div class="info">
                 <p class="name">{{ song.title || '未知歌曲' }}</p>
-                <p class="artist">歌手 ID: {{ song.artistId || '未知' }}</p>
+                <p class="artist">歌手：{{ getArtistName(song.artistId) }}</p>
               </div>
               <button
                   class="remove-btn"
@@ -231,7 +231,8 @@ export default {
       isResizingLyrics: false,
       resizeStartY: 0,
       resizeStartHeight: 200,
-      bottomFixedHeight: 90
+      bottomFixedHeight: 90,
+      artistNameCache: {},
     };
   },
   computed: {
@@ -298,6 +299,40 @@ export default {
         alert(fullMessage || prefix || '未知错误');
       }
     },
+    async ensureArtistNameLoaded(artistId) {
+      if (!artistId || this.artistNameCache[artistId]) {
+        return;
+      }
+      try {
+        const res = await musicApi.getSingerBaseInfo(artistId);
+        const name =
+            res.data && res.data.passed && res.data.data && res.data.data.name
+                ? res.data.data.name
+                : `歌手 ${artistId}`;
+        this.artistNameCache[artistId] = name;
+      } catch (error) {
+        this.artistNameCache[artistId] = `歌手 ${artistId}`;
+      }
+    },
+    async ensureArtistNames(songs) {
+      if (!Array.isArray(songs) || !songs.length) {
+        return;
+      }
+      const ids = [
+        ...new Set(
+            songs
+                .map(song => song && song.artistId)
+                .filter(id => id !== null && id !== undefined)
+        ),
+      ];
+      await Promise.all(ids.map(id => this.ensureArtistNameLoaded(id)));
+    },
+    getArtistName(artistId) {
+      if (!artistId) {
+        return '未知歌手';
+      }
+      return this.artistNameCache[artistId] || `歌手 ${artistId}`;
+    },
 
     async handleUserStateChange() {
       const token = localStorage.getItem('token');
@@ -343,6 +378,7 @@ export default {
         const response = await musicApi.playSong(songId, this.userId);
         if (response.data.passed) {
           this.currentSong = response.data.data;
+          await this.ensureArtistNameLoaded(this.currentSong.artistId);
           if (this.userId) {
             await this.ensureCurrentPlaylistReady();
             await this.addSongToCurrentPlaylist(this.currentSong);
@@ -438,6 +474,7 @@ export default {
           const data = response.data.data || {};
           this.currentPlaylistId = data.id || null;
           this.currentPlaylistSongs = Array.isArray(data.songs) ? data.songs : [];
+          await this.ensureArtistNames(this.currentPlaylistSongs);
           this.syncPlaylistQueue();
         }
       } catch (error) {
@@ -473,6 +510,7 @@ export default {
       }
       const exists = this.currentPlaylistSongs.some(item => item.id === song.id);
       if (!exists) {
+        await this.ensureArtistNameLoaded(song.artistId);
         this.currentPlaylistSongs.push({
           id: song.id,
           title: song.title,
