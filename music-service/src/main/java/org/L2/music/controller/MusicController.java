@@ -67,6 +67,11 @@ public class MusicController {
                               @RequestParam("md5") String md5) {
         return musicAppService.uploadSongAvatar(id, avatarFile, md5);
     }
+
+    @GetMapping("/songs")
+    public R listSongs(@RequestParam(value = "userId", required = false) Long userId) {
+        return musicAppService.listSongs(userId);
+    }
     /**
      * 下载歌曲
      * @param songId 歌曲ID

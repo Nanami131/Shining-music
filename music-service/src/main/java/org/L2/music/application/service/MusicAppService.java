@@ -91,6 +91,18 @@ public class MusicAppService {
         return lyricsService.getLyrics(lyricsId);
     }
 
+    public R listSongs(Long userId) {
+        List<Song> songs = songService.listSongs();
+        List<SongBaseDTO> dtoList = new ArrayList<>();
+        for (Song song : songs) {
+            SongBaseDTO dto = new SongBaseDTO();
+            BeanUtils.copyProperties(song, dto);
+            dto.setFavorite(resolveFavoriteFlag(userId, song.getId()));
+            dtoList.add(dto);
+        }
+        return R.success("获取歌曲列表成功", dtoList);
+    }
+
     /**
      * 前端点击播放歌曲时的统一入口：记录播放事件并返回歌曲详情。
      */

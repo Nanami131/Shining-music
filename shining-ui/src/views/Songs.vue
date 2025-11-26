@@ -67,15 +67,14 @@ export default {
   methods: {
     async loadSongs() {
       try {
-        const songPromises = [];
-        for (let id = 1; id <= 40; id++) {
-          songPromises.push(musicApi.getSongBaseInfo(id, this.userId).catch(() => null));
+        const response = await musicApi.getSongs(this.userId);
+        if (response.data && response.data.passed) {
+          this.songs = response.data.data || [];
+          await this.loadArtistNames();
+        } else {
+          const msg = response.data ? response.data.message : '未知错误';
+          alert('获取歌曲列表失败：' + msg);
         }
-        const responses = await Promise.all(songPromises);
-        this.songs = responses
-          .filter(response => response && response.data.passed)
-          .map(response => response.data.data);
-        await this.loadArtistNames();
       } catch (error) {
         alert('获取歌曲列表失败：' + error.message);
       }

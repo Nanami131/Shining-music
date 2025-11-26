@@ -53,6 +53,13 @@ export default {
         }
         return api.get(`/music/details/song/${songId}`, { params });
     },
+    getSongs(userId) {
+        const params = {};
+        if (userId !== null && userId !== undefined) {
+            params.userId = userId;
+        }
+        return api.get('/music/songs', { params });
+    },
     playSong(songId, userId) {
         const params = {};
         if (userId !== null && userId !== undefined) {

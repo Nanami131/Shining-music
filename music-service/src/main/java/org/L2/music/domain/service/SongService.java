@@ -152,5 +152,9 @@ public class SongService {
             return R.error("创建歌曲失败" + e.getMessage());
         }
     }
+
+    public List<Song> listSongs() {
+        return songMapper.query(new Song());
+    }
 }
 
