@@ -154,7 +154,7 @@ export default {
   methods: {
     async loadPlaylists() {
       try {
-        const response = await musicApi.discoverPlaylists(this.userId);
+        const response = await musicApi.getPlaylists(this.userId);
         if (response.data && response.data.passed) {
           this.playlists = response.data.data || [];
         } else {
@@ -503,4 +503,3 @@ export default {
   font-size: 12px;
 }
 </style>
-

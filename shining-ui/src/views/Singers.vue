@@ -50,14 +50,13 @@ export default {
   methods: {
     async loadSingers() {
       try {
-        const singerPromises = [];
-        for (let id = 1; id <= 20; id++) {
-          singerPromises.push(musicApi.getSingerBaseInfo(id).catch(() => null));
+        const response = await musicApi.getSingers();
+        if (response.data && response.data.passed) {
+          this.singers = response.data.data || [];
+        } else {
+          const msg = response.data ? response.data.message : '未知错误';
+          alert('获取歌手列表失败：' + msg);
         }
-        const responses = await Promise.all(singerPromises);
-        this.singers = responses
-          .filter(response => response && response.data.passed)
-          .map(response => response.data.data);
       } catch (error) {
         alert('获取歌手列表失败：' + error.message);
       }
@@ -139,4 +138,3 @@ export default {
   font-size: 14px;
 }
 </style>
-

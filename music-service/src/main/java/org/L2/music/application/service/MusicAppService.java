@@ -240,6 +240,19 @@ public class MusicAppService {
         return R.success("获取歌单列表成功", dtoList);
     }
 
+    public R listPlaylists(Long userId) {
+        List<Playlist> playlists = playlistService.listAll();
+        List<PlaylistBaseDTO> dtoList = new ArrayList<>();
+        Map<Long, String> nicknameCache = new HashMap<>();
+        for (Playlist playlist : playlists) {
+            PlaylistBaseDTO dto = new PlaylistBaseDTO();
+            BeanUtils.copyProperties(playlist, dto);
+            dto.setNickName(resolveNickname(playlist.getUserId(), nicknameCache));
+            dtoList.add(dto);
+        }
+        return R.success("获取歌单列表成功", dtoList);
+    }
+
     /*
      * 歌手模块
      */
@@ -265,6 +278,17 @@ public class MusicAppService {
         List<SongBaseDTO> songList = (List<SongBaseDTO>) songs.getData();
         singerDetailsDTO.setSongs(songList);
         return R.success("获取成功", singerDetailsDTO);
+    }
+
+    public R listSingers() {
+        List<Singer> singers = singerService.listSingers();
+        List<SingerBaseDTO> dtoList = new ArrayList<>();
+        for (Singer singer : singers) {
+            SingerBaseDTO dto = new SingerBaseDTO();
+            BeanUtils.copyProperties(singer, dto);
+            dtoList.add(dto);
+        }
+        return R.success("获取歌手列表成功", dtoList);
     }
 
     public R createSinger(SingerCreateRequest singerCreateRequest) {

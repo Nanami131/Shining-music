@@ -120,5 +120,9 @@ public class SingerService {
 
         return R.success("头像修改成功", avatarUrl);
     }
+
+    public List<Singer> listSingers() {
+        return singerMapper.query(new Singer());
+    }
 }
 

@@ -120,6 +120,10 @@ public class PlaylistService {
         return ensureUserPlaylist(userId, Constants.CURRENT_PLAYLIST);
     }
 
+    public List<Playlist> listAll() {
+        return playlistMapper.query(new Playlist());
+    }
+
     private Playlist ensureUserPlaylist(Long userId, byte type) {
         Playlist playlist = findUserPlaylist(userId, type);
         if (playlist != null) {

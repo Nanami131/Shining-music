@@ -239,6 +239,11 @@ public class MusicController {
         return musicAppService.discoverPlaylists(userId);
     }
 
+    @GetMapping("/playlists")
+    public R listPlaylists(@RequestParam(value = "userId", required = false) Long userId) {
+        return musicAppService.listPlaylists(userId);
+    }
+
     /**
      * 获取用户当前播放列表
      * @param userId 用户ID
@@ -294,6 +299,11 @@ public class MusicController {
                           @RequestParam("avatarFile") MultipartFile avatarFile,
                           @RequestParam("md5") String md5) {
         return musicAppService.updateSingerAvatar(id, avatarFile, md5);
+    }
+
+    @GetMapping("/singers")
+    public R listSingers() {
+        return musicAppService.listSingers();
     }
 
     /**

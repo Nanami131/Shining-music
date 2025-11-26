@@ -60,6 +60,16 @@ export default {
         }
         return api.get('/music/songs', { params });
     },
+    getSingers() {
+        return api.get('/music/singers');
+    },
+    getPlaylists(userId) {
+        const params = {};
+        if (userId !== null && userId !== undefined) {
+            params.userId = userId;
+        }
+        return api.get('/music/playlists', { params });
+    },
     playSong(songId, userId) {
         const params = {};
         if (userId !== null && userId !== undefined) {
