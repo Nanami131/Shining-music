@@ -27,10 +27,13 @@
           />
         </label>
         <label class="field">
-          <span>正文</span>
+          <span>
+            正文
+            <small class="field-tip">支持 HTML 标签，可嵌入图片 URL、超链接等</small>
+          </span>
           <textarea
             v-model="newContent"
-            placeholder="写下你的故事、歌单或设备心得..."
+            placeholder="写下你的故事、歌单或设备心得（支持 HTML，例如 <p>段落</p> 或 <img src='https://...'>）"
           ></textarea>
         </label>
         <div class="form-foot">
@@ -210,6 +213,12 @@ export default {
 .field span {
   font-size: 14px;
   color: rgba(255, 255, 255, 0.75);
+}
+.field-tip {
+  display: block;
+  margin-top: 4px;
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.55);
 }
 
 input,

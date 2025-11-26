@@ -91,6 +91,7 @@ public class CommunityAppService {
                         .setId(post.getId())
                         .setUserId(post.getUserId())
                         .setTitle(post.getTitle())
+                        .setContent(post.getContent())
                         .setCommentCount(post.getCommentCount())
                         .setLastCommentAt(post.getLastCommentAt())
                         .setCreatedAt(post.getCreatedAt());

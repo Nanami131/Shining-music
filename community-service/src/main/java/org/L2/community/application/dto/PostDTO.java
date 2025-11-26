@@ -15,6 +15,7 @@ public class PostDTO {
     private Long id;
     private Long userId;
     private String title;
+    private String content;
     private Integer commentCount;
     private LocalDateTime lastCommentAt;
     private LocalDateTime createdAt;

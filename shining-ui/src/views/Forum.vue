@@ -185,7 +185,11 @@ export default {
     },
     makeExcerpt(content) {
       if (!content) return '还没有正文描述，点击查看详情。';
-      const clean = String(content).replace(/\s+/g, ' ').trim();
+      const plain = String(content)
+          .replace(/<[^>]+>/g, ' ')
+          .replace(/\s+/g, ' ')
+          .trim();
+      const clean = plain || '还没有正文描述，点击查看详情。';
       return clean.length > 90 ? `${clean.slice(0, 90)}…` : clean;
     },
     goDetail(id) {

@@ -9,7 +9,7 @@
         <span>创建时间：{{ formatDate(post.createdAt) }}</span>
         <span v-if="post.lastCommentAt">最后评论：{{ formatDate(post.lastCommentAt) }}</span>
       </div>
-      <div class="post-content">{{ post.content }}</div>
+      <div class="post-content" v-html="post.content"></div>
 
       <section class="comment-section">
         <h3>评论</h3>
@@ -330,6 +330,16 @@ export default {
   background: rgba(255, 255, 255, 0.04);
   margin-bottom: 24px;
   line-height: 1.6;
+  word-break: break-word;
+}
+.post-content img {
+  max-width: 100%;
+  border-radius: 8px;
+  margin: 8px 0;
+}
+.post-content a {
+  color: #93c5fd;
+  text-decoration: underline;
 }
 
 .comment-section h3 {
