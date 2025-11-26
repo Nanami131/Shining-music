@@ -1,7 +1,6 @@
 package org.L2.music.controller;
 
 import org.L2.common.R;
-import org.L2.common.mq.PlayRecordProducer;
 import org.L2.music.application.request.*;
 import org.L2.music.application.service.MusicAppService;
 import org.slf4j.Logger;
@@ -18,9 +17,6 @@ public class MusicController {
 
     @Autowired
     private MusicAppService musicAppService;
-
-    @Autowired
-    private PlayRecordProducer playRecordProducer;
 
     /*
      * 歌曲相关
@@ -111,19 +107,7 @@ public class MusicController {
     @GetMapping("/play/song/{songId}")
     public R playSong(@PathVariable("songId") Long songId,
                       @RequestParam(value = "userId", required = false) Long userId) {
-        log.info("Received playSong request, songId={}, userId={}", songId, userId);
-        if (userId != null) {
-            try {
-                playRecordProducer.sendPlayRecord(userId,songId);
-                log.info("Play record message sent via RabbitMQ, userId={}", userId);
-            } catch (Exception e) {
-                // 不因为 MQ 失败而影响播放本身
-                log.error("Failed to send play record message to RabbitMQ, userId={}", userId, e);
-            }
-        } else {
-            log.warn("playSong called without userId, skip MQ message");
-        }
-        return musicAppService.getSongDetailsInfo(songId, userId);
+        return musicAppService.playSong(songId, userId);
     }
 
    

@@ -1,6 +1,7 @@
 package org.L2.music.application.service;
 
 import org.L2.common.R;
+import org.L2.common.mq.PlayRecordProducer;
 import org.L2.common.rpc.UserClient;
 import org.L2.music.application.dto.*;
 import org.L2.music.application.request.*;
@@ -13,6 +14,8 @@ import org.L2.music.domain.service.LyricsService;
 import org.L2.music.domain.service.PlaylistService;
 import org.L2.music.domain.service.SingerService;
 import org.L2.music.domain.service.SongService;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -26,6 +29,8 @@ import java.util.Map;
 @Service
 public class MusicAppService {
 
+    private static final Logger log = LoggerFactory.getLogger(MusicAppService.class);
+
     @Autowired
     private SongService songService;
     @Autowired
@@ -36,6 +41,8 @@ public class MusicAppService {
     private LyricsService lyricsService;
     @Autowired
     private UserClient userClient;
+    @Autowired
+    private PlayRecordProducer playRecordProducer;
 
     /*
      * 歌曲模块
@@ -82,6 +89,25 @@ public class MusicAppService {
 
     public R getLyrics(Long lyricsId) {
         return lyricsService.getLyrics(lyricsId);
+    }
+
+    /**
+     * 前端点击播放歌曲时的统一入口：记录播放事件并返回歌曲详情。
+     */
+    public R playSong(Long songId, Long userId) {
+        log.info("Received playSong request, songId={}, userId={}", songId, userId);
+        if (userId != null) {
+            try {
+                playRecordProducer.sendPlayRecord(userId, songId);
+                log.info("Play record message sent via RabbitMQ, userId={}, songId={}", userId, songId);
+            } catch (Exception e) {
+                // 不因为 MQ 失败而影响播放本身
+                log.error("Failed to send play record message to RabbitMQ, userId={}, songId={}", userId, songId, e);
+            }
+        } else {
+            log.warn("playSong called without userId, skip MQ message");
+        }
+        return getSongDetailsInfo(songId, userId);
     }
 
     public R uploadSong(Long id, MultipartFile file, String md5) {
