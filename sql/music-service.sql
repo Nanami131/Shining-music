@@ -48,3 +48,19 @@ CREATE TABLE lyrics (
                         created_at DATETIME, -- 创建时间
                         updated_at DATETIME -- 更新时间
 );
+
+-- 视频表
+CREATE TABLE videos (
+                        id           BIGINT PRIMARY KEY AUTO_INCREMENT COMMENT '视频ID',
+                        singer_id    BIGINT NULL COMMENT '关联歌手ID，可为空',
+                        title        VARCHAR(255) NOT NULL COMMENT '标题',
+                        file_url     VARCHAR(500) NOT NULL COMMENT '视频地址(MinIO)',
+                        cover_url    VARCHAR(500) NULL COMMENT '封面地址',
+                        md5          VARCHAR(64) NOT NULL COMMENT '整文件MD5',
+                        size_bytes   BIGINT NOT NULL COMMENT '文件大小',
+                        created_at   DATETIME NULL COMMENT '创建时间',
+                        updated_at   DATETIME NULL COMMENT '更新时间',
+                        UNIQUE KEY uk_video_md5 (md5),
+                        INDEX idx_singer_created (singer_id, created_at)
+) COMMENT='视频表';
+
