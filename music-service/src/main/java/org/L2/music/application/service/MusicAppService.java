@@ -241,7 +241,7 @@ public class MusicAppService {
     }
 
     public R listPlaylists(Long userId) {
-        List<Playlist> playlists = playlistService.listAll();
+        List<Playlist> playlists = playlistService.listOfficialAndMine(userId);
         List<PlaylistBaseDTO> dtoList = new ArrayList<>();
         Map<Long, String> nicknameCache = new HashMap<>();
         for (Playlist playlist : playlists) {

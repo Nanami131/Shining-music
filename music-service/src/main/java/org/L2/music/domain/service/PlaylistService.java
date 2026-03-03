@@ -124,6 +124,29 @@ public class PlaylistService {
         return playlistMapper.query(new Playlist());
     }
 
+    /**
+     * 歌单页展示：仅返回官方歌单 + 当前用户自己的歌单。
+     * 说明：
+     * - 官方约定为 user_id = -1
+     * - 仅查询普通歌单类型（Constants.PLAYLIST）
+     */
+    public List<Playlist> listOfficialAndMine(Long currentUserId) {
+        List<Playlist> all = playlistMapper.query(new Playlist().setType(Constants.PLAYLIST));
+        if (all == null || all.isEmpty()) {
+            return List.of();
+        }
+        List<Playlist> result = new ArrayList<>();
+        for (Playlist playlist : all) {
+            Long ownerId = playlist.getUserId();
+            boolean isOfficial = ownerId != null && ownerId == -1L;
+            boolean isMine = currentUserId != null && ownerId != null && ownerId.equals(currentUserId);
+            if (isOfficial || isMine) {
+                result.add(playlist);
+            }
+        }
+        return result;
+    }
+
     private Playlist ensureUserPlaylist(Long userId, byte type) {
         Playlist playlist = findUserPlaylist(userId, type);
         if (playlist != null) {
