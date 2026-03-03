@@ -148,4 +148,25 @@ export default {
             params: { userId },
         });
     },
+    uploadVideo(singerId, title, videoFile, md5) {
+        const formData = new FormData();
+        if (singerId !== null && singerId !== undefined && singerId !== '') {
+            formData.append('singerId', singerId);
+        }
+        formData.append('title', title);
+        formData.append('videoFile', videoFile);
+        formData.append('md5', md5);
+        return api.post('/music/video/upload', formData, {
+            headers: { 'Content-Type': 'multipart/form-data' },
+        });
+    },
+    updateVideoMeta(data) {
+        return api.post('/music/video/update', data);
+    },
+    getVideoInfo(videoId) {
+        return api.get(`/music/video/${videoId}`);
+    },
+    listVideos() {
+        return api.get('/music/videos');
+    },
 };

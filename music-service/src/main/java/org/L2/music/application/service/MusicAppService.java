@@ -10,10 +10,12 @@ import org.L2.music.domain.model.Lyrics;
 import org.L2.music.domain.model.Playlist;
 import org.L2.music.domain.model.Singer;
 import org.L2.music.domain.model.Song;
+import org.L2.music.domain.model.Video;
 import org.L2.music.domain.service.LyricsService;
 import org.L2.music.domain.service.PlaylistService;
 import org.L2.music.domain.service.SingerService;
 import org.L2.music.domain.service.SongService;
+import org.L2.music.domain.service.VideoService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.BeanUtils;
@@ -43,6 +45,8 @@ public class MusicAppService {
     private UserClient userClient;
     @Autowired
     private PlayRecordProducer playRecordProducer;
+    @Autowired
+    private VideoService videoService;
 
     /*
      * 歌曲模块
@@ -259,6 +263,30 @@ public class MusicAppService {
             dtoList.add(dto);
         }
         return R.success("获取歌单列表成功", dtoList);
+    }
+
+    /*
+     * 视频模块
+     */
+    public R uploadVideo(Long singerId, String title, MultipartFile file, String md5) {
+        return videoService.uploadVideo(singerId, title, file, md5);
+    }
+
+    public R updateVideoMeta(VideoUpdateRequest request) {
+        Video video = new Video()
+                .setId(request.getId())
+                .setSingerId(request.getSingerId())
+                .setTitle(request.getTitle())
+                .setCoverUrl(request.getCoverUrl());
+        return videoService.updateVideoMeta(video);
+    }
+
+    public R getVideoInfo(Long id) {
+        return videoService.getVideoInfo(id);
+    }
+
+    public R listVideos() {
+        return videoService.listVideos();
     }
 
     /*

@@ -348,5 +348,31 @@ public class MusicController {
                 songFavoriteRequest.getSongId()
         );
     }
+
+    /*
+     * 视频相关
+     */
+    @PostMapping("/video/upload")
+    public R uploadVideo(@RequestParam(value = "singerId", required = false) Long singerId,
+                         @RequestParam("title") String title,
+                         @RequestParam("videoFile") MultipartFile videoFile,
+                         @RequestParam("md5") String md5) {
+        return musicAppService.uploadVideo(singerId, title, videoFile, md5);
+    }
+
+    @PostMapping("/video/update")
+    public R updateVideoMeta(@RequestBody VideoUpdateRequest videoUpdateRequest) {
+        return musicAppService.updateVideoMeta(videoUpdateRequest);
+    }
+
+    @GetMapping("/video/{id}")
+    public R getVideoInfo(@PathVariable("id") Long id) {
+        return musicAppService.getVideoInfo(id);
+    }
+
+    @GetMapping("/videos")
+    public R listVideos() {
+        return musicAppService.listVideos();
+    }
 }
 

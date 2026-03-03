@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="org.L2.music.infrastructure.VideoMapper">
+    <resultMap id="VideoResultMap" type="org.L2.music.domain.model.Video">
+        <id property="id" column="id"/>
+        <result property="singerId" column="singer_id"/>
+        <result property="title" column="title"/>
+        <result property="fileUrl" column="file_url"/>
+        <result property="coverUrl" column="cover_url"/>
+        <result property="md5" column="md5"/>
+        <result property="sizeBytes" column="size_bytes"/>
+        <result property="createdAt" column="created_at"/>
+        <result property="updatedAt" column="updated_at"/>
+    </resultMap>
+
+    <select id="selectById" resultMap="VideoResultMap">
+        SELECT * FROM videos WHERE id = #{id}
+    </select>
+
+    <insert id="insert" parameterType="org.L2.music.domain.model.Video" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO videos (singer_id, title, file_url, cover_url, md5, size_bytes, created_at, updated_at)
+        VALUES (#{singerId}, #{title}, #{fileUrl}, #{coverUrl}, #{md5}, #{sizeBytes}, #{createdAt}, #{updatedAt})
+    </insert>
+
+    <update id="update" parameterType="org.L2.music.domain.model.Video">
+        UPDATE videos
+        <set>
+            <if test="singerId != null">singer_id = #{singerId},</if>
+            <if test="title != null and title != ''">title = #{title},</if>
+            <if test="coverUrl != null">cover_url = #{coverUrl},</if>
+            <if test="updatedAt != null">updated_at = #{updatedAt},</if>
+        </set>
+        WHERE id = #{id}
+    </update>
+
+    <select id="query" resultMap="VideoResultMap">
+        SELECT * FROM videos
+        <where>
+            <if test="id != null">
+                AND id = #{id}
+            </if>
+            <if test="singerId != null">
+                AND singer_id = #{singerId}
+            </if>
+            <if test="title != null and title != ''">
+                AND title = #{title}
+            </if>
+        </where>
+        ORDER BY id DESC
+    </select>
+</mapper>
+

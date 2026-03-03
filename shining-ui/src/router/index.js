@@ -11,6 +11,7 @@ import PostDetail from '../views/PostDetail.vue';
 import SingerDetail from '../views/SingerDetail.vue';
 import PlaylistDetail from '../views/PlaylistDetail.vue';
 import SongDetail from '../views/SongDetail.vue';
+import VideoDetail from '../views/VideoDetail.vue';
 import Singers from '../views/Singers.vue';
 import Songs from '../views/Songs.vue';
 import Playlists from '../views/Playlists.vue';
@@ -19,6 +20,7 @@ import Playlists from '../views/Playlists.vue';
 import SingerManage from '../views/dev/SingerManage.vue';
 import SongManage from '../views/dev/SongManage.vue';
 import PlaylistManage from '../views/dev/PlaylistManage.vue';
+import VideoManage from '../views/dev/VideoManage.vue';
 
 const routes = [
     {
@@ -91,6 +93,11 @@ const routes = [
         name: 'song-detail',
         component: SongDetail,
     },
+    {
+        path: '/video/:id',
+        name: 'video-detail',
+        component: VideoDetail,
+    },
 
     // 开发者模式路由，生产环境注释以下路由
     {
@@ -107,6 +114,11 @@ const routes = [
         path: '/dev/playlist',
         name: 'playlist-manage',
         component: PlaylistManage,
+    },
+    {
+        path: '/dev/video',
+        name: 'video-manage',
+        component: VideoManage,
     },
 ];
 
