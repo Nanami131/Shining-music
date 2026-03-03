@@ -146,6 +146,14 @@ public class MusicAppService {
         return playlistService.createPlaylist(playlist);
     }
 
+    public R updatePlaylist(PlaylistUpdateRequest playlistUpdateRequest) {
+        Playlist playlist = new Playlist();
+        playlist.setId(playlistUpdateRequest.getId());
+        playlist.setName(playlistUpdateRequest.getName());
+        playlist.setDescription(playlistUpdateRequest.getDescription());
+        return playlistService.updatePlaylist(playlist, playlistUpdateRequest.getUserId());
+    }
+
     public R createUserCurrentPlaylist(Long userId) {
         Playlist playlist = new Playlist()
                 .setUserId(userId)

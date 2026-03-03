@@ -26,7 +26,7 @@
         UPDATE playlists
         <set>
             <if test="name != null and name != ''">name = #{name},</if>
-            <if test="description != null and description != ''">description = #{description},</if>
+            <if test="description != null">description = #{description},</if>
             <if test="userId != null">user_id = #{userId},</if>
             <if test="type != null">type = #{type},</if>
             <if test="visibility != null">visibility = #{visibility},</if>

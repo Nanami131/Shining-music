@@ -152,6 +152,11 @@ public class MusicController {
         return musicAppService.createPlaylist(playlistCreateRequest);
     }
 
+    @PostMapping("/playlist/update")
+    public R updatePlaylist(@RequestBody PlaylistUpdateRequest playlistUpdateRequest) {
+        return musicAppService.updatePlaylist(playlistUpdateRequest);
+    }
+
     /**
      * 生成用户播放列表
      * @param userId 用户ID

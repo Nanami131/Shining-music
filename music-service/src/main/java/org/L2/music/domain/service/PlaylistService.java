@@ -125,7 +125,7 @@ public class PlaylistService {
     }
 
     /**
-     * 歌单页展示：仅返回官方歌单 + 当前用户自己的歌单。
+     * 歌单页展示：返回官方歌单 + 当前用户自己的歌单 + 其他用户公开歌单。
      * 说明：
      * - 官方约定为 user_id = -1
      * - 仅查询普通歌单类型（Constants.PLAYLIST）
@@ -138,9 +138,11 @@ public class PlaylistService {
         List<Playlist> result = new ArrayList<>();
         for (Playlist playlist : all) {
             Long ownerId = playlist.getUserId();
+            Byte visibility = playlist.getVisibility();
             boolean isOfficial = ownerId != null && ownerId == -1L;
             boolean isMine = currentUserId != null && ownerId != null && ownerId.equals(currentUserId);
-            if (isOfficial || isMine) {
+            boolean isPublic = visibility != null && visibility == 0;
+            if (isOfficial || isMine || isPublic) {
                 result.add(playlist);
             }
         }
@@ -226,6 +228,36 @@ public class PlaylistService {
             return R.success("获取歌单信息成功", playlist);
         } catch (Exception e) {
             return R.error("获取歌单信息失败" + e.getMessage());
+        }
+    }
+
+    public R updatePlaylist(Playlist playlist, Long operatorUserId) {
+        if (playlist == null || playlist.getId() == null) {
+            return R.error("歌单ID不能为空");
+        }
+        if (operatorUserId == null) {
+            return R.error("用户不能为空");
+        }
+        Playlist dbPlaylist = playlistMapper.selectById(playlist.getId());
+        if (dbPlaylist == null) {
+            return R.error("歌单不存在");
+        }
+        if (dbPlaylist.getUserId() == null || !dbPlaylist.getUserId().equals(operatorUserId)) {
+            return R.error("无权修改该歌单");
+        }
+        if (playlist.getName() != null) {
+            String trimmedName = playlist.getName().trim();
+            if (trimmedName.isEmpty()) {
+                return R.error("歌单名称不能为空");
+            }
+            playlist.setName(trimmedName);
+        }
+        playlist.setUpdatedAt(LocalDateTime.now());
+        try {
+            playlistMapper.update(playlist);
+            return R.success("歌单更新成功");
+        } catch (Exception e) {
+            return R.error("歌单更新失败" + e.getMessage());
         }
     }
 

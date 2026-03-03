@@ -86,6 +86,9 @@ export default {
     createPlaylist(data) {
         return api.post('/music/playlist', data);
     },
+    updatePlaylist(data) {
+        return api.post('/music/playlist/update', data);
+    },
     deletePlaylist(playlistId) {
         return api.delete('/music/playlist', { params: { playlistId } });
     },
