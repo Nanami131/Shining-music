@@ -270,6 +270,7 @@ export default {
     this.audio.addEventListener('loadedmetadata', this.updateDuration);
     this.audio.addEventListener('ended', this.handleEnded);
     this.$bus.on('playSong', this.handlePlaySongEvent);
+    this.$bus.on('refreshCurrentPlaylist', this.loadCurrentPlaylist);
     window.addEventListener('userBaseUpdated', this.handleUserStateChange);
   },
   beforeDestroy() {
@@ -277,6 +278,7 @@ export default {
     this.audio.removeEventListener('loadedmetadata', this.updateDuration);
     this.audio.removeEventListener('ended', this.handleEnded);
     this.$bus.off('playSong', this.handlePlaySongEvent);
+    this.$bus.off('refreshCurrentPlaylist', this.loadCurrentPlaylist);
     this.audio.pause();
     this.audio.src = '';
     window.removeEventListener('userBaseUpdated', this.handleUserStateChange);

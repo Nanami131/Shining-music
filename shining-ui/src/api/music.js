@@ -111,6 +111,11 @@ export default {
             params: { userId },
         });
     },
+    clearCurrentPlaylist(userId) {
+        return api.post('/music/playlist/clear', null, {
+            params: { userId },
+        });
+    },
     createSinger(data) {
         return api.post('/music/singer', data);
     },

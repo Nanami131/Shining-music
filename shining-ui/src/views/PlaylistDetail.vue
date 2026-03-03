@@ -43,12 +43,20 @@
 
       <section>
         <h3>歌曲列表</h3>
+        <div class="editor-actions">
+          <button class="btn primary" :disabled="songOperating || !playlistSongs.length" @click="playAllSongs">
+            播放全部
+          </button>
+        </div>
         <div class="songs-list">
           <div v-for="song in playlistSongs" :key="song.id" class="song-card">
             <img :src="song.coverUrl || defaultCover" class="song-cover" alt="歌曲封面" @click="goToSong(song.id)" />
             <div class="song-info">
               <h4 @click="goToSong(song.id)">{{ song.title || '未知歌曲' }}</h4>
             </div>
+            <button class="btn primary mini" :disabled="songOperating" @click.stop="playSingleSong(song.id)">
+              播放
+            </button>
             <button v-if="isOwner" class="btn danger mini" :disabled="songOperating" @click.stop="removeSong(song.id)">
               移除
             </button>
@@ -330,6 +338,59 @@ export default {
       } finally {
         this.songOperating = false;
       }
+    },
+    async playAllSongs() {
+      if (!this.playlistSongs.length) {
+        alert('当前歌单没有歌曲');
+        return;
+      }
+      this.songOperating = true;
+      try {
+        if (this.userId) {
+          const clearResponse = await musicApi.clearCurrentPlaylist(this.userId);
+          if (!clearResponse.data?.passed) {
+            alert('清空当前播放列表失败：' + (clearResponse.data?.message || '未知错误'));
+            return;
+          }
+          const currentResponse = await musicApi.getCurrentPlaylist(this.userId);
+          if (!currentResponse.data?.passed || !currentResponse.data?.data?.id) {
+            alert('获取当前播放列表失败：' + (currentResponse.data?.message || '未知错误'));
+            return;
+          }
+          const currentPlaylistId = currentResponse.data.data.id;
+          for (const song of this.playlistSongs) {
+            const addResponse = await musicApi.managePlaylistSong({
+              playlistId: currentPlaylistId,
+              songId: song.id,
+            });
+            if (!addResponse.data?.passed) {
+              alert('加入当前播放列表失败：' + (addResponse.data?.message || '未知错误'));
+              return;
+            }
+          }
+          this.$bus.emit('refreshCurrentPlaylist');
+        }
+
+        this.$bus.emit('playSong', {
+          songId: this.playlistSongs[0].id,
+          playlist: this.playlistSongs.map(song => song.id),
+          index: 0,
+        });
+      } catch (error) {
+        alert('播放全部异常：' + error.message);
+      } finally {
+        this.songOperating = false;
+      }
+    },
+    playSingleSong(songId) {
+      if (!songId) {
+        return;
+      }
+      this.$bus.emit('playSong', {
+        songId,
+        playlist: [songId],
+        index: 0,
+      });
     },
     async deletePlaylist() {
       if (!this.isOwner) {
