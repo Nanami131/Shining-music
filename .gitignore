@@ -41,3 +41,4 @@ build/
 **/src/main/resources/application-secret.yml
 
 AGENTS.md
+start-all.log
