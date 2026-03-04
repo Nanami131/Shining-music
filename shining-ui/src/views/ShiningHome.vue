@@ -102,10 +102,42 @@
         </article>
       </div>
     </section>
+
+    <section class="video-panel">
+      <div class="panel-head">
+        <div>
+          <h2>VIDEOS · 视频展映</h2>
+          <p>聚合演出片段、MV 与现场录像，快速浏览站内视频内容。</p>
+        </div>
+        <button class="ghost" @click="goTo('/songs')">进入内容页</button>
+      </div>
+      <div class="video-grid">
+        <article class="video-card" v-for="video in featuredVideos" :key="video.id" @click="goToVideo(video.id)">
+          <div class="video-cover" :style="{ '--video-accent': video.accent }">
+            <span class="video-duration">{{ video.duration }}</span>
+            <span class="video-play">▶</span>
+          </div>
+          <div class="video-meta">
+            <h3>{{ video.title }}</h3>
+            <p>{{ video.singer }}</p>
+            <p class="video-sub">{{ video.desc }}</p>
+          </div>
+        </article>
+        <article v-if="!featuredVideos.length" class="video-card video-empty">
+          <div class="video-meta">
+            <h3>暂无视频</h3>
+            <p>请先前往开发者页面上传视频。</p>
+            <p class="video-sub">路径：/dev/video</p>
+          </div>
+        </article>
+      </div>
+    </section>
   </div>
 </template>
 
 <script>
+import musicApi from '@/api/music';
+
 const SONG_LIBRARY = [
   { id: 2, title: '嘘の火花' },
   { id: 3, title: '破月' },
@@ -193,6 +225,7 @@ export default {
           songs: [5, 10, 21].map((id) => SONG_LIBRARY.find((s) => s.id === id)),
         },
       ],
+      featuredVideos: [],
       sparkPoints: [
         { id: 1, top: '20%', left: '25%', delay: '0s' },
         { id: 2, top: '35%', left: '70%', delay: '1s' },
@@ -205,14 +238,41 @@ export default {
       ],
     };
   },
+  created() {
+    this.loadFeaturedVideos();
+  },
   computed: {
     songTitlesPreview() {
       return SONG_LIBRARY.slice(0, 4).map((s) => s.title).join('、');
     },
   },
   methods: {
+    async loadFeaturedVideos() {
+      try {
+        const response = await musicApi.listVideos();
+        if (response.data?.passed) {
+          const colorPool = ['#f472b6', '#38bdf8', '#facc15', '#34d399', '#a78bfa', '#fb7185'];
+          const list = response.data.data || [];
+          this.featuredVideos = list.slice(0, 8).map((item, index) => ({
+            id: item.id,
+            title: item.title || `视频${item.id}`,
+            singer: item.singerId ? `歌手 ${item.singerId}` : '未绑定歌手',
+            duration: '--:--',
+            desc: item.fileUrl ? '已上传视频，可点击进入播放页。' : '视频资源待就绪。',
+            accent: colorPool[index % colorPool.length],
+          }));
+        } else {
+          this.featuredVideos = [];
+        }
+      } catch (error) {
+        this.featuredVideos = [];
+      }
+    },
     goTo(path) {
       this.$router.push(path);
+    },
+    goToVideo(videoId) {
+      this.$router.push(`/video/${videoId}`);
     },
   },
 };
@@ -415,7 +475,8 @@ export default {
 }
 
 .featured-panel,
-.mood-panel {
+.mood-panel,
+.video-panel {
   padding: clamp(20px, 4vw, 28px);
   border-radius: 28px;
   background: rgba(10, 12, 35, 0.75);
@@ -512,6 +573,70 @@ export default {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
   gap: 18px;
+}
+
+.video-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 18px;
+}
+
+.video-card {
+  border-radius: 22px;
+  background: rgba(1, 3, 20, 0.8);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  overflow: hidden;
+  cursor: pointer;
+}
+
+.video-empty {
+  cursor: default;
+}
+
+.video-cover {
+  height: 140px;
+  background:
+    radial-gradient(circle at 25% 25%, var(--video-accent), transparent 60%),
+    linear-gradient(135deg, rgba(9, 12, 40, 0.9), rgba(24, 24, 72, 0.85));
+  position: relative;
+}
+
+.video-duration {
+  position: absolute;
+  right: 10px;
+  bottom: 10px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: rgba(2, 6, 23, 0.7);
+  font-size: 12px;
+}
+
+.video-play {
+  position: absolute;
+  left: 12px;
+  bottom: 8px;
+  font-size: 20px;
+  color: var(--video-accent);
+}
+
+.video-meta {
+  padding: 12px 14px 14px;
+}
+
+.video-meta h3 {
+  margin: 0 0 4px;
+  font-size: 16px;
+}
+
+.video-meta p {
+  margin: 0;
+  font-size: 13px;
+  color: rgba(236, 242, 255, 0.78);
+}
+
+.video-sub {
+  margin-top: 6px !important;
+  color: rgba(236, 242, 255, 0.62) !important;
 }
 
 .mood-card {
