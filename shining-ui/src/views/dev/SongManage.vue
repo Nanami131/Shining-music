@@ -116,7 +116,12 @@ export default {
       try {
         const response = await musicApi.createSong(this.songForm);
         if (response.data.passed) {
-          alert('创建歌曲成功');
+          const songId = response.data?.data?.id;
+          alert(
+            songId != null
+              ? `创建歌曲成功，歌曲ID：${songId}`
+              : '创建歌曲成功（后端未返回歌曲ID）'
+          );
           this.songForm = { title: '', artistId: null, albumId: null, status: null };
         } else {
           alert('创建歌曲失败：' + response.data.message);

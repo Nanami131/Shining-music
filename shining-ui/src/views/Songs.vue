@@ -14,6 +14,11 @@
     <!-- 全部歌曲：这里放原来的内容 -->
     <section class="section section-more">
       <h2>全部歌曲</h2>
+      <div class="section-actions">
+        <button class="play-all-btn" :disabled="songOperating || !songs.length" @click="playAllSongs">
+          {{ songOperating ? '处理中...' : '播放全部' }}
+        </button>
+      </div>
       <div class="songs-list">
         <div
           v-for="song in songs"
@@ -57,6 +62,7 @@ export default {
       defaultCover,
       userId: null,
       artistNameMap: {},
+      songOperating: false,
     };
   },
   created() {
@@ -132,6 +138,49 @@ export default {
         alert('更新收藏状态失败：' + error.message);
       }
     },
+    async playAllSongs() {
+      if (!this.songs.length) {
+        alert('当前没有可播放歌曲');
+        return;
+      }
+      this.songOperating = true;
+      try {
+        if (this.userId) {
+          const clearResponse = await musicApi.clearCurrentPlaylist(this.userId);
+          if (!clearResponse.data?.passed) {
+            alert('清空当前播放列表失败：' + (clearResponse.data?.message || '未知错误'));
+            return;
+          }
+          const currentResponse = await musicApi.getCurrentPlaylist(this.userId);
+          if (!currentResponse.data?.passed || !currentResponse.data?.data?.id) {
+            alert('获取当前播放列表失败：' + (currentResponse.data?.message || '未知错误'));
+            return;
+          }
+          const currentPlaylistId = currentResponse.data.data.id;
+          for (const song of this.songs) {
+            const addResponse = await musicApi.managePlaylistSong({
+              playlistId: currentPlaylistId,
+              songId: song.id,
+            });
+            if (!addResponse.data?.passed) {
+              alert('加入当前播放列表失败：' + (addResponse.data?.message || '未知错误'));
+              return;
+            }
+          }
+          this.$bus.emit('refreshCurrentPlaylist');
+        }
+
+        this.$bus.emit('playSong', {
+          songId: this.songs[0].id,
+          playlist: this.songs.map(song => song.id),
+          index: 0,
+        });
+      } catch (error) {
+        alert('播放全部异常：' + error.message);
+      } finally {
+        this.songOperating = false;
+      }
+    },
     goToSong(songId) {
       this.$router.push(`/song/${songId}`);
     },
@@ -169,6 +218,25 @@ export default {
 .section h2 {
   margin-bottom: 16px;
   text-align: left;
+}
+
+.section-actions {
+  margin-bottom: 12px;
+}
+
+.play-all-btn {
+  border: none;
+  border-radius: 8px;
+  background: #0ea5e9;
+  color: #fff;
+  padding: 9px 14px;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.play-all-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
 }
 
 .placeholder-text {

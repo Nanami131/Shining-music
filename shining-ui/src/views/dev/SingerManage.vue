@@ -162,7 +162,12 @@ export default {
       try {
         const response = await musicApi.createSinger(this.createForm);
         if (response.data.passed) {
-          alert('创建歌手成功');
+          const singerId = response.data?.data?.id;
+          alert(
+            singerId != null
+              ? `创建歌手成功，歌手ID：${singerId}`
+              : '创建歌手成功（后端未返回歌手ID）'
+          );
           this.createForm = { name: '', userId: null, profile: '', genre: '', country: '', status: 0, sex: 0 };
         } else {
           alert('创建歌手失败：' + response.data.message);

@@ -61,7 +61,7 @@ public class SingerService {
                 }
             }
             singerMapper.insert(singer);
-            return R.success("创建歌手成功");
+            return R.success("创建歌手成功", singer);
         } catch (Exception e) {
             return R.error("创建歌手失败" + e.getMessage());
         }
