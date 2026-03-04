@@ -88,12 +88,11 @@ public class SongService {
         }
     }
 
-    @AutoFill(OperationType.UPDATE)
     public R uploadSong(Long id, MultipartFile file) {
         String originalFilename = file.getOriginalFilename();
         String fileName = FileNameGenerateService.defineNamePath(originalFilename, "/song/", id, 5);
         String fileUrl = minioProperties.getEndpoint() + "/" + minioProperties.getBucketName() + fileName;
-        Song song = new Song().setId(id).setFileUrl(fileUrl);
+        Song song = new Song().setId(id).setFileUrl(fileUrl).setUpdatedAt(LocalDateTime.now());
         String result = simpleMinioService.uploadFile(file, fileName);
         if (!"上传成功".equals(result)) {
             return R.error(result);

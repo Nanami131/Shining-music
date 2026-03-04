@@ -58,12 +58,13 @@ public class AutoFillAspect {
 
         LocalDateTime now = LocalDateTime.now();
         for (Field field : fields) {
-            field.setAccessible(true);
             String fieldName = field.getName();
 
             if ("createdAt".equals(fieldName) && operationType == OperationType.INSERT) {
+                field.setAccessible(true);
                 field.set(dto, now);
             } else if ("updatedAt".equals(fieldName)) {
+                field.setAccessible(true);
                 field.set(dto, now); // INSERT 和 UPDATE 都会更新 updateTime
             }
         }
