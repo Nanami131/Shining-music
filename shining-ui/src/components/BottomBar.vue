@@ -478,6 +478,7 @@ export default {
           this.currentPlaylistSongs = Array.isArray(data.songs) ? data.songs : [];
           await this.ensureArtistNames(this.currentPlaylistSongs);
           this.syncPlaylistQueue();
+          this.syncCurrentSongFromPlaylist();
         }
       } catch (error) {
         console.error('加载播放列表失败', error);
@@ -505,6 +506,22 @@ export default {
       } else if (this.playlist.length === 0) {
         this.currentIndex = -1;
       }
+    },
+    syncCurrentSongFromPlaylist() {
+      if (!this.userId || !Array.isArray(this.currentPlaylistSongs) || !this.currentPlaylistSongs.length) {
+        return;
+      }
+      if (this.currentSong && this.currentSong.id) {
+        const matched = this.currentPlaylistSongs.find(song => song.id === this.currentSong.id);
+        if (matched) {
+          this.currentSong = { ...matched, ...this.currentSong };
+          return;
+        }
+      }
+      this.currentSong = { ...this.currentPlaylistSongs[0] };
+      this.currentTime = 0;
+      this.duration = 0;
+      this.isPlaying = false;
     },
     async addSongToCurrentPlaylist(song) {
       if (!this.userId || !this.currentPlaylistId || !song || !song.id) {
