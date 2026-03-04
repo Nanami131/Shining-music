@@ -128,15 +128,18 @@ public class PlaylistService {
      * 歌单页展示：返回官方歌单 + 当前用户自己的歌单 + 其他用户公开歌单。
      * 说明：
      * - 官方约定为 user_id = -1
-     * - 仅查询普通歌单类型（Constants.PLAYLIST）
+     * - 仅展示普通歌单与专辑（Constants.PLAYLIST / Constants.ALBUM）
      */
     public List<Playlist> listOfficialAndMine(Long currentUserId) {
-        List<Playlist> all = playlistMapper.query(new Playlist().setType(Constants.PLAYLIST));
+        List<Playlist> all = playlistMapper.query(new Playlist());
         if (all == null || all.isEmpty()) {
             return List.of();
         }
         List<Playlist> result = new ArrayList<>();
         for (Playlist playlist : all) {
+            if (!isDisplayType(playlist.getType())) {
+                continue;
+            }
             Long ownerId = playlist.getUserId();
             Byte visibility = playlist.getVisibility();
             boolean isOfficial = ownerId != null && ownerId == -1L;
@@ -297,20 +300,22 @@ public class PlaylistService {
     }
 
     /**
-     * 发现更多歌单：只返回普通歌单类型，排除其他用户的私人歌单。
+     * 发现更多歌单：只返回普通歌单与专辑，排除其他用户的私人歌单。
      *
      * @param currentUserId 当前用户 ID，可以为 null
      */
     public R discoverPlaylists(Long currentUserId) {
         try {
-            Playlist condition = new Playlist().setType(Constants.PLAYLIST);
-            List<Playlist> all = playlistMapper.query(condition);
+            List<Playlist> all = playlistMapper.query(new Playlist());
             if (all == null || all.isEmpty()) {
                 return R.success("获取歌单列表成功", List.of());
             }
 
             List<Playlist> result = new ArrayList<>();
             for (Playlist playlist : all) {
+                if (!isDisplayType(playlist.getType())) {
+                    continue;
+                }
                 Byte visibility = playlist.getVisibility();
                 Long ownerId = playlist.getUserId();
 
@@ -327,6 +332,10 @@ public class PlaylistService {
         } catch (Exception e) {
             return R.error("获取歌单列表失败" + e.getMessage());
         }
+    }
+
+    private boolean isDisplayType(Byte type) {
+        return type != null && (type == Constants.PLAYLIST || type == Constants.ALBUM);
     }
 
     public R deletePlaylist(Long playlistId) {
