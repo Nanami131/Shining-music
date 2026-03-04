@@ -10,6 +10,7 @@ public class PlaylistBaseDTO {
     private Long userId;
     private String nickName;
     private String name;
+    private String description;
     private Byte type;
     private Byte visibility;
     private String coverUrl;
