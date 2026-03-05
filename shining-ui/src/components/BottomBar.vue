@@ -38,7 +38,11 @@
           <button class="icon-btn" @click="playPrev" :disabled="!hasPrev">
             <span class="icon prev"></span>
           </button>
-          <button class="icon-btn play-btn" @click="togglePlay" :disabled="!audio.src">
+          <button
+              class="icon-btn play-btn"
+              @click="togglePlay"
+              :disabled="!audio.src && !(currentSong && currentSong.fileUrl)"
+          >
             <span class="icon" :class="isPlaying ? 'pause' : 'play'"></span>
           </button>
           <button class="icon-btn" @click="playNext" :disabled="!hasNext">
@@ -688,7 +692,13 @@ export default {
       if (this.isPlaying) {
         this.audio.pause();
         this.isPlaying = false;
-      } else if (this.audio.src) {
+      } else {
+        if (!this.audio.src && this.currentSong && this.currentSong.fileUrl) {
+          this.audio.src = this.currentSong.fileUrl;
+        }
+        if (!this.audio.src) {
+          return;
+        }
         this.audio.play();
         this.isPlaying = true;
       }
