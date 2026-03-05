@@ -143,9 +143,9 @@ public class PlaylistService {
             Long ownerId = playlist.getUserId();
             Byte visibility = playlist.getVisibility();
             boolean isOfficial = ownerId != null && ownerId == -1L;
-            boolean isMine = currentUserId != null && ownerId != null && ownerId.equals(currentUserId);
             boolean isPublic = visibility != null && visibility == 0;
-            if (isOfficial || isMine || isPublic) {
+            // 私密歌单不参与任何展示（官方歌单除外）
+            if (isOfficial || isPublic) {
                 result.add(playlist);
             }
         }
@@ -318,12 +318,11 @@ public class PlaylistService {
                 }
                 Byte visibility = playlist.getVisibility();
                 Long ownerId = playlist.getUserId();
+                boolean isOfficial = ownerId != null && ownerId == -1L;
 
+                // 私密歌单不参与任何展示（官方歌单除外）
                 boolean isPrivate = visibility != null && Byte.valueOf((byte) 1).equals(visibility);
-                boolean isOwner = currentUserId != null && ownerId != null && ownerId.equals(currentUserId);
-
-                // 别人的私人歌单不展示
-                if (isPrivate && !isOwner) {
+                if (isPrivate && !isOfficial) {
                     continue;
                 }
                 result.add(playlist);

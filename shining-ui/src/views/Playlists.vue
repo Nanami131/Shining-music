@@ -156,7 +156,9 @@ export default {
       try {
         const response = await musicApi.getPlaylists(this.userId);
         if (response.data && response.data.passed) {
-          this.playlists = response.data.data || [];
+          const list = response.data.data || [];
+          // 兜底：私密歌单（visibility=1）不展示
+          this.playlists = list.filter(item => Number(item?.visibility) !== 1);
         } else {
           const msg = response.data ? response.data.message : '未知错误';
           alert('获取歌单列表失败：' + msg);
