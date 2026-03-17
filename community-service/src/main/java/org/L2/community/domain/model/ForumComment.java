@@ -19,8 +19,6 @@ public class ForumComment {
      * 所属楼ID：
      *  - 一级评论时等于自身ID
      *  - 楼中楼为所属楼的ID
-     *
-     * TODO: 当前未在业务逻辑中填充 rootId，后续根据需要完善
      */
     private Long rootId;
     /**
@@ -32,7 +30,6 @@ public class ForumComment {
 
     /**
      * 评论类型：1-楼(一级)，2-楼中楼
-     * TODO: 建议和枚举或常量统一管理
      */
     private Byte commentType;
     private Long userId;
@@ -45,13 +42,11 @@ public class ForumComment {
 
     /**
      * 楼层号，仅一级评论使用，从1开始递增
-     * TODO: 当前未自动维护楼层号，需要后续实现
      */
     private Integer floorNo;
 
     /**
      * 回复数量，主要用于一级评论
-     * TODO: 当前未自动维护回复数量，需要后续实现
      */
     private Integer replyCount;
     /**

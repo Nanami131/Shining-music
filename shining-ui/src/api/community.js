@@ -23,13 +23,10 @@ export default {
 
     /**
      * 删除帖子
-     * 后端控制器使用 @RequestParam 读取 postId
      * @param {Number} postId 帖子 ID
      */
     deletePost(postId) {
-        return api.delete('/community/post', {
-            params: { postId },
-        });
+        return api.delete(`/community/post/${postId}`);
     },
 
     /**

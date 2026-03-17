@@ -155,8 +155,7 @@ export default {
             lastCommentAt: data.lastCommentAt,
             createdAt: data.createdAt,
           };
-          // 后端返回的 comments 是扁平列表，按 parentId 组装成树
-          this.comments = this.buildCommentTree(data.comments || []);
+          this.comments = data.comments || [];
         } else {
           const msg = res && res.data ? res.data.message : '未知错误';
           alert('获取帖子详情失败：' + msg);
@@ -175,41 +174,12 @@ export default {
         return String(val);
       }
     },
-    buildCommentTree(list) {
-      if (!list || !list.length) {
-        return [];
-      }
-      const map = {};
-      list.forEach(item => {
-        map[item.id] = { ...item, replies: [] };
-      });
-      const roots = [];
-      list.forEach(item => {
-        if (item.parentId) {
-          const parent = map[item.parentId];
-          if (parent) {
-            parent.replies.push(map[item.id]);
-          } else {
-            roots.push(map[item.id]);
-          }
-        } else {
-          roots.push(map[item.id]);
-        }
-      });
-      // 按创建时间排序顶层评论
-      roots.sort((a, b) => {
-        if (!a.createdAt || !b.createdAt) return 0;
-        return new Date(a.createdAt) - new Date(b.createdAt);
-      });
-      return roots;
-    },
     async refreshComments() {
-      // 单独刷新评论，不重新加载帖子
       if (!this.postId) return;
       try {
         const res = await communityApi.listComments(this.postId);
         if (res && res.data && res.data.passed) {
-          this.comments = this.buildCommentTree(res.data.data || []);
+          this.comments = res.data.data || [];
         }
       } catch {
         // 忽略异常

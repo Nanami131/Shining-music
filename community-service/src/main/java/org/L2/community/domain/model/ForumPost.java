@@ -17,8 +17,7 @@ public class ForumPost {
     private String content;
 
     /**
-     * 帖子状态（正常、删除、审核中等）
-     * 具体取值请在业务中约定。TODO: 与实际状态枚举保持一致
+     * 帖子状态：0-正常，1-删除，2-审核中
      */
     private Byte status;
     private Integer commentCount; //评论总数

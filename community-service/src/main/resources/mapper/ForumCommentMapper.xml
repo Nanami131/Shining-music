@@ -70,9 +70,6 @@
         #{createdAt},
         #{updatedAt}
         )
-        <!--。
-            root_id / floor_no / reply_count 的具体维护逻辑留待 TODO
-        -->
     </insert>
 
     <update id="update" parameterType="org.L2.community.domain.model.ForumComment">
@@ -121,6 +118,14 @@
     <delete id="deleteById" parameterType="long">
         DELETE FROM post_comments WHERE id = #{id}
     </delete>
+
+    <delete id="deleteByPostId" parameterType="long">
+        DELETE FROM post_comments WHERE post_id = #{postId}
+    </delete>
+
+    <select id="getMaxFloorNo" parameterType="long" resultType="java.lang.Integer">
+        SELECT MAX(floor_no) FROM post_comments WHERE post_id = #{postId} AND comment_type = 1
+    </select>
 
     <select id="query"
             parameterType="org.L2.community.domain.model.ForumComment"

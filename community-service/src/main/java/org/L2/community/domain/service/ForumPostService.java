@@ -30,7 +30,6 @@ public class ForumPostService {
             return R.error("帖子信息不完整");
         }
 
-        // TODO: 根据业务为 status 赋值（例如：1-正常），这里不做假设
         try {
             forumPostMapper.insert(post);
             return R.success("发帖成功", post.getId());

@@ -66,22 +66,21 @@ public class CommunityAppService {
     }
 
     /**
-     * 删除帖子。
+     * 删除帖子，同时清理关联评论。
      */
     public R deletePost(Long id) {
+        forumCommentService.deleteByPostId(id);
         return forumPostService.deletePost(id);
     }
 
     /**
      * 帖子列表（简单版，不分页）。
-     * TODO: 需要分页、筛选时在此扩展入参和查询条件。
      */
     public R listPosts(Long userId) {
         ForumPost condition = new ForumPost();
         if (userId != null) {
             condition.setUserId(userId);
         }
-        // TODO: 如果只想展示“正常”状态帖子，可以在这里设置 condition.setStatus(...)
         List<ForumPost> posts = forumPostService.queryPosts(condition);
 
         List<PostDTO> dtoList = new ArrayList<>();
@@ -154,15 +153,11 @@ public class CommunityAppService {
 
         ForumComment comment = new ForumComment()
                 .setPostId(request.getPostId())
-                .setRootId(request.getRootId())
                 .setParentId(request.getParentId())
-                .setCommentType(request.getCommentType())
                 .setUserId(request.getUserId())
                 .setReplyToUserId(request.getReplyToUserId())
-                .setContent(request.getContent())
-                .setStatus(request.getStatus());
+                .setContent(request.getContent());
 
-        // TODO: 楼层号 / rootId / replyCount 的赋值根据业务补充
         return forumCommentService.createComment(comment);
     }
 
