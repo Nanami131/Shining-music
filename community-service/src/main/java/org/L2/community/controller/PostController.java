@@ -7,6 +7,7 @@ import org.L2.community.application.request.PostUpdateRequest;
 import org.L2.community.application.service.CommunityAppService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 /**
  * 社区帖子/评论相关接口。
@@ -56,5 +57,12 @@ public class PostController {
     @GetMapping("/post/{postId}/comments")
     public R listComments(@PathVariable("postId") Long postId) {
         return communityAppService.listComments(postId);
+    }
+
+    // -------- 文件上传 --------
+
+    @PostMapping("/upload")
+    public R uploadFile(@RequestParam("file") MultipartFile file) {
+        return communityAppService.uploadFile(file);
     }
 }

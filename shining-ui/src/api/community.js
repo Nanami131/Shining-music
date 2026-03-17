@@ -63,4 +63,18 @@ export default {
     listComments(postId) {
         return api.get(`/community/post/${postId}/comments`);
     },
+
+    /**
+     * 上传社区附件（图片 / 文件）
+     * @param {File} file 原生 File 对象
+     * @returns {Promise} data.data.url 为可访问地址
+     */
+    uploadFile(file) {
+        const formData = new FormData();
+        formData.append('file', file);
+        return api.post('/community/upload', formData, {
+            headers: { 'Content-Type': 'multipart/form-data' },
+            timeout: 30000,
+        });
+    },
 };

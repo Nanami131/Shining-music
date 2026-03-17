@@ -2,6 +2,9 @@ package org.L2.community.application.service;
 
 import org.L2.common.R;
 import org.L2.common.annotation.PermissionCheck;
+import org.L2.common.minio.MinioProperties;
+import org.L2.common.minio.service.FileNameGenerateService;
+import org.L2.common.minio.service.SimpleMinioService;
 import org.L2.community.application.dto.CommentDTO;
 import org.L2.community.application.dto.PostDTO;
 import org.L2.community.application.dto.PostDetailsDTO;
@@ -14,6 +17,7 @@ import org.L2.community.domain.service.ForumCommentService;
 import org.L2.community.domain.service.ForumPostService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.*;
 
@@ -28,6 +32,17 @@ public class CommunityAppService {
 
     @Autowired
     private ForumCommentService forumCommentService;
+
+    @Autowired
+    private SimpleMinioService simpleMinioService;
+
+    @Autowired
+    private MinioProperties minioProperties;
+
+    private static final Set<String> IMAGE_TYPES = Set.of(
+            "image/jpeg", "image/png", "image/gif", "image/webp");
+    private static final long MAX_IMAGE_SIZE = 5 * 1024 * 1024;
+    private static final long MAX_FILE_SIZE = 20 * 1024 * 1024;
 
     /**
      * 发布帖子。
@@ -162,6 +177,37 @@ public class CommunityAppService {
                 .setContent(request.getContent());
 
         return forumCommentService.createComment(comment);
+    }
+
+    /**
+     * 上传社区附件（图片 / 文件），存入 MinIO 并返回可访问 URL。
+     */
+    @PermissionCheck
+    public R uploadFile(MultipartFile file) {
+        if (file == null || file.isEmpty()) {
+            return R.error("文件不能为空");
+        }
+
+        String contentType = file.getContentType();
+        boolean isImage = contentType != null && IMAGE_TYPES.contains(contentType.toLowerCase());
+
+        long maxSize = isImage ? MAX_IMAGE_SIZE : MAX_FILE_SIZE;
+        if (file.getSize() > maxSize) {
+            return R.error("文件大小超过限制（图片 5MB / 其他 20MB）");
+        }
+
+        String prefix = isImage ? "community/images/" : "community/files/";
+        String objectName = FileNameGenerateService.defineNamePath(
+                file.getOriginalFilename(), prefix, 0L, 6);
+
+        String result = simpleMinioService.uploadFile(file, objectName);
+        if (!result.contains("成功")) {
+            return R.error(result);
+        }
+
+        String url = minioProperties.getEndpoint() + "/"
+                + minioProperties.getBucketName() + "/" + objectName;
+        return R.success("上传成功", Map.of("url", url));
     }
 
     /**

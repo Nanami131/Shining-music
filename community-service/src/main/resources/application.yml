@@ -1,6 +1,10 @@
 spring:
   application:
     name: community-service
+  servlet:
+    multipart:
+      max-file-size: 20MB
+      max-request-size: 25MB
   config:
     import:
       - nacos:community-service.yaml?serverAddr=127.0.0.1:8848&namespace=Shining&group=Shining

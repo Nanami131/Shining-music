@@ -299,17 +299,73 @@ export default {
   border-radius: 12px;
   background: rgba(255, 255, 255, 0.04);
   margin-bottom: 24px;
-  line-height: 1.6;
+  line-height: 1.8;
   word-break: break-word;
+  font-size: 15px;
 }
-.post-content img {
+.post-content :deep(img) {
   max-width: 100%;
   border-radius: 8px;
   margin: 8px 0;
 }
-.post-content a {
+.post-content :deep(a) {
   color: #93c5fd;
   text-decoration: underline;
+}
+.post-content :deep(h1),
+.post-content :deep(h2),
+.post-content :deep(h3) {
+  margin: 16px 0 8px;
+  line-height: 1.4;
+}
+.post-content :deep(blockquote) {
+  border-left: 3px solid rgba(168, 85, 247, 0.6);
+  margin: 12px 0;
+  padding: 8px 16px;
+  color: rgba(255, 255, 255, 0.7);
+  background: rgba(255, 255, 255, 0.03);
+  border-radius: 0 8px 8px 0;
+}
+.post-content :deep(pre) {
+  background: rgba(0, 0, 0, 0.4);
+  border-radius: 8px;
+  padding: 12px 16px;
+  overflow-x: auto;
+  margin: 12px 0;
+}
+.post-content :deep(code) {
+  background: rgba(255, 255, 255, 0.08);
+  color: #fbbf24;
+  border-radius: 4px;
+  padding: 1px 4px;
+  font-size: 0.9em;
+}
+.post-content :deep(pre code) {
+  background: transparent;
+  color: inherit;
+  padding: 0;
+}
+.post-content :deep(ul),
+.post-content :deep(ol) {
+  padding-left: 24px;
+  margin: 8px 0;
+}
+.post-content :deep(li) {
+  margin: 4px 0;
+}
+.post-content :deep(table) {
+  border-collapse: collapse;
+  width: 100%;
+  margin: 12px 0;
+}
+.post-content :deep(th),
+.post-content :deep(td) {
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  padding: 8px 12px;
+  text-align: left;
+}
+.post-content :deep(th) {
+  background: rgba(255, 255, 255, 0.06);
 }
 
 .comment-section h3 {
