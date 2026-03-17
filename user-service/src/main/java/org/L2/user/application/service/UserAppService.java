@@ -1,6 +1,7 @@
 package org.L2.user.application.service;
 
 import org.L2.common.R;
+import org.L2.common.annotation.PermissionCheck;
 import org.L2.user.application.dto.*;
 import org.L2.user.application.request.LoginRequest;
 import org.L2.user.application.request.RegisterRequest;
@@ -89,6 +90,7 @@ public class UserAppService {
         }
     }
 
+    @PermissionCheck(fieldName = "id")
     public R updateProfile(UpdateProfileRequest updateProfileRequest) {
         User user = new User();
         BeanUtils.copyProperties(updateProfileRequest, user);

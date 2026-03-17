@@ -8,6 +8,9 @@ import java.lang.annotation.Target;
 @Target(ElementType.METHOD)
 @Retention(RetentionPolicy.RUNTIME)
 public @interface PermissionCheck {
-    // 指定 DTO 中的用户 ID 字段名，默认 "id"
-    String fieldName() default "id";
+    /**
+     * 指定方法第一个参数中的用户 ID 字段名。
+     * 切面会将该字段值与 UserContext 中已认证的 userId 比较。
+     */
+    String fieldName() default "userId";
 }

@@ -1,6 +1,7 @@
 package org.L2.music.application.service;
 
 import org.L2.common.R;
+import org.L2.common.annotation.PermissionCheck;
 import org.L2.common.mq.PlayRecordProducer;
 import org.L2.common.rpc.UserClient;
 import org.L2.music.application.dto.*;
@@ -141,6 +142,7 @@ public class MusicAppService {
         return playlistService.deletePlaylist(playlistId);
     }
 
+    @PermissionCheck(fieldName = "id")
     public R createPlaylist(PlaylistCreateRequest playlistCreateRequest) {
         Playlist playlist = new Playlist();
         BeanUtils.copyProperties(playlistCreateRequest, playlist);
@@ -150,6 +152,7 @@ public class MusicAppService {
         return playlistService.createPlaylist(playlist);
     }
 
+    @PermissionCheck
     public R updatePlaylist(PlaylistUpdateRequest playlistUpdateRequest) {
         Playlist playlist = new Playlist();
         playlist.setId(playlistUpdateRequest.getId());

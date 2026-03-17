@@ -1,6 +1,7 @@
 package org.L2.community.application.service;
 
 import org.L2.common.R;
+import org.L2.common.annotation.PermissionCheck;
 import org.L2.community.application.dto.CommentDTO;
 import org.L2.community.application.dto.PostDTO;
 import org.L2.community.application.dto.PostDetailsDTO;
@@ -31,6 +32,7 @@ public class CommunityAppService {
     /**
      * 发布帖子。
      */
+    @PermissionCheck
     public R createPost(PostCreateRequest request) {
         if (request == null
                 || request.getUserId() == null
@@ -142,6 +144,7 @@ public class CommunityAppService {
     /**
      * 发表评论。
      */
+    @PermissionCheck
     public R createComment(CommentCreateRequest request) {
         if (request == null
                 || request.getPostId() == null

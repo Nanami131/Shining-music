@@ -10,6 +10,7 @@ import org.springframework.core.Ordered;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.server.reactive.ServerHttpRequest;
 import org.springframework.stereotype.Component;
 import org.springframework.web.server.ServerWebExchange;
 import reactor.core.publisher.Mono;
@@ -22,13 +23,14 @@ import java.util.concurrent.TimeUnit;
 @Component
 public class LoginInterceptor implements GlobalFilter, Ordered {
 
+    public static final String USER_ID_HEADER = "X-User-Id";
+
     @Autowired
     private StringRedisTemplate redisTemplate;
 
     @Value("${jwt.secret}")
     private String secret;
 
-    // 这里兼容带 /api 和不带 /api 的两种写法
     private static final Set<String> SKIP_PATHS = new HashSet<>(Arrays.asList(
             "/api/user/login",
             "/api/user/register",
@@ -42,21 +44,23 @@ public class LoginInterceptor implements GlobalFilter, Ordered {
     public Mono<Void> filter(ServerWebExchange exchange,
                              org.springframework.cloud.gateway.filter.GatewayFilterChain chain) {
 
-        // 1. 预检请求 / OPTIONS 一律放行
         if (HttpMethod.OPTIONS.equals(exchange.getRequest().getMethod())) {
             return chain.filter(exchange);
         }
 
-        // 2. 登录、注册、登出这些路径一律跳过校验
+        // 防止客户端伪造身份 header
+        ServerHttpRequest cleanedRequest = exchange.getRequest().mutate()
+                .headers(h -> h.remove(USER_ID_HEADER))
+                .build();
+        exchange = exchange.mutate().request(cleanedRequest).build();
+
         String path = exchange.getRequest().getURI().getPath();
         for (String skip : SKIP_PATHS) {
-            // 如果当前请求路径是以这些结尾的，就放行
             if (path.endsWith(skip)) {
                 return chain.filter(exchange);
             }
         }
 
-        // 3. 下面才是需要做 token 校验的路径
         String token = exchange.getRequest().getHeaders().getFirst("Authorization");
 
         if (token == null || !token.startsWith("Bearer ")) {
@@ -82,10 +86,14 @@ public class LoginInterceptor implements GlobalFilter, Ordered {
                 return unauthorizedResponse(exchange, "Token 已失效或不存在");
             }
 
-            // 刷新 Token 有效期到 24 小时
             redisTemplate.expire(key, 24, TimeUnit.HOURS);
 
-            return chain.filter(exchange);
+            // 将可信的 userId 注入到下游请求 header 中
+            ServerHttpRequest mutatedRequest = exchange.getRequest().mutate()
+                    .header(USER_ID_HEADER, userId)
+                    .build();
+
+            return chain.filter(exchange.mutate().request(mutatedRequest).build());
         } catch (JwtException e) {
             return unauthorizedResponse(exchange, "无效的 Token: " + e.getMessage());
         }
