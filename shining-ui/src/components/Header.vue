@@ -17,7 +17,7 @@
             @click="goToProfile"
             alt="用户头像"
         />
-        <span class="nickname">{{ userBase.nickName || '用户' }}</span>
+        <span class="nickname" @click="goToUserHome" style="cursor:pointer">{{ userBase.nickName || '用户' }}</span>
         <button class="btn" @click="handleLogout">退出</button>
       </template>
       <template v-else>
@@ -79,6 +79,11 @@ export default {
     },
     goToProfile() {
       this.$router.push('/profile');
+    },
+    goToUserHome() {
+      if (this.userBase.id) {
+        this.$router.push({ name: 'user-home', params: { id: this.userBase.id } });
+      }
     },
     goToDiscover() {
       this.$router.push('/');

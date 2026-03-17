@@ -12,6 +12,7 @@ import SingerDetail from '../views/SingerDetail.vue';
 import PlaylistDetail from '../views/PlaylistDetail.vue';
 import SongDetail from '../views/SongDetail.vue';
 import VideoDetail from '../views/VideoDetail.vue';
+import UserHome from '../views/UserHome.vue';
 import Singers from '../views/Singers.vue';
 import Songs from '../views/Songs.vue';
 import Playlists from '../views/Playlists.vue';
@@ -97,6 +98,11 @@ const routes = [
         path: '/video/:id',
         name: 'video-detail',
         component: VideoDetail,
+    },
+    {
+        path: '/user/:id',
+        name: 'user-home',
+        component: UserHome,
     },
 
     // 开发者模式路由，生产环境注释以下路由

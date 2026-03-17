@@ -5,8 +5,9 @@
     <div v-else>
       <h2 class="post-title">{{ post.title }}</h2>
       <div class="post-meta">
-        <span>评论数：{{ post.commentCount ?? 0 }}</span>
-        <span>创建时间：{{ formatDate(post.createdAt) }}</span>
+        <span class="user-link" @click="goUser(post.userId)">用户 {{ post.userId }}</span>
+        <span>{{ post.commentCount ?? 0 }} 评论</span>
+        <span>{{ formatDate(post.createdAt) }}</span>
         <span v-if="post.lastCommentAt">最后评论：{{ formatDate(post.lastCommentAt) }}</span>
       </div>
       <div class="post-content" v-html="post.content"></div>
@@ -46,7 +47,7 @@
           >
             <div class="comment-main">
               <div class="comment-header">
-                <span class="user">用户 {{ c.userId ?? '未知' }}</span>
+                <span class="user user-link" @click.stop="goUser(c.userId)">用户 {{ c.userId ?? '未知' }}</span>
                 <span class="time">{{ formatDate(c.createdAt) }}</span>
               </div>
               <div class="comment-content">{{ c.content }}</div>
@@ -87,9 +88,9 @@
               >
                 <div class="comment-header">
                   <span class="user">
-                    用户 {{ r.userId ?? '未知' }}
+                    <span class="user-link" @click.stop="goUser(r.userId)">用户 {{ r.userId ?? '未知' }}</span>
                     <template v-if="r.replyToUserId">
-                      &nbsp;@{{ r.replyToUserId }}
+                      &nbsp;回复 <span class="user-link" @click.stop="goUser(r.replyToUserId)">@{{ r.replyToUserId }}</span>
                     </template>
                   </span>
                   <span class="time">{{ formatDate(r.createdAt) }}</span>
@@ -226,6 +227,11 @@ export default {
       } else {
         this.showReplyFor = id;
         this.replyText = '';
+      }
+    },
+    goUser(userId) {
+      if (userId != null) {
+        this.$router.push({ name: 'user-home', params: { id: userId } });
       }
     },
     async handleCreateReply(parent) {
@@ -366,6 +372,16 @@ export default {
 }
 .post-content :deep(th) {
   background: rgba(255, 255, 255, 0.06);
+}
+
+.user-link {
+  cursor: pointer;
+  color: #93c5fd;
+  transition: color 0.15s;
+}
+.user-link:hover {
+  color: #60a5fa;
+  text-decoration: underline;
 }
 
 .comment-section h3 {
