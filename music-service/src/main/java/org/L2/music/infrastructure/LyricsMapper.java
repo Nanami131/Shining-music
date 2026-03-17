@@ -16,4 +16,6 @@ public interface LyricsMapper {
     int update(Lyrics lyrics);
 
     int deleteById(Long id);
+
+    List<Lyrics> selectAll();
 }

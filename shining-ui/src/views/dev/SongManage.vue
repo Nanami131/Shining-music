@@ -51,12 +51,17 @@
           <input v-model="lyricsForm.songId" type="number" placeholder="请输入歌曲 ID" required />
         </div>
         <div class="form-item">
-          <label>语言描述</label>
-          <input v-model="lyricsForm.languageMsg" placeholder="请输入语言描述" required />
+          <label>语言代码</label>
+          <select v-model="lyricsForm.languageMsg" required>
+            <option value="" disabled>请选择语言</option>
+            <option value="zh">zh（中文）</option>
+            <option value="ja">ja（日文）</option>
+            <option value="en">en（英文）</option>
+          </select>
         </div>
         <div class="form-item">
           <label>歌词文件</label>
-          <input type="file" accept=".txt" @change="handleLyricsChange" required />
+          <input type="file" accept=".lrc,.txt" @change="handleLyricsChange" required />
         </div>
         <button type="submit" class="submit-btn">上传歌词</button>
       </form>

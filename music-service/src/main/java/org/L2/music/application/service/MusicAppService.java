@@ -14,6 +14,8 @@ import org.L2.music.domain.model.Song;
 import org.L2.music.domain.model.Video;
 import org.L2.music.domain.service.LyricsService;
 import org.L2.music.domain.service.PlaylistService;
+import org.L2.music.domain.service.SearchService;
+import org.L2.music.domain.service.SearchSyncService;
 import org.L2.music.domain.service.SingerService;
 import org.L2.music.domain.service.SongService;
 import org.L2.music.domain.service.VideoService;
@@ -48,6 +50,10 @@ public class MusicAppService {
     private PlayRecordProducer playRecordProducer;
     @Autowired
     private VideoService videoService;
+    @Autowired
+    private SearchService searchService;
+    @Autowired
+    private SearchSyncService searchSyncService;
 
     /*
      * 歌曲模块
@@ -85,7 +91,11 @@ public class MusicAppService {
     }
 
     public R uploadLyrics(Long songId, MultipartFile file, String msg) {
-        return lyricsService.uploadLyrics(songId, file, msg);
+        R result = lyricsService.uploadLyrics(songId, file, msg);
+        if (result.getPassed()) {
+            searchSyncService.syncSong(songId);
+        }
+        return result;
     }
 
     public R getAllLyricsBySongId(Long songId) {
@@ -383,6 +393,29 @@ public class MusicAppService {
             }
         }
         return R.success("获取收藏歌曲成功", dtoList);
+    }
+
+    /*
+     * 搜索模块
+     */
+    public R search(String keyword, int page, int size) {
+        try {
+            var results = searchService.search(keyword, page * size, size);
+            return R.success("搜索成功", results);
+        } catch (Exception e) {
+            log.error("Search failed for keyword={}", keyword, e);
+            return R.error("搜索失败: " + e.getMessage());
+        }
+    }
+
+    public R fullSyncToEs() {
+        try {
+            searchSyncService.fullSync();
+            return R.success("全量同步完成");
+        } catch (Exception e) {
+            log.error("Full sync to ES failed", e);
+            return R.error("同步失败: " + e.getMessage());
+        }
     }
 
     private boolean resolveFavoriteFlag(Long userId, Long songId) {

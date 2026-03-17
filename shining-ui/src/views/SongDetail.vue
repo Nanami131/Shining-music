@@ -30,7 +30,7 @@
             <div class="lyrics-select">
               <select v-model="selectedLyricId" @change="loadSelectedLyrics">
                 <option v-for="lyric in allLyrics" :key="lyric.id" :value="lyric.id">
-                  歌词版本 {{ lyric.id }}
+                  {{ lyric.languageMsg || '版本' }} #{{ lyric.id }}
                 </option>
               </select>
             </div>
@@ -84,7 +84,10 @@
         <div class="lyrics-content" :class="'highlight-color-' + highlightColor">
           <div v-for="(line, index) in parsedLyrics" :key="index" class="lyrics-group">
             <div class="lyric-line">
-              <template v-if="selectedLang === 'all'">
+              <template v-if="line.text">
+                <p>{{ line.text }}</p>
+              </template>
+              <template v-else-if="selectedLang === 'all'">
                 <p v-if="line.zh">{{ line.zh }}</p>
                 <p v-if="line.ja">{{ line.ja }}</p>
                 <p v-if="!line.zh && !line.ja">暂无对应歌词</p>
@@ -229,6 +232,7 @@ export default {
       const lines = content.split('\n').map(line => line.trim());
       const timeMap = {};
       lines.forEach(line => {
+        // Extended: [time][lang]text
         const langMatch = line.match(/^\[(\d+:\d+\.\d+)\]\[(\w+)\](.+)$/);
         if (langMatch) {
           const [, time, lang, text] = langMatch;
@@ -237,6 +241,17 @@ export default {
             timeMap[parsedTime] = { time: parsedTime };
           }
           timeMap[parsedTime][lang] = text.trim();
+          return;
+        }
+        // Standard: [time]text
+        const stdMatch = line.match(/^\[(\d+:\d+\.\d+)\](.+)$/);
+        if (stdMatch) {
+          const [, time, text] = stdMatch;
+          const parsedTime = this.timeToSeconds(time);
+          if (!timeMap[parsedTime]) {
+            timeMap[parsedTime] = { time: parsedTime };
+          }
+          timeMap[parsedTime].text = text.trim();
         }
       });
       this.parsedLyrics = Object.values(timeMap).sort((a, b) => a.time - b.time);

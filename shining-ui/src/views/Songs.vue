@@ -1,17 +1,45 @@
 <template>
   <div class="songs-container">
-    <!-- 搜索占位，暂不支持 -->
     <div class="search-bar">
-      <input type="text" placeholder="歌曲名称、歌手名等（暂不支持搜索）" disabled />
+      <input
+        v-model="searchKeyword"
+        type="text"
+        placeholder="搜索歌曲名、歌手、歌词..."
+        @keyup.enter="handleSearch"
+      />
+      <button v-if="searchKeyword" class="clear-btn" @click="clearSearch">×</button>
     </div>
 
+    <!-- 搜索结果 -->
+    <section v-if="searchResults !== null" class="section section-search">
+      <h2>搜索结果</h2>
+      <div v-if="searchResults.length" class="songs-list">
+        <div
+          v-for="item in searchResults"
+          :key="item.songId"
+          class="song-card"
+          @click="goToSong(item.songId)"
+        >
+          <img :src="item.coverUrl || defaultCover" class="song-cover" alt="歌曲封面" />
+          <div class="song-info">
+            <h3 v-html="highlightTitle(item)"></h3>
+            <p v-html="highlightSinger(item)"></p>
+          </div>
+          <div v-if="hasLyricsHighlight(item)" class="lyrics-snippet">
+            <span v-for="(frag, i) in getLyricsHighlights(item)" :key="i" v-html="frag"></span>
+          </div>
+        </div>
+      </div>
+      <p v-else class="placeholder-text">没有找到相关结果</p>
+    </section>
+
     <!-- 推荐歌曲，占位 -->
-    <section class="section section-recommend">
+    <section v-if="searchResults === null" class="section section-recommend">
       <h2>推荐歌曲</h2>
       <p class="placeholder-text">推荐歌曲模块还在路上，先从全部里挑几首喜欢的吧～</p>
     </section>
 
-    <!-- 全部歌曲：这里放原来的内容 -->
+    <!-- 全部歌曲 -->
     <section class="section section-more">
       <h2>全部歌曲</h2>
       <div class="section-actions">
@@ -63,6 +91,8 @@ export default {
       userId: null,
       artistNameMap: {},
       songOperating: false,
+      searchKeyword: '',
+      searchResults: null,
     };
   },
   created() {
@@ -184,6 +214,57 @@ export default {
     goToSong(songId) {
       this.$router.push(`/song/${songId}`);
     },
+    async handleSearch() {
+      const kw = this.searchKeyword.trim();
+      if (!kw) {
+        this.searchResults = null;
+        return;
+      }
+      try {
+        const response = await musicApi.search(kw);
+        if (response.data && response.data.passed) {
+          this.searchResults = response.data.data || [];
+        } else {
+          alert('搜索失败：' + (response.data?.message || '未知错误'));
+        }
+      } catch (error) {
+        alert('搜索出错：' + error.message);
+      }
+    },
+    clearSearch() {
+      this.searchKeyword = '';
+      this.searchResults = null;
+    },
+    highlightTitle(item) {
+      if (item.highlights && item.highlights.title && item.highlights.title.length) {
+        return item.highlights.title[0];
+      }
+      return item.title || '未知歌曲';
+    },
+    highlightSinger(item) {
+      if (item.highlights && item.highlights.singerName && item.highlights.singerName.length) {
+        return item.highlights.singerName[0];
+      }
+      return item.singerName || '未知歌手';
+    },
+    hasLyricsHighlight(item) {
+      if (!item.highlights) return false;
+      return (
+        (item.highlights.lyricsZh && item.highlights.lyricsZh.length) ||
+        (item.highlights.lyricsJa && item.highlights.lyricsJa.length) ||
+        (item.highlights.lyricsEn && item.highlights.lyricsEn.length)
+      );
+    },
+    getLyricsHighlights(item) {
+      if (!item.highlights) return [];
+      const all = [];
+      for (const key of ['lyricsZh', 'lyricsJa', 'lyricsEn']) {
+        if (item.highlights[key]) {
+          all.push(...item.highlights[key]);
+        }
+      }
+      return all.slice(0, 3);
+    },
   },
 };
 </script>
@@ -197,18 +278,73 @@ export default {
 }
 
 .search-bar {
-  max-width: 400px;
+  max-width: 500px;
   margin: 0 auto 24px;
+  position: relative;
 }
 
 .search-bar input {
   width: 100%;
-  padding: 10px 14px;
+  padding: 10px 36px 10px 14px;
   border-radius: 999px;
   border: 1px solid #cbd5e1;
   background-color: #f1f5f9;
-  color: #64748b;
+  color: #1e293b;
   font-size: 14px;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.search-bar input:focus {
+  outline: none;
+  border-color: #4facfe;
+  box-shadow: 0 0 0 3px rgba(79, 172, 254, 0.2);
+}
+
+.clear-btn {
+  position: absolute;
+  right: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  border: none;
+  background: #cbd5e1;
+  color: #fff;
+  font-size: 16px;
+  line-height: 24px;
+  text-align: center;
+  cursor: pointer;
+}
+
+.clear-btn:hover {
+  background: #94a3b8;
+}
+
+.lyrics-snippet {
+  margin-top: 6px;
+  font-size: 12px;
+  color: #64748b;
+  line-height: 1.6;
+}
+
+.lyrics-snippet span {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.lyrics-snippet :deep(em) {
+  font-style: normal;
+  color: #ef4444;
+  font-weight: 600;
+}
+
+.song-info :deep(em) {
+  font-style: normal;
+  color: #ef4444;
+  font-weight: 600;
 }
 
 .section {

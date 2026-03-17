@@ -331,6 +331,23 @@ public class MusicController {
         return musicAppService.getSingerDetailsInfo(singerId);
     }
 
+    /*
+     * 搜索相关
+     */
+
+    @GetMapping("/search")
+    public R search(@RequestParam("keyword") String keyword,
+                    @RequestParam(value = "page", defaultValue = "0") int page,
+                    @RequestParam(value = "size", defaultValue = "10") int size) {
+        if (size > 50) size = 50;
+        return musicAppService.search(keyword, page, size);
+    }
+
+    @PostMapping("/search/sync")
+    public R fullSyncToEs() {
+        return musicAppService.fullSyncToEs();
+    }
+
     /**
      * 测试接口，用于初期测试
      * @return 测试结果

@@ -169,4 +169,10 @@ export default {
     listVideos() {
         return api.get('/music/videos');
     },
+    search(keyword, page = 0, size = 10) {
+        return api.get('/music/search', { params: { keyword, page, size } });
+    },
+    searchSync() {
+        return api.post('/music/search/sync');
+    },
 };

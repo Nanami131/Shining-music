@@ -148,7 +148,7 @@
               <div class="lyrics-select">
                 <select v-model="selectedLyricId" @change="loadSelectedLyrics">
                   <option v-for="lyric in allLyrics" :key="lyric.id" :value="lyric.id">
-                    版本 {{ lyric.id }}
+                    {{ lyric.languageMsg || '版本' }} #{{ lyric.id }}
                   </option>
                 </select>
               </div>
@@ -179,7 +179,10 @@
                   class="lyric-line"
                   ref="lyricLines"
               >
-                <template v-if="selectedLang === 'all'">
+                <template v-if="line.text">
+                  <p>{{ line.text }}</p>
+                </template>
+                <template v-else-if="selectedLang === 'all'">
                   <p v-if="line.zh">{{ line.zh }}</p>
                   <p v-if="line.ja">{{ line.ja }}</p>
                   <p v-if="!line.zh && !line.ja">暂无对应歌词</p>
@@ -658,6 +661,16 @@ export default {
             timeMap[parsedTime] = { time: parsedTime };
           }
           timeMap[parsedTime][lang] = text.trim();
+          return;
+        }
+        const stdMatch = line.match(/^\[(\d+:\d+\.\d+)\](.+)$/);
+        if (stdMatch) {
+          const [, time, text] = stdMatch;
+          const parsedTime = this.timeToSeconds(time);
+          if (!timeMap[parsedTime]) {
+            timeMap[parsedTime] = { time: parsedTime };
+          }
+          timeMap[parsedTime].text = text.trim();
         }
       });
       this.parsedLyrics = Object.values(timeMap).sort((a, b) => a.time - b.time);

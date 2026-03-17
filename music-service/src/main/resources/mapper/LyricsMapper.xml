@@ -38,4 +38,8 @@
     <delete id="deleteById">
         DELETE FROM lyrics WHERE id = #{id}
     </delete>
+
+    <select id="selectAll" resultMap="LyricsResultMap">
+        SELECT * FROM lyrics
+    </select>
 </mapper>
