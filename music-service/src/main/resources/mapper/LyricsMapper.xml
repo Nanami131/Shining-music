@@ -42,4 +42,8 @@
     <select id="selectAll" resultMap="LyricsResultMap">
         SELECT * FROM lyrics
     </select>
+
+    <delete id="deleteBySongIdAndLang">
+        DELETE FROM lyrics WHERE song_id = #{songId} AND language_msg = #{languageMsg}
+    </delete>
 </mapper>

@@ -63,6 +63,8 @@ public class LyricsService {
                         ? version.getPlainText()
                         : version.getNormalizedLrc();
 
+                lyricsMapper.deleteBySongIdAndLang(songId, version.getLang());
+
                 Lyrics lyrics = new Lyrics()
                         .setSongId(songId)
                         .setLanguageMsg(version.getLang())

@@ -18,4 +18,7 @@ public interface LyricsMapper {
     int deleteById(Long id);
 
     List<Lyrics> selectAll();
+
+    int deleteBySongIdAndLang(@org.apache.ibatis.annotations.Param("songId") Long songId,
+                              @org.apache.ibatis.annotations.Param("languageMsg") String languageMsg);
 }

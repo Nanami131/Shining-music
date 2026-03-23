@@ -42,3 +42,7 @@ build/
 
 AGENTS.md
 start-all.log
+docker-data/
+docker-compose.yml
+logs/
+scripts/download/

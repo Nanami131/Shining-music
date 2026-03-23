@@ -23,7 +23,7 @@ import java.util.regex.Pattern;
 public class LrcParser {
 
     private static final Pattern TIMESTAMP_PATTERN =
-            Pattern.compile("\\[(\\d{1,2}):(\\d{2})\\.(\\d{2,3})]");
+            Pattern.compile("\\[(\\d{1,2}):(\\d{2})(?:\\.(\\d{2,3}))?]");
 
     private static final Pattern LANG_TAG_PATTERN =
             Pattern.compile("\\[([a-zA-Z]{2,3})]");

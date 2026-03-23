@@ -51,6 +51,13 @@
               </span>
               <span
                 class="lang-btn"
+                :class="{ active: selectedLang === 'en' }"
+                @click="setLanguage('en')"
+              >
+                英
+              </span>
+              <span
+                class="lang-btn"
                 :class="{ active: selectedLang === 'all' }"
                 @click="setLanguage('all')"
               >
@@ -90,7 +97,8 @@
               <template v-else-if="selectedLang === 'all'">
                 <p v-if="line.zh">{{ line.zh }}</p>
                 <p v-if="line.ja">{{ line.ja }}</p>
-                <p v-if="!line.zh && !line.ja">暂无对应歌词</p>
+                <p v-if="line.en">{{ line.en }}</p>
+                <p v-if="!line.zh && !line.ja && !line.en">暂无对应歌词</p>
               </template>
               <template v-else>
                 <p v-if="line[selectedLang]">{{ line[selectedLang] }}</p>
@@ -114,6 +122,7 @@
 <script>
 import musicApi from '@/api/music';
 import defaultCover from '@/assets/default-cover.png';
+import { parseLyrics as parseLrc, timeToSeconds } from '@/utils/lrcParser';
 
 export default {
   name: 'SongDetail',
@@ -227,38 +236,10 @@ export default {
       }
     },
     parseLyrics(content) {
-      this.parsedLyrics = [];
-      if (!content) return;
-      const lines = content.split('\n').map(line => line.trim());
-      const timeMap = {};
-      lines.forEach(line => {
-        // Extended: [time][lang]text
-        const langMatch = line.match(/^\[(\d+:\d+\.\d+)\]\[(\w+)\](.+)$/);
-        if (langMatch) {
-          const [, time, lang, text] = langMatch;
-          const parsedTime = this.timeToSeconds(time);
-          if (!timeMap[parsedTime]) {
-            timeMap[parsedTime] = { time: parsedTime };
-          }
-          timeMap[parsedTime][lang] = text.trim();
-          return;
-        }
-        // Standard: [time]text
-        const stdMatch = line.match(/^\[(\d+:\d+\.\d+)\](.+)$/);
-        if (stdMatch) {
-          const [, time, text] = stdMatch;
-          const parsedTime = this.timeToSeconds(time);
-          if (!timeMap[parsedTime]) {
-            timeMap[parsedTime] = { time: parsedTime };
-          }
-          timeMap[parsedTime].text = text.trim();
-        }
-      });
-      this.parsedLyrics = Object.values(timeMap).sort((a, b) => a.time - b.time);
+      this.parsedLyrics = parseLrc(content);
     },
     timeToSeconds(timeStr) {
-      const [min, sec] = timeStr.split(':').map(parseFloat);
-      return min * 60 + sec;
+      return timeToSeconds(timeStr);
     },
     playSong() {
       this.$bus.emit('playSong', { songId: this.song.id });
