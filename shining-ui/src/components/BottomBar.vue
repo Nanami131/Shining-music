@@ -156,7 +156,7 @@
                 <span class="lang-btn" :class="{ active: !bilingualMode && selectedLang === 'ja' }" @click="setSingleLang('ja')">日</span>
                 <span class="lang-btn" :class="{ active: !bilingualMode && selectedLang === 'zh' }" @click="setSingleLang('zh')">中</span>
                 <span class="lang-btn" :class="{ active: !bilingualMode && selectedLang === 'en' }" @click="setSingleLang('en')">英</span>
-                <span class="lang-btn bilingual-btn" :class="{ active: bilingualMode }" @click="toggleBilingual">双语</span>
+                <span class="lang-btn bilingual-btn" :class="{ active: bilingualMode }" @click="toggleBilingual">全</span>
               </div>
               <div class="color-select">
                 <span class="color-btn pink" :class="{ active: highlightColor === 'pink' }" @click="setHighlightColor('pink')"></span>
@@ -182,15 +182,17 @@
                   ref="lyricLines"
               >
                 <template v-if="bilingualMode">
-                  <p class="lyric-primary">{{ line.primary || line.ja || line.text || '' }}</p>
-                  <p class="lyric-secondary" v-if="line.secondary || line.zh">{{ line.secondary || line.zh || '' }}</p>
+                  <p v-for="(lang, li) in availableLangs" :key="li"
+                     :class="li === 0 ? 'lyric-primary' : 'lyric-secondary'"
+                     v-show="line[lang]">{{ line[lang] }}</p>
+                  <p v-if="line.text" class="lyric-primary">{{ line.text }}</p>
                 </template>
                 <template v-else-if="line.text">
                   <p>{{ line.text }}</p>
                 </template>
                 <template v-else>
                   <p v-if="line[selectedLang]">{{ line[selectedLang] }}</p>
-                  <p v-else-if="line.ja || line.zh || line.en">{{ line.ja || line.zh || line.en }}</p>
+                  <p v-else-if="getFirstLang(line)">{{ getFirstLang(line) }}</p>
                 </template>
               </div>
             </div>
@@ -207,7 +209,7 @@
 <script>
 import musicApi from '@/api/music';
 import defaultCover from '@/assets/default-cover.png';
-import { parseLyrics as parseLrc, timeToSeconds, mergeBilingual } from '@/utils/lrcParser';
+import { parseLyrics as parseLrc, timeToSeconds, mergeMultiLang, detectLangs } from '@/utils/lrcParser';
 
 export default {
   name: 'BottomBar',
@@ -220,6 +222,7 @@ export default {
       bilingualMode: false,
       parsedLyrics: [],
       bilingualLyrics: [],
+      availableLangs: [],
       audio: new Audio(),
       isPlaying: false,
       currentTime: 0,
@@ -629,21 +632,20 @@ export default {
       }
     },
     async loadAllLyrics(songId) {
+      this.allLyrics = [];
+      this.selectedLyricId = null;
+      this.parsedLyrics = [];
+      this.bilingualLyrics = [];
+      this.availableLangs = [];
       try {
         const response = await musicApi.getAllLyrics(songId);
-        if (response.data.passed && response.data.data.length > 0) {
+        if (response.data.passed && Array.isArray(response.data.data) && response.data.data.length > 0) {
           this.allLyrics = response.data.data;
           this.selectedLyricId = this.allLyrics[0].id;
           this.loadSelectedLyrics();
-        } else {
-          this.allLyrics = [];
-          this.selectedLyricId = null;
-          this.parsedLyrics = [];
         }
       } catch (error) {
-        this.allLyrics = [];
-        this.selectedLyricId = null;
-        this.parsedLyrics = [];
+        console.error('[BottomBar] loadAllLyrics failed for songId=' + songId, error);
       }
     },
     loadSelectedLyrics() {
@@ -660,29 +662,41 @@ export default {
     },
     buildBilingual() {
       const parsed = this.parsedLyrics;
-      if (parsed.length && parsed[0].ja && parsed[0].zh) {
+      const inlineLangs = detectLangs(parsed);
+      if (inlineLangs.length > 0) {
         this.bilingualLyrics = parsed;
+        this.availableLangs = inlineLangs;
         return;
       }
       if (this.allLyrics.length >= 2) {
-        const jaLyric = this.allLyrics.find(l => (l.languageMsg || '').toLowerCase().includes('ja'));
-        const zhLyric = this.allLyrics.find(l => (l.languageMsg || '').toLowerCase().includes('zh'));
-        if (jaLyric && zhLyric) {
-          const jaLines = parseLrc(jaLyric.content || '');
-          const zhLines = parseLrc(zhLyric.content || '');
-          this.bilingualLyrics = mergeBilingual(jaLines, zhLines);
+        const sources = this.allLyrics
+          .filter(l => l.languageMsg)
+          .map(l => ({ lang: l.languageMsg.toLowerCase().trim(), lines: parseLrc(l.content || '') }));
+        if (sources.length >= 2) {
+          this.bilingualLyrics = mergeMultiLang(sources);
+          this.availableLangs = sources.map(s => s.lang);
           return;
         }
       }
       this.bilingualLyrics = parsed;
+      this.availableLangs = [];
+    },
+    getFirstLang(line) {
+      for (const k of Object.keys(line)) {
+        if (k !== 'time' && k !== 'break' && line[k]) return line[k];
+      }
+      return '';
     },
     timeToSeconds(timeStr) {
       return timeToSeconds(timeStr);
     },
     isActiveLine(time, index) {
+      const lyrics = this.displayLyrics;
+      if (!lyrics.length) return false;
+      const nextLine = lyrics[index + 1];
       const isActive =
           this.currentTime >= time &&
-          (index + 1 >= this.parsedLyrics.length || this.currentTime < this.parsedLyrics[index + 1].time);
+          (!nextLine || this.currentTime < nextLine.time);
       if (isActive && this.showLyrics) {
         this.$nextTick(() => this.scrollToActiveLine(index));
       }
@@ -690,14 +704,13 @@ export default {
     },
     scrollToActiveLine(index) {
       const lyricsContent = this.$refs.lyricsContent;
-      const activeLine = this.$refs.lyricLines && this.$refs.lyricLines[index];
-      if (lyricsContent && activeLine) {
-        const scrollTop = activeLine.offsetTop - lyricsContent.offsetTop - 50;
+      if (!lyricsContent) return;
+      const groups = lyricsContent.querySelectorAll('.lyrics-group');
+      const target = groups && groups[index];
+      if (target) {
+        const scrollTop = target.offsetTop - lyricsContent.offsetTop - 50;
         if (scrollTop >= 0 && scrollTop <= lyricsContent.scrollHeight - lyricsContent.clientHeight) {
-          lyricsContent.scrollTo({
-            top: scrollTop,
-            behavior: 'smooth'
-          });
+          lyricsContent.scrollTo({ top: scrollTop, behavior: 'smooth' });
         }
       }
     },
@@ -1321,10 +1334,10 @@ export default {
   margin-bottom: 20px;
 }
 .lyric-line {
-  font-size: 16px;
+  font-size: 20px;
   color: #333;
   margin-bottom: 8px;
-  font-family: 'KaiTi', 'STKaiti', '楷体', sans-serif;
+  font-family: 'LXGW WenKai', 'AR PL UKai CN', 'STKaiti', 'KaiTi', '楷体', serif;
   display: inline-block;
 }
 .lyric-line.active {
@@ -1338,12 +1351,13 @@ export default {
   margin: 2px 0;
 }
 .lyric-primary {
-  font-size: 17px;
+  font-size: 21px;
 }
 .lyric-secondary {
-  font-size: 14px;
-  opacity: 0.65;
-  margin-top: 2px !important;
+  font-size: 16px;
+  opacity: 0.55;
+  margin-top: 3px !important;
+  letter-spacing: 0.5px;
 }
 .lyric-break {
   height: 24px;
@@ -1355,13 +1369,13 @@ export default {
   font-size: 13px !important;
 }
 .lyrics-content p:not(.lyric-line p) {
-  font-size: 16px;
+  font-size: 20px;
   color: #666;
-  font-family: 'KaiTi', 'STKaiti', '楷体', sans-serif;
+  font-family: 'LXGW WenKai', 'AR PL UKai CN', 'STKaiti', 'KaiTi', '楷体', serif;
 }
 .no-lyric {
   text-align: center;
-  font-size: 16px;
+  font-size: 18px;
   color: #666;
 }
 </style>
