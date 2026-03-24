@@ -53,6 +53,12 @@ public class SingerService {
         if (singer.getName() == null || singer.getName().isBlank()) {
             return R.error("歌手名称不能为空");
         }
+        if (singer.getStatus() == null) {
+            singer.setStatus((byte) 1);
+        }
+        if (singer.getSex() == null) {
+            singer.setSex((byte) 0);
+        }
         try {
             if (singer.getUserId() != null) {
                 List<Singer> existing = singerMapper.query(new Singer().setUserId(singer.getUserId()));

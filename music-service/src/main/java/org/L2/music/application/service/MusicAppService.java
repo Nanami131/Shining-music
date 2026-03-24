@@ -400,7 +400,8 @@ public class MusicAppService {
      */
     public R search(String keyword, int page, int size) {
         try {
-            var results = searchService.search(keyword, page * size, size);
+            int from = Math.max(page, 0) * size;
+            var results = searchService.search(keyword, from, size);
             return R.success("搜索成功", results);
         } catch (Exception e) {
             log.error("Search failed for keyword={}", keyword, e);
