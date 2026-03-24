@@ -27,7 +27,7 @@
       <div class="lyrics-panel">
         <div class="lyric-header">
           <div class="controls">
-            <div class="lyrics-select">
+            <div class="lyrics-select" v-if="allLyrics.length > 1 && !bilingualMode">
               <select v-model="selectedLyricId" @change="loadSelectedLyrics">
                 <option v-for="lyric in allLyrics" :key="lyric.id" :value="lyric.id">
                   {{ lyric.languageMsg || '版本' }} #{{ lyric.id }}
@@ -37,31 +37,31 @@
             <div class="lang-select">
               <span
                 class="lang-btn"
-                :class="{ active: selectedLang === 'zh' }"
-                @click="setLanguage('zh')"
-              >
-                中
-              </span>
-              <span
-                class="lang-btn"
-                :class="{ active: selectedLang === 'ja' }"
-                @click="setLanguage('ja')"
+                :class="{ active: !bilingualMode && selectedLang === 'ja' }"
+                @click="setSingleLang('ja')"
               >
                 日
               </span>
               <span
                 class="lang-btn"
-                :class="{ active: selectedLang === 'en' }"
-                @click="setLanguage('en')"
+                :class="{ active: !bilingualMode && selectedLang === 'zh' }"
+                @click="setSingleLang('zh')"
+              >
+                中
+              </span>
+              <span
+                class="lang-btn"
+                :class="{ active: !bilingualMode && selectedLang === 'en' }"
+                @click="setSingleLang('en')"
               >
                 英
               </span>
               <span
-                class="lang-btn"
-                :class="{ active: selectedLang === 'all' }"
-                @click="setLanguage('all')"
+                class="lang-btn bilingual-btn"
+                :class="{ active: bilingualMode }"
+                @click="toggleBilingual"
               >
-                全
+                双语
               </span>
             </div>
             <div class="color-select">
@@ -89,24 +89,23 @@
           </div>
         </div>
         <div class="lyrics-content" :class="'highlight-color-' + highlightColor">
-          <div v-for="(line, index) in parsedLyrics" :key="index" class="lyrics-group">
-            <div class="lyric-line">
-              <template v-if="line.text">
-                <p>{{ line.text }}</p>
+          <div v-for="(line, index) in displayLyrics" :key="index" class="lyrics-group">
+            <div v-if="line.break" class="lyric-break"></div>
+            <div v-else class="lyric-line">
+              <template v-if="bilingualMode">
+                <p class="lyric-primary">{{ line.primary || line.ja || line.text || '' }}</p>
+                <p class="lyric-secondary" v-if="line.secondary || line.zh">{{ line.secondary || line.zh || '' }}</p>
               </template>
-              <template v-else-if="selectedLang === 'all'">
-                <p v-if="line.zh">{{ line.zh }}</p>
-                <p v-if="line.ja">{{ line.ja }}</p>
-                <p v-if="line.en">{{ line.en }}</p>
-                <p v-if="!line.zh && !line.ja && !line.en">暂无对应歌词</p>
+              <template v-else-if="line.text">
+                <p>{{ line.text }}</p>
               </template>
               <template v-else>
                 <p v-if="line[selectedLang]">{{ line[selectedLang] }}</p>
-                <p v-else>暂无对应歌词</p>
+                <p v-else-if="line.ja || line.zh || line.en">{{ line.ja || line.zh || line.en }}</p>
               </template>
             </div>
           </div>
-          <p v-if="!parsedLyrics.length" class="no-lyric">
+          <p v-if="!displayLyrics.length" class="no-lyric">
             <span>暂无歌词</span>
           </p>
         </div>
@@ -122,7 +121,7 @@
 <script>
 import musicApi from '@/api/music';
 import defaultCover from '@/assets/default-cover.png';
-import { parseLyrics as parseLrc, timeToSeconds } from '@/utils/lrcParser';
+import { parseLyrics as parseLrc, timeToSeconds, mergeBilingual } from '@/utils/lrcParser';
 
 export default {
   name: 'SongDetail',
@@ -131,8 +130,10 @@ export default {
       song: null,
       allLyrics: [],
       selectedLyricId: null,
-      selectedLang: 'zh',
+      selectedLang: 'ja',
+      bilingualMode: false,
       parsedLyrics: [],
+      bilingualLyrics: [],
       defaultCover,
       isLoaded: false,
       hasError: false,
@@ -140,6 +141,11 @@ export default {
       userId: null,
       artistName: null,
     };
+  },
+  computed: {
+    displayLyrics() {
+      return this.bilingualMode ? this.bilingualLyrics : this.parsedLyrics;
+    },
   },
   created() {
     const userBase = JSON.parse(localStorage.getItem('userBase') || '{}');
@@ -210,6 +216,7 @@ export default {
       } else {
         this.parsedLyrics = [];
       }
+      this.buildBilingual();
     },
     async toggleFavorite() {
       if (!this.song || !this.song.id) {
@@ -238,14 +245,36 @@ export default {
     parseLyrics(content) {
       this.parsedLyrics = parseLrc(content);
     },
+    buildBilingual() {
+      const parsed = this.parsedLyrics;
+      if (parsed.length && parsed[0].ja && parsed[0].zh) {
+        this.bilingualLyrics = parsed;
+        return;
+      }
+      if (this.allLyrics.length >= 2) {
+        const jaLyric = this.allLyrics.find(l => (l.languageMsg || '').toLowerCase().includes('ja'));
+        const zhLyric = this.allLyrics.find(l => (l.languageMsg || '').toLowerCase().includes('zh'));
+        if (jaLyric && zhLyric) {
+          const jaLines = parseLrc(jaLyric.content || '');
+          const zhLines = parseLrc(zhLyric.content || '');
+          this.bilingualLyrics = mergeBilingual(jaLines, zhLines);
+          return;
+        }
+      }
+      this.bilingualLyrics = parsed;
+    },
     timeToSeconds(timeStr) {
       return timeToSeconds(timeStr);
     },
     playSong() {
       this.$bus.emit('playSong', { songId: this.song.id });
     },
-    setLanguage(lang) {
+    setSingleLang(lang) {
+      this.bilingualMode = false;
       this.selectedLang = lang;
+    },
+    toggleBilingual() {
+      this.bilingualMode = !this.bilingualMode;
     },
     setHighlightColor(color) {
       this.highlightColor = color;
@@ -445,6 +474,23 @@ h3 {
 }
 .lyric-line p {
   margin: 2px 0;
+}
+.lyric-primary {
+  font-size: 17px;
+}
+.lyric-secondary {
+  font-size: 14px;
+  opacity: 0.65;
+  margin-top: 2px !important;
+}
+.lyric-break {
+  height: 24px;
+}
+.bilingual-btn {
+  width: auto !important;
+  padding: 0 10px;
+  border-radius: 18px !important;
+  font-size: 13px !important;
 }
 .lyrics-content p:not(.lyric-line p) {
   font-size: 16px;
