@@ -49,7 +49,8 @@ services:
       MINIO_ROOT_PASSWORD: minioadmin
 
   elasticsearch:
-    image: elasticsearch:8.11.1
+    build: ./docker/elasticsearch
+    image: shining-elasticsearch:8.11.1-ik
     container_name: shining-elasticsearch
     ports:
       - "9200:9200"

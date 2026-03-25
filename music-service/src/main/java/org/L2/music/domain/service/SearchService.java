@@ -63,7 +63,7 @@ public class SearchService {
                                 .searchAnalyzer("ik_smart")
                         ))
                         .properties("lyricsJa", p -> p.text(t -> t
-                                .analyzer("standard")
+                                .analyzer("kuromoji")
                         ))
                         .properties("lyricsEn", p -> p.text(t -> t
                                 .analyzer("standard")
