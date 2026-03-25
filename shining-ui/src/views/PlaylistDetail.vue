@@ -181,6 +181,11 @@ export default {
     this.userId = userBase.id ?? null;
     this.loadPageData();
   },
+  watch: {
+    '$route.params.id'() {
+      this.loadPageData();
+    },
+  },
   methods: {
     async loadPageData() {
       this.isLoaded = false;

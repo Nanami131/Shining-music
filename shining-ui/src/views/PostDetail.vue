@@ -10,7 +10,7 @@
         <span>{{ formatDate(post.createdAt) }}</span>
         <span v-if="post.lastCommentAt">最后评论：{{ formatDate(post.lastCommentAt) }}</span>
       </div>
-      <div class="post-content" v-html="post.content"></div>
+      <div class="post-content" v-html="sanitizedContent"></div>
 
       <section class="comment-section">
         <h3>评论</h3>

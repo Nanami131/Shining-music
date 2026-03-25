@@ -364,9 +364,9 @@ public class PlaylistService {
                 Long ownerId = playlist.getUserId();
                 boolean isOfficial = ownerId != null && ownerId == -1L;
 
-                // 私密歌单不参与任何展示（官方歌单除外）
                 boolean isPrivate = visibility != null && Byte.valueOf((byte) 1).equals(visibility);
-                if (isPrivate && !isOfficial) {
+                boolean isOwner = currentUserId != null && currentUserId.equals(ownerId);
+                if (isPrivate && !isOfficial && !isOwner) {
                     continue;
                 }
                 result.add(playlist);
