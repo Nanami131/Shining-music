@@ -153,9 +153,9 @@
                 </select>
               </div>
               <div class="lang-select">
-                <span class="lang-btn" :class="{ active: !bilingualMode && selectedLang === 'ja' }" @click="setSingleLang('ja')">日</span>
-                <span class="lang-btn" :class="{ active: !bilingualMode && selectedLang === 'zh' }" @click="setSingleLang('zh')">中</span>
-                <span class="lang-btn" :class="{ active: !bilingualMode && selectedLang === 'en' }" @click="setSingleLang('en')">英</span>
+                <span class="lang-btn" :class="{ active: !bilingualMode && selectedLang === 'ja', disabled: !hasLang('ja') }" @click="hasLang('ja') && setSingleLang('ja')">日</span>
+                <span class="lang-btn" :class="{ active: !bilingualMode && selectedLang === 'zh', disabled: !hasLang('zh') }" @click="hasLang('zh') && setSingleLang('zh')">中</span>
+                <span class="lang-btn" :class="{ active: !bilingualMode && selectedLang === 'en', disabled: !hasLang('en') }" @click="hasLang('en') && setSingleLang('en')">英</span>
                 <span class="lang-btn bilingual-btn" :class="{ active: bilingualMode }" @click="toggleBilingual">全</span>
               </div>
               <div class="color-select">
@@ -642,6 +642,10 @@ export default {
         if (response.data.passed && Array.isArray(response.data.data) && response.data.data.length > 0) {
           this.allLyrics = response.data.data;
           this.selectedLyricId = this.allLyrics[0].id;
+          const firstLang = this.allLyrics[0].languageMsg;
+          if (firstLang) {
+            this.selectedLang = firstLang.toLowerCase().trim();
+          }
           this.loadSelectedLyrics();
         }
       } catch (error) {
@@ -743,9 +747,21 @@ export default {
     toggleLyrics() {
       this.showLyrics = !this.showLyrics;
     },
+    hasLang(lang) {
+      return this.allLyrics.some(
+        l => l.languageMsg && l.languageMsg.toLowerCase().trim() === lang
+      );
+    },
     setSingleLang(lang) {
       this.bilingualMode = false;
       this.selectedLang = lang;
+      const match = this.allLyrics.find(
+        l => l.languageMsg && l.languageMsg.toLowerCase().trim() === lang
+      );
+      if (match && match.id !== this.selectedLyricId) {
+        this.selectedLyricId = match.id;
+        this.loadSelectedLyrics();
+      }
     },
     toggleBilingual() {
       this.bilingualMode = !this.bilingualMode;
@@ -1254,6 +1270,11 @@ export default {
   color: #fff;
   box-shadow: 0 0 8px rgba(0, 0, 0, 0.2);
   transform: scale(1.1);
+}
+.lang-btn.disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+  pointer-events: none;
 }
 .color-btn {
   width: 24px;
