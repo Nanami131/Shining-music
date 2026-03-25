@@ -2,6 +2,7 @@ package org.L2.common.minio.service;
 
 import io.minio.MinioClient;
 import io.minio.PutObjectArgs;
+import io.minio.RemoveObjectArgs;
 import org.L2.common.minio.MinioProperties;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
@@ -29,5 +30,14 @@ public class SimpleMinioService extends AbstractMinioService{
         } catch (Exception e) {
             return "上传失败"+e.getMessage();
         }
+    }
+
+    public void deleteFile(String name) throws Exception {
+        minioClient.removeObject(
+                RemoveObjectArgs.builder()
+                        .bucket(properties.getBucketName())
+                        .object(name)
+                        .build()
+        );
     }
 }

@@ -61,7 +61,14 @@ public class MusicAppService {
     public R createSong(SongCreateRequest songCreateRequest) {
         Song song = new Song();
         BeanUtils.copyProperties(songCreateRequest, song);
-        return songService.createSong(song);
+        R result = songService.createSong(song);
+        if (result.getPassed() && result.getData() instanceof Song) {
+            Long newId = ((Song) result.getData()).getId();
+            if (newId != null) {
+                searchSyncService.syncSong(newId);
+            }
+        }
+        return result;
     }
 
     public R getSongBaseInfo(Long songId, Long userId) {
@@ -178,11 +185,19 @@ public class MusicAppService {
     }
 
     public R uploadSong(Long id, MultipartFile file, String md5) {
-        return songService.uploadSong(id, file);
+        R result = songService.uploadSong(id, file);
+        if (result.getPassed()) {
+            searchSyncService.syncSong(id);
+        }
+        return result;
     }
 
     public R uploadSongAvatar(Long id, MultipartFile avatarFile, String md5) {
-        return songService.uploadSongAvatar(id, avatarFile);
+        R result = songService.uploadSongAvatar(id, avatarFile);
+        if (result.getPassed()) {
+            searchSyncService.syncSong(id);
+        }
+        return result;
     }
 
     /*
@@ -396,11 +411,19 @@ public class MusicAppService {
     public R updateSingerProfile(SingerFieldsUpdateRequest singerFieldsUpdateRequest) {
         Singer singer = new Singer();
         BeanUtils.copyProperties(singerFieldsUpdateRequest, singer);
-        return singerService.updateSinger(singer);
+        R result = singerService.updateSinger(singer);
+        if (result.getPassed() && singerFieldsUpdateRequest.getId() != null) {
+            searchSyncService.syncSongsBySinger(singerFieldsUpdateRequest.getId());
+        }
+        return result;
     }
 
     public R updateSingerAvatar(Long id, MultipartFile avatarFile, String md5) {
-        return singerService.updateSingerAvatar(id, avatarFile);
+        R result = singerService.updateSingerAvatar(id, avatarFile);
+        if (result.getPassed()) {
+            searchSyncService.syncSongsBySinger(id);
+        }
+        return result;
     }
 
     public R toggleFavoriteSong(Long userId, Long songId) {

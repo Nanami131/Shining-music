@@ -1,5 +1,6 @@
 package org.L2.music.domain.service;
 
+import lombok.extern.slf4j.Slf4j;
 import org.L2.common.R;
 import org.L2.common.minio.MinioProperties;
 import org.L2.common.minio.service.FileNameGenerateService;
@@ -13,6 +14,7 @@ import org.springframework.web.multipart.MultipartFile;
 import java.time.LocalDateTime;
 import java.util.List;
 
+@Slf4j
 @Service
 public class VideoService {
 
@@ -58,6 +60,11 @@ public class VideoService {
             videoMapper.insert(video);
             return R.success("视频上传成功", video);
         } catch (Exception e) {
+            try {
+                simpleMinioService.deleteFile(fileName);
+            } catch (Exception cleanupEx) {
+                log.error("Failed to cleanup MinIO file {} after DB insert failure", fileName, cleanupEx);
+            }
             return R.error("视频保存失败" + e.getMessage());
         }
     }

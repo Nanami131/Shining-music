@@ -69,11 +69,34 @@ public class SearchSyncService {
             docs.add(buildDoc(song, singerCache.get(song.getArtistId()), lyricsBySong.get(song.getId())));
         }
 
+        Set<Long> mySqlIds = allSongs.stream().map(Song::getId).collect(Collectors.toSet());
+
         try {
             searchService.bulkIndex(docs);
             log.info("Full sync completed, indexed {} documents", docs.size());
+
+            Set<Long> esIds = searchService.getAllIndexedIds();
+            esIds.removeAll(mySqlIds);
+            for (Long staleId : esIds) {
+                searchService.deleteDoc(staleId);
+                log.info("Deleted stale ES doc songId={}", staleId);
+            }
+            if (!esIds.isEmpty()) {
+                log.info("Cleaned {} stale documents from ES", esIds.size());
+            }
         } catch (Exception e) {
             log.error("Bulk index failed during full sync", e);
+        }
+    }
+
+    /**
+     * 同步某歌手下所有歌曲的搜索索引（歌手名称/头像变更后调用）。
+     */
+    public void syncSongsBySinger(Long singerId) {
+        List<Song> songs = songMapper.query(new Song().setArtistId(singerId));
+        if (songs == null || songs.isEmpty()) return;
+        for (Song s : songs) {
+            syncSong(s.getId());
         }
     }
 

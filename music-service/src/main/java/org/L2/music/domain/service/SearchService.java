@@ -164,6 +164,28 @@ public class SearchService {
     }
 
     /**
+     * 获取 ES 索引中所有文档 ID。
+     */
+    public Set<Long> getAllIndexedIds() throws IOException {
+        Set<Long> ids = new HashSet<>();
+        SearchResponse<MusicSearchDoc> resp = esClient.search(s -> s
+                        .index(INDEX_NAME)
+                        .query(q -> q.matchAll(m -> m))
+                        .source(src -> src.filter(f -> f.includes("songId")))
+                        .size(10000),
+                MusicSearchDoc.class
+        );
+        for (Hit<MusicSearchDoc> hit : resp.hits().hits()) {
+            if (hit.id() != null) {
+                try {
+                    ids.add(Long.parseLong(hit.id()));
+                } catch (NumberFormatException ignored) {}
+            }
+        }
+        return ids;
+    }
+
+    /**
      * 删除单个文档。
      */
     public void deleteDoc(Long songId) {
