@@ -34,6 +34,11 @@ export default {
   created() {
     this.loadVideoInfo();
   },
+  watch: {
+    '$route.params.id'() {
+      this.loadVideoInfo();
+    },
+  },
   methods: {
     async loadVideoInfo() {
       this.isLoaded = false;

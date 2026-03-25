@@ -1,6 +1,7 @@
 package org.L2.music.controller;
 
 import org.L2.common.R;
+import org.L2.common.context.UserContext;
 import org.L2.music.application.request.*;
 import org.L2.music.application.service.MusicAppService;
 import org.slf4j.Logger;
@@ -132,6 +133,10 @@ public class MusicController {
      */
     @GetMapping("/user/favorite/songs")
     public R getUserFavoriteSongs(@RequestParam("userId") Long userId) {
+        Long trustedUserId = UserContext.getUserId();
+        if (trustedUserId != null) {
+            userId = trustedUserId;
+        }
         return musicAppService.getUserFavoriteSongs(userId);
     }
 
@@ -371,10 +376,11 @@ public class MusicController {
 
     @PostMapping("/song/favorite")
     public R toggleSongFavorite(@RequestBody SongFavoriteRequest songFavoriteRequest) {
-        return musicAppService.toggleFavoriteSong(
-                songFavoriteRequest.getUserId(),
-                songFavoriteRequest.getSongId()
-        );
+        Long trustedUserId = UserContext.getUserId();
+        if (trustedUserId == null) {
+            return R.error("用户未登录");
+        }
+        return musicAppService.toggleFavoriteSong(trustedUserId, songFavoriteRequest.getSongId());
     }
 
     /*

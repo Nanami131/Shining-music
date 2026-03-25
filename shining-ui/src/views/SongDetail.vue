@@ -156,6 +156,11 @@ export default {
     this.userId = userBase.id ?? null;
     this.loadSongDetails();
   },
+  watch: {
+    '$route.params.id'() {
+      this.loadSongDetails();
+    },
+  },
   methods: {
     async loadSongDetails() {
       this.isLoaded = false;
