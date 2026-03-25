@@ -56,11 +56,11 @@
         <div class="row-2">
           <div class="field">
             <label for="reg-phone">手机号</label>
-            <input id="reg-phone" v-model="form.phone" type="tel" placeholder="选填" autocomplete="tel" />
+            <input id="reg-phone" v-model="form.phone" type="tel" placeholder="至少填一项" autocomplete="tel" />
           </div>
           <div class="field">
             <label for="reg-email">邮箱</label>
-            <input id="reg-email" v-model="form.email" type="email" placeholder="选填" autocomplete="email" />
+            <input id="reg-email" v-model="form.email" type="email" placeholder="至少填一项" autocomplete="email" />
           </div>
         </div>
         <button type="submit" class="submit-btn" :disabled="!canSubmit">注册</button>
@@ -87,7 +87,8 @@ export default {
   },
   computed: {
     canSubmit() {
-      return this.form.username && this.form.password && this.confirmPassword === this.form.password;
+      const hasContact = !!(this.form.phone && this.form.phone.trim()) || !!(this.form.email && this.form.email.trim());
+      return this.form.username && this.form.password && this.confirmPassword === this.form.password && hasContact;
     },
   },
   methods: {

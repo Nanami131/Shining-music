@@ -39,13 +39,15 @@ public class RegisterService {
         if(user.getPassword() == null || user.getPassword().isBlank()) {
             return R.error("密码为空");
         }
-        if(user.getEmail() == null && user.getPhone() == null){
-            return R.error("邮箱和手机号码不能均");
+        boolean hasEmail = user.getEmail() != null && !user.getEmail().isBlank();
+        boolean hasPhone = user.getPhone() != null && !user.getPhone().isBlank();
+        if (!hasEmail && !hasPhone) {
+            return R.error("邮箱和手机号码不能都为空");
         }
-        if(!isValidEmail(user.getEmail())) {
+        if (hasEmail && !isValidEmail(user.getEmail())) {
             return R.error("邮箱格式不正确");
         }
-        if(!isValidPhoneNumber(user.getPhone())){
+        if (hasPhone && !isValidPhoneNumber(user.getPhone())) {
             return R.error("手机号码格式不正确");
         }
         List<User> query = userMapper.query(new User().setUsername(user.getUsername()));

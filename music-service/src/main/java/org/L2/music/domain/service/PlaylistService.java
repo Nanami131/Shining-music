@@ -7,6 +7,7 @@ import org.L2.common.constant.OperationType;
 import org.L2.common.minio.MinioProperties;
 import org.L2.common.minio.service.FileNameGenerateService;
 import org.L2.common.minio.service.SimpleMinioService;
+import org.L2.common.context.UserContext;
 import org.L2.music.constant.Constants;
 import org.L2.music.domain.model.Playlist;
 import org.L2.music.infrastructure.PlaylistMapper;
@@ -64,8 +65,13 @@ public class PlaylistService {
         if (songMapper.selectById(songId) == null) {
             return R.error("歌曲不存在");
         }
-        if (playlistMapper.selectById(playlistId) == null) {
+        Playlist playlist = playlistMapper.selectById(playlistId);
+        if (playlist == null) {
             return R.error("歌单不存在");
+        }
+        R ownerCheck = checkPlaylistOwnership(playlist);
+        if (ownerCheck != null) {
+            return ownerCheck;
         }
         String key = "playlist:" + playlistId;
         migrateSetToZSetIfNeeded(key);
@@ -375,11 +381,34 @@ public class PlaylistService {
         return type != null && (type == Constants.PLAYLIST || type == Constants.ALBUM);
     }
 
+    /**
+     * 校验当前登录用户是否拥有该歌单。
+     * 返回 null 表示通过，返回 R 表示拒绝。
+     */
+    private R checkPlaylistOwnership(Playlist playlist) {
+        Long currentUserId = UserContext.getUserId();
+        if (currentUserId == null) {
+            return null;
+        }
+        if (playlist.getUserId() == null) {
+            return null;
+        }
+        if (!currentUserId.equals(playlist.getUserId())) {
+            return R.error("无权操作他人歌单");
+        }
+        return null;
+    }
+
+
     public R deletePlaylist(Long playlistId) {
         try {
             Playlist playlist = playlistMapper.selectById(playlistId);
             if (playlist == null) {
                 return R.error("歌单不存在");
+            }
+            R ownerCheck = checkPlaylistOwnership(playlist);
+            if (ownerCheck != null) {
+                return ownerCheck;
             }
             playlistMapper.deleteById(playlistId);
             stringRedisTemplate.delete("playlist:" + playlistId);

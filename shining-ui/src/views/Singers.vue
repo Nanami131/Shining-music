@@ -1,8 +1,7 @@
 <template>
   <div class="singers-container">
-    <!-- 搜索栏，占位即可 -->
     <div class="search-bar">
-      <input type="text" placeholder="歌手名称、地区等（暂不支持搜索）" disabled />
+      <input type="text" v-model="searchQuery" placeholder="搜索歌手名称、风格、地区…" />
     </div>
 
     <section v-if="hotSingers.length" class="section section-recommend">
@@ -28,7 +27,7 @@
       <h2>全部歌手</h2>
       <div class="singers-list">
         <div
-          v-for="singer in singers"
+          v-for="singer in filteredSingers"
           :key="singer.id"
           class="singer-card"
           @click="goToSinger(singer.id)"
@@ -57,7 +56,19 @@ export default {
       hotSingers: [],
       defaultAvatar,
       userId: null,
+      searchQuery: '',
     };
+  },
+  computed: {
+    filteredSingers() {
+      const q = (this.searchQuery || '').trim().toLowerCase();
+      if (!q) return this.singers;
+      return this.singers.filter(s =>
+        (s.name && s.name.toLowerCase().includes(q)) ||
+        (s.genre && s.genre.toLowerCase().includes(q)) ||
+        (s.country && s.country.toLowerCase().includes(q))
+      );
+    },
   },
   created() {
     const userBase = JSON.parse(localStorage.getItem('userBase') || '{}');

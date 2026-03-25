@@ -3,7 +3,7 @@
     <!-- 搜索占位 + 创建按钮 -->
     <div class="top-bar">
       <div class="search-bar">
-        <input type="text" placeholder="歌单名、简介等（暂不支持搜索）" disabled />
+        <input type="text" v-model="searchQuery" placeholder="搜索歌单名称、简介…" />
       </div>
       <button
         v-if="userId"
@@ -105,7 +105,7 @@
       <h2>全部歌单</h2>
       <div class="playlists-list">
         <div
-          v-for="playlist in playlists"
+          v-for="playlist in filteredPlaylists"
           :key="playlist.id"
           class="playlist-card"
           @click="goToPlaylist(playlist.id)"
@@ -139,6 +139,7 @@ export default {
       playlists: [],
       discoverList: [],
       userId: null,
+      searchQuery: '',
       defaultCover,
       // 创建歌单相关
       newPlaylistName: '',
@@ -156,6 +157,14 @@ export default {
       return (
         this.favoriteSongsForCreate.length > 0 &&
         this.selectedFavoriteSongIds.length === this.favoriteSongsForCreate.length
+      );
+    },
+    filteredPlaylists() {
+      const q = (this.searchQuery || '').trim().toLowerCase();
+      if (!q) return this.playlists;
+      return this.playlists.filter(p =>
+        (p.name && p.name.toLowerCase().includes(q)) ||
+        (p.description && p.description.toLowerCase().includes(q))
       );
     },
   },
