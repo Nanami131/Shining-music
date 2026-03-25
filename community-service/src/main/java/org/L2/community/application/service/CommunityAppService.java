@@ -221,7 +221,7 @@ public class CommunityAppService {
             return List.of();
         }
 
-        Map<Long, CommentDTO> idToDto = new HashMap<>();
+        Map<Long, CommentDTO> idToDto = new LinkedHashMap<>();
         List<CommentDTO> roots = new ArrayList<>();
 
         for (ForumComment c : comments) {
@@ -247,15 +247,20 @@ public class CommunityAppService {
                 if (parent != null) {
                     parent.getReplies().add(dto);
                 } else {
-                    // 没有找到父节点的评论，兜底当作一级评论
                     roots.add(dto);
                 }
             }
         }
 
-        // 一级评论按时间排序
-        roots.sort(Comparator.comparing(CommentDTO::getCreatedAt,
-                Comparator.nullsLast(Comparator.naturalOrder())));
+        Comparator<CommentDTO> byTime = Comparator.comparing(
+                CommentDTO::getCreatedAt, Comparator.nullsLast(Comparator.naturalOrder()));
+
+        roots.sort(byTime);
+        for (CommentDTO root : roots) {
+            if (root.getReplies() != null && root.getReplies().size() > 1) {
+                root.getReplies().sort(byTime);
+            }
+        }
 
         return roots;
     }

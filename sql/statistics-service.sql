@@ -3,6 +3,7 @@ CREATE TABLE user_song_play_record (
     id BIGINT AUTO_INCREMENT PRIMARY KEY COMMENT '主键ID',
     user_id BIGINT NOT NULL COMMENT '用户ID',
     song_id BIGINT NOT NULL COMMENT '歌曲ID',
+    play_session_id VARCHAR(36) DEFAULT NULL COMMENT '播放会话ID，关联START/END事件',
     played_at DATETIME NOT NULL COMMENT '播放时间',
     duration_sec INT DEFAULT NULL COMMENT '实际播放秒数',
     total_duration INT DEFAULT NULL COMMENT '歌曲总时长秒数',

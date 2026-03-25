@@ -217,6 +217,7 @@ export default {
   data() {
     return {
       currentSong: {},
+      currentPlaySessionId: null,
       allLyrics: [],
       selectedLyricId: null,
       selectedLang: 'ja',
@@ -423,6 +424,7 @@ export default {
         if (this._playSeq !== playId) return;
         if (response.data && response.data.passed) {
           this.currentSong = response.data.data;
+          this.currentPlaySessionId = this.currentSong?.playSessionId || null;
           await this.ensureArtistNameLoaded(this.currentSong.artistId);
           if (this._playSeq !== playId) return;
           if (this.userId) {
@@ -809,6 +811,7 @@ export default {
       const payload = {
         userId: this.userId,
         songId: this.currentSong.id,
+        playSessionId: this.currentPlaySessionId || null,
         duration: Math.round(this.currentTime),
         totalDuration: Math.round(this.duration),
         completed: reason === 'ended',

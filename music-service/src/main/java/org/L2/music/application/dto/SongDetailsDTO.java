@@ -21,6 +21,7 @@ public class SongDetailsDTO {
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
     private Boolean favorite;
+    private String playSessionId;
 
     private List<Lyrics> allLyrics;
 

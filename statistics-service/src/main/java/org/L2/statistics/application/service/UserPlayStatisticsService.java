@@ -8,6 +8,7 @@ import org.L2.statistics.application.dto.UserPlayCountByDateDTO;
 import org.L2.statistics.application.dto.UserTopSongDTO;
 import org.L2.statistics.application.enums.PlayStatDimension;
 import org.L2.statistics.domain.model.UserDailyPlayCount;
+import org.L2.statistics.domain.model.UserSongPlayRecord;
 import org.L2.statistics.domain.model.UserTopSong;
 import org.L2.statistics.domain.service.UserPlayRecordDomainService;
 import org.springframework.stereotype.Service;
@@ -50,16 +51,18 @@ public class UserPlayStatisticsService {
 
         String eventName = (message.getEvent() != null) ? message.getEvent().getEventName() : null;
 
+        String playSessionId = message.getPlayback().getPlaySessionId();
+
         if ("SONG_PLAY_END".equals(eventName)) {
             userPlayRecordDomainService.updatePlayEndRecord(
-                    userId, songId,
+                    userId, songId, playSessionId,
                     message.getPlayback().getDurationSec(),
                     message.getPlayback().getTotalDurationSec(),
                     message.getPlayback().getCompleted(),
                     message.getPlayback().getSource()
             );
-            log.info("Updated play end record, userId={}, songId={}, duration={}s",
-                    userId, songId, message.getPlayback().getDurationSec());
+            log.info("Updated play end record, userId={}, songId={}, sessionId={}, duration={}s",
+                    userId, songId, playSessionId, message.getPlayback().getDurationSec());
             return;
         }
 
@@ -71,7 +74,12 @@ public class UserPlayStatisticsService {
             playedAt = LocalDateTime.now();
         }
 
-        userPlayRecordDomainService.saveRecord(userId, songId, playedAt);
+        UserSongPlayRecord record = new UserSongPlayRecord()
+                .setUserId(userId)
+                .setSongId(songId)
+                .setPlaySessionId(playSessionId)
+                .setPlayedAt(playedAt);
+        userPlayRecordDomainService.saveFullRecord(record);
     }
 
     /**

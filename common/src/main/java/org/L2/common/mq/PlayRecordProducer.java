@@ -26,8 +26,9 @@ public class PlayRecordProducer {
     /**
      * 发送播放开始事件到 MQ（兼容旧调用）
      */
-    public void sendPlayRecord(Long userId, Long songId) {
-        sendPlayEvent(userId, songId, EventType.EVENT_NAME_SONG_PLAY, null);
+    public void sendPlayRecord(Long userId, Long songId, String playSessionId) {
+        PlaybackInfo info = new PlaybackInfo().setPlaySessionId(playSessionId);
+        sendPlayEvent(userId, songId, EventType.EVENT_NAME_SONG_PLAY, info);
     }
 
     /**

@@ -107,6 +107,7 @@
 
 <script>
 import communityApi from '@/api/community';
+import DOMPurify from 'dompurify';
 
 export default {
   name: 'PostDetail',
@@ -128,6 +129,12 @@ export default {
     this.postId = Number(this.$route.params.id);
     this.loadUser();
     this.loadDetails();
+  },
+  computed: {
+    sanitizedContent() {
+      if (!this.post || !this.post.content) return '';
+      return DOMPurify.sanitize(this.post.content);
+    },
   },
   methods: {
     loadUser() {

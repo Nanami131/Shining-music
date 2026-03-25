@@ -45,6 +45,7 @@ public interface UserSongPlayRecordMapper {
 
     void updatePlayEndRecord(@Param("userId") Long userId,
                              @Param("songId") Long songId,
+                             @Param("playSessionId") String playSessionId,
                              @Param("durationSec") Integer durationSec,
                              @Param("totalDuration") Integer totalDuration,
                              @Param("completed") Boolean completed,

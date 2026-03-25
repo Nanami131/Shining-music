@@ -123,18 +123,22 @@ public class MusicAppService {
      */
     public R playSong(Long songId, Long userId) {
         log.info("Received playSong request, songId={}, userId={}", songId, userId);
+        String playSessionId = java.util.UUID.randomUUID().toString();
         if (userId != null) {
             try {
-                playRecordProducer.sendPlayRecord(userId, songId);
-                log.info("Play record message sent via RabbitMQ, userId={}, songId={}", userId, songId);
+                playRecordProducer.sendPlayRecord(userId, songId, playSessionId);
+                log.info("Play record message sent via RabbitMQ, userId={}, songId={}, sessionId={}", userId, songId, playSessionId);
             } catch (Exception e) {
-                // 不因为 MQ 失败而影响播放本身
                 log.error("Failed to send play record message to RabbitMQ, userId={}, songId={}", userId, songId, e);
             }
         } else {
             log.warn("playSong called without userId, skip MQ message");
         }
-        return getSongDetailsInfo(songId, userId);
+        R result = getSongDetailsInfo(songId, userId);
+        if (result.getPassed() && result.getData() instanceof SongDetailsDTO) {
+            ((SongDetailsDTO) result.getData()).setPlaySessionId(playSessionId);
+        }
+        return result;
     }
 
     public R updateSongDuration(Long songId, Integer duration) {
@@ -156,9 +160,12 @@ public class MusicAppService {
         Boolean completed = body.get("completed") != null ? (Boolean) body.get("completed") : false;
         String source = (String) body.get("source");
 
+        String playSessionId = (String) body.get("playSessionId");
+
         try {
             org.L2.common.event.PlaybackInfo playbackInfo = new org.L2.common.event.PlaybackInfo()
                     .setSongId(songId)
+                    .setPlaySessionId(playSessionId)
                     .setDurationSec(durationSec)
                     .setTotalDurationSec(totalDuration)
                     .setCompleted(completed)

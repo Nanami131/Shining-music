@@ -5,14 +5,15 @@
 <mapper namespace="org.L2.statistics.infrastructure.mapper.UserSongPlayRecordMapper">
 
     <resultMap id="UserSongPlayRecordResultMap" type="org.L2.statistics.domain.model.UserSongPlayRecord">
-        <id     column="id"             property="id"/>
-        <result column="user_id"        property="userId"/>
-        <result column="song_id"        property="songId"/>
-        <result column="played_at"      property="playedAt"/>
-        <result column="duration_sec"   property="durationSec"/>
-        <result column="total_duration" property="totalDuration"/>
-        <result column="completed"      property="completed"/>
-        <result column="source"         property="source"/>
+        <id     column="id"               property="id"/>
+        <result column="user_id"          property="userId"/>
+        <result column="song_id"          property="songId"/>
+        <result column="play_session_id"  property="playSessionId"/>
+        <result column="played_at"        property="playedAt"/>
+        <result column="duration_sec"     property="durationSec"/>
+        <result column="total_duration"   property="totalDuration"/>
+        <result column="completed"        property="completed"/>
+        <result column="source"           property="source"/>
     </resultMap>
 
     <resultMap id="UserPlayCountByDateMap" type="org.L2.statistics.domain.model.UserDailyPlayCount">
@@ -27,9 +28,9 @@
     <insert id="insert" parameterType="org.L2.statistics.domain.model.UserSongPlayRecord"
             useGeneratedKeys="true" keyProperty="id">
         INSERT INTO user_song_play_record (
-            user_id, song_id, played_at, duration_sec, total_duration, completed, source
+            user_id, song_id, play_session_id, played_at, duration_sec, total_duration, completed, source
         ) VALUES (
-            #{userId}, #{songId}, #{playedAt},
+            #{userId}, #{songId}, #{playSessionId}, #{playedAt},
             #{durationSec}, #{totalDuration}, #{completed}, #{source}
         )
     </insert>
@@ -161,6 +162,9 @@
         WHERE user_id = #{userId}
           AND song_id = #{songId}
           AND duration_sec IS NULL
+          <if test="playSessionId != null">
+              AND play_session_id = #{playSessionId}
+          </if>
         ORDER BY played_at DESC
         LIMIT 1
     </update>
