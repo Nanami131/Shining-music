@@ -28,8 +28,8 @@ public class SearchService {
 
     /**
      * 创建索引（如果不存在）。
-     * title / singerName 使用 ik_max_word（需安装 IK 插件），
-     * lyricsZh 使用 ik_max_word，lyricsJa / lyricsEn 使用 standard。
+     * title / singerName / lyricsZh 使用 ik_max_word（需安装 IK 插件），
+     * lyricsJa 使用 kuromoji（需安装 kuromoji 插件），lyricsEn 使用 standard。
      */
     public void createIndexIfNotExists() throws IOException {
         boolean exists = esClient.indices().exists(e -> e.index(INDEX_NAME)).value();
@@ -136,9 +136,9 @@ public class SearchService {
                         .highlight(h -> h
                                 .fields("title", f -> f)
                                 .fields("singerName", f -> f)
-                                .fields("lyricsZh", f -> f.fragmentSize(100).numberOfFragments(3))
-                                .fields("lyricsJa", f -> f.fragmentSize(100).numberOfFragments(3))
-                                .fields("lyricsEn", f -> f.fragmentSize(100).numberOfFragments(3))
+                                .fields("lyricsZh", f -> f.fragmentSize(60).numberOfFragments(3))
+                                .fields("lyricsJa", f -> f.fragmentSize(60).numberOfFragments(3))
+                                .fields("lyricsEn", f -> f.fragmentSize(60).numberOfFragments(3))
                         )
                         .from(from)
                         .size(size),

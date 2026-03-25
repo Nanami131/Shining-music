@@ -115,6 +115,17 @@ public class MusicController {
         return musicAppService.playSong(songId, userId);
     }
 
+    @PostMapping("/song/{songId}/duration")
+    public R updateSongDuration(@PathVariable("songId") Long songId,
+                                @RequestParam("duration") Integer duration) {
+        return musicAppService.updateSongDuration(songId, duration);
+    }
+
+    @PostMapping("/play/end")
+    public R reportPlayEnd(@RequestBody java.util.Map<String, Object> body) {
+        return musicAppService.reportPlayEnd(body);
+    }
+
    
     /**
      * 获取用户收藏歌曲

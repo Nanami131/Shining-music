@@ -8,6 +8,7 @@
         <result property="albumId" column="album_id"/>
         <result property="fileUrl" column="file_url"/>
         <result property="coverUrl" column="cover_url"/>
+        <result property="duration" column="duration"/>
         <result property="status" column="status"/>
         <result property="createdAt" column="created_at"/>
         <result property="updatedAt" column="updated_at"/>
@@ -18,8 +19,8 @@
     </select>
 
     <insert id="insert" parameterType="org.L2.music.domain.model.Song" useGeneratedKeys="true" keyProperty="id">
-        INSERT INTO songs (title, artist_id, album_id, file_url, cover_url, status, created_at, updated_at)
-        VALUES (#{title}, #{artistId}, #{albumId}, #{fileUrl}, #{coverUrl}, #{status}, #{createdAt}, #{updatedAt})
+        INSERT INTO songs (title, artist_id, album_id, file_url, cover_url, duration, status, created_at, updated_at)
+        VALUES (#{title}, #{artistId}, #{albumId}, #{fileUrl}, #{coverUrl}, #{duration}, #{status}, #{createdAt}, #{updatedAt})
     </insert>
 
     <update id="update" parameterType="org.L2.music.domain.model.Song">
@@ -30,6 +31,7 @@
             <if test="albumId != null">album_id = #{albumId},</if>
             <if test="fileUrl != null and fileUrl != ''">file_url = #{fileUrl},</if>
             <if test="coverUrl != null and coverUrl != ''">cover_url = #{coverUrl},</if>
+            <if test="duration != null">duration = #{duration},</if>
             <if test="status != null and status != ''">status = #{status},</if>
             <if test="createdAt != null">created_at = #{createdAt},</if>
             <if test="updatedAt != null">updated_at = #{updatedAt},</if>

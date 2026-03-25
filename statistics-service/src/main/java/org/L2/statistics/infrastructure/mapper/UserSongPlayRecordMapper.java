@@ -8,20 +8,16 @@ import org.apache.ibatis.annotations.Param;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 
-/**
- * 用户听歌记录 Mapper。
- */
 @Mapper
 public interface UserSongPlayRecordMapper {
 
     void insert(UserSongPlayRecord record);
 
-
     Long countByUserAndTimeRange(@Param("userId") Long userId,
                                  @Param("start") LocalDateTime start,
                                  @Param("end") LocalDateTime end);
-
 
     List<UserDailyPlayCount> countByUserGroupByDate(@Param("userId") Long userId,
                                                     @Param("start") LocalDateTime start,
@@ -31,4 +27,26 @@ public interface UserSongPlayRecordMapper {
                                              @Param("start") LocalDateTime start,
                                              @Param("end") LocalDateTime end,
                                              @Param("limit") int limit);
+
+    List<Map<String, Object>> topSingersByUser(@Param("userId") Long userId,
+                                                @Param("limit") int limit);
+
+    Map<String, Object> activeHourByUser(@Param("userId") Long userId);
+
+    Double avgCompletionByUser(@Param("userId") Long userId);
+
+    Long totalDurationByUser(@Param("userId") Long userId);
+
+    LocalDateTime firstPlayTimeByUser(@Param("userId") Long userId);
+
+    LocalDateTime lastPlayTimeByUser(@Param("userId") Long userId);
+
+    List<Long> allDistinctUserIds();
+
+    void updatePlayEndRecord(@Param("userId") Long userId,
+                             @Param("songId") Long songId,
+                             @Param("durationSec") Integer durationSec,
+                             @Param("totalDuration") Integer totalDuration,
+                             @Param("completed") Boolean completed,
+                             @Param("source") String source);
 }

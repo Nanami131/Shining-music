@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="org.L2.statistics.infrastructure.mapper.UserProfileMapper">
+
+    <resultMap id="UserProfileResultMap" type="org.L2.statistics.domain.model.UserProfile">
+        <id     column="user_id"             property="userId"/>
+        <result column="total_play_count"    property="totalPlayCount"/>
+        <result column="total_play_duration" property="totalPlayDuration"/>
+        <result column="avg_completion_rate" property="avgCompletionRate"/>
+        <result column="fav_language"        property="favLanguage"/>
+        <result column="top_singer_id"       property="topSingerId"/>
+        <result column="top_singer_name"     property="topSingerName"/>
+        <result column="active_hour"         property="activeHour"/>
+        <result column="daily_avg_plays"     property="dailyAvgPlays"/>
+        <result column="last_play_at"        property="lastPlayAt"/>
+        <result column="updated_at"          property="updatedAt"/>
+    </resultMap>
+
+    <select id="selectByUserId" resultMap="UserProfileResultMap">
+        SELECT * FROM user_profile WHERE user_id = #{userId}
+    </select>
+
+    <insert id="insertOrUpdate" parameterType="org.L2.statistics.domain.model.UserProfile">
+        INSERT INTO user_profile (
+            user_id, total_play_count, total_play_duration, avg_completion_rate,
+            fav_language, top_singer_id, top_singer_name, active_hour,
+            daily_avg_plays, last_play_at
+        ) VALUES (
+            #{userId}, #{totalPlayCount}, #{totalPlayDuration}, #{avgCompletionRate},
+            #{favLanguage}, #{topSingerId}, #{topSingerName}, #{activeHour},
+            #{dailyAvgPlays}, #{lastPlayAt}
+        )
+        ON DUPLICATE KEY UPDATE
+            total_play_count    = #{totalPlayCount},
+            total_play_duration = #{totalPlayDuration},
+            avg_completion_rate = #{avgCompletionRate},
+            fav_language        = #{favLanguage},
+            top_singer_id       = #{topSingerId},
+            top_singer_name     = #{topSingerName},
+            active_hour         = #{activeHour},
+            daily_avg_plays     = #{dailyAvgPlays},
+            last_play_at        = #{lastPlayAt}
+    </insert>
+
+</mapper>

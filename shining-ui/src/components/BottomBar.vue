@@ -208,6 +208,7 @@
 
 <script>
 import musicApi from '@/api/music';
+import statisticsApi from '@/api/statistics';
 import defaultCover from '@/assets/default-cover.png';
 import { parseLyrics as parseLrc, timeToSeconds, mergeMultiLang, detectLangs } from '@/utils/lrcParser';
 
@@ -247,6 +248,7 @@ export default {
       resizeStartHeight: 200,
       bottomFixedHeight: 90,
       artistNameCache: {},
+      playSource: 'unknown',
     };
   },
   computed: {
@@ -291,6 +293,7 @@ export default {
     window.addEventListener('userBaseUpdated', this.handleUserStateChange);
   },
   beforeDestroy() {
+    this.reportPlayEnd('destroy');
     this.audio.removeEventListener('timeupdate', this.updateProgress);
     this.audio.removeEventListener('loadedmetadata', this.updateDuration);
     this.audio.removeEventListener('ended', this.handleEnded);
@@ -373,11 +376,13 @@ export default {
       }
     },
 
-    async handlePlaySongEvent({ songId, playlist, index }) {
+    async handlePlaySongEvent({ songId, playlist, index, source }) {
+      this.playSource = source || 'unknown';
       if (this.userId) {
         await this.ensureCurrentPlaylistReady();
       }
       if (Array.isArray(playlist) && playlist.length) {
+        this._playlistSetByEvent = true;
         this.playlist = playlist;
         this.currentIndex =
             typeof index === 'number' ? index : playlist.findIndex(id => id === songId);
@@ -386,9 +391,11 @@ export default {
         this.currentIndex = this.playlist.indexOf(songId);
       }
       await this.playSong(songId);
+      this._playlistSetByEvent = false;
     },
     async playSong(songId) {
       try {
+        this.reportPlayEnd('switch');
         this.audio.pause();
         this.audio.src = '';
         this.currentTime = 0;
@@ -430,6 +437,7 @@ export default {
       }
     },
     handleEnded() {
+      this.reportPlayEnd('ended');
       if (this.playMode === 'single') {
         if (this.currentSong && this.currentSong.id) {
           this.playSong(this.currentSong.id);
@@ -487,13 +495,17 @@ export default {
         this.syncPlaylistQueue();
         return;
       }
+      const loadId = Date.now();
+      this._lastPlaylistLoadId = loadId;
       try {
         const response = await musicApi.getCurrentPlaylist(this.userId);
+        if (this._lastPlaylistLoadId !== loadId) return;
         if (response.data && response.data.passed) {
           const data = response.data.data || {};
           this.currentPlaylistId = data.id || null;
           this.currentPlaylistSongs = Array.isArray(data.songs) ? data.songs : [];
           await this.ensureArtistNames(this.currentPlaylistSongs);
+          if (this._lastPlaylistLoadId !== loadId) return;
           this.syncPlaylistQueue();
           this.syncCurrentSongFromPlaylist();
         }
@@ -511,7 +523,7 @@ export default {
       await this.loadCurrentPlaylist();
     },
     syncPlaylistQueue() {
-      if (this.userId) {
+      if (this.userId && !this._playlistSetByEvent) {
         this.playlist = this.currentPlaylistSongs.map(song => song.id);
         if (this.currentSong && this.currentSong.id) {
           this.currentIndex = this.playlist.indexOf(this.currentSong.id);
@@ -534,11 +546,15 @@ export default {
           this.currentSong = { ...matched, ...this.currentSong };
           return;
         }
+        if (this.audio.src && this.isPlaying) {
+          return;
+        }
       }
-      this.currentSong = { ...this.currentPlaylistSongs[0] };
-      this.currentTime = 0;
-      this.duration = 0;
-      this.isPlaying = false;
+      if (!this.audio.src) {
+        this.currentSong = { ...this.currentPlaylistSongs[0] };
+        this.currentTime = 0;
+        this.duration = 0;
+      }
     },
     async addSongToCurrentPlaylist(song) {
       if (!this.userId || !this.currentPlaylistId || !song || !song.id) {
@@ -623,6 +639,13 @@ export default {
         if (response.data && response.data.passed) {
           const favorite = response.data.data?.favorite ?? false;
           this.currentSong.favorite = favorite;
+          statisticsApi.reportEvent({
+            userId: this.userId,
+            eventType: 'FAVORITE',
+            targetType: 'song',
+            targetId: this.currentSong.id,
+            extraData: { action: favorite ? 'add' : 'remove' },
+          }).catch(() => {});
         } else {
           const msg = response.data ? response.data.message : '未知错误';
           this.showApiError(msg, '更新收藏状态失败：');
@@ -738,6 +761,22 @@ export default {
     },
     updateDuration() {
       this.duration = this.audio.duration || 0;
+      if (this.currentSong?.id && this.duration > 0 && !this.currentSong.duration) {
+        const dur = Math.round(this.duration);
+        musicApi.updateSongDuration(this.currentSong.id, dur).catch(() => {});
+      }
+    },
+    reportPlayEnd(reason) {
+      if (!this.currentSong?.id || !this.userId || this.currentTime <= 1) return;
+      const payload = {
+        userId: this.userId,
+        songId: this.currentSong.id,
+        duration: Math.round(this.currentTime),
+        totalDuration: Math.round(this.duration),
+        completed: reason === 'ended',
+        source: this.playSource || 'unknown',
+      };
+      musicApi.reportPlayEnd(payload).catch(() => {});
     },
     seek() {
       if (this.audio.src) {

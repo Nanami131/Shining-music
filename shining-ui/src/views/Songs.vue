@@ -80,6 +80,7 @@
 
 <script>
 import musicApi from '@/api/music';
+import statisticsApi from '@/api/statistics';
 import defaultCover from '@/assets/default-cover.png';
 
 export default {
@@ -160,6 +161,15 @@ export default {
         if (response.data && response.data.passed) {
           const favorite = response.data.data?.favorite ?? false;
           song.favorite = favorite;
+          if (this.userId) {
+            statisticsApi.reportEvent({
+              userId: this.userId,
+              eventType: 'FAVORITE',
+              targetType: 'song',
+              targetId: song.id,
+              extraData: { action: favorite ? 'add' : 'remove' },
+            }).catch(() => {});
+          }
         } else {
           const msg = response.data ? response.data.message : '未知错误';
           alert('更新收藏状态失败：' + msg);
@@ -224,6 +234,13 @@ export default {
         const response = await musicApi.search(kw);
         if (response.data && response.data.passed) {
           this.searchResults = response.data.data || [];
+          if (this.userId) {
+            statisticsApi.reportEvent({
+              userId: this.userId,
+              eventType: 'SEARCH',
+              extraData: { keyword: kw, resultCount: this.searchResults.length },
+            }).catch(() => {});
+          }
         } else {
           alert('搜索失败：' + (response.data?.message || '未知错误'));
         }
@@ -255,12 +272,26 @@ export default {
         (item.highlights.lyricsEn && item.highlights.lyricsEn.length)
       );
     },
+    trimAroundHighlight(fragment) {
+      const clean = fragment.replace(/\n/g, ' ');
+      const emIdx = clean.indexOf('<em>');
+      if (emIdx < 0) return clean;
+      const pad = 15;
+      let start = Math.max(0, emIdx - pad);
+      const emEndIdx = clean.lastIndexOf('</em>');
+      const afterEm = emEndIdx >= 0 ? emEndIdx + 5 : emIdx + 10;
+      let end = Math.min(clean.length, afterEm + pad);
+      let trimmed = clean.slice(start, end);
+      if (start > 0) trimmed = '...' + trimmed;
+      if (end < clean.length) trimmed = trimmed + '...';
+      return trimmed;
+    },
     getLyricsHighlights(item) {
       if (!item.highlights) return [];
       const all = [];
       for (const key of ['lyricsZh', 'lyricsJa', 'lyricsEn']) {
         if (item.highlights[key]) {
-          all.push(...item.highlights[key]);
+          all.push(...item.highlights[key].map(f => this.trimAroundHighlight(f)));
         }
       }
       return all.slice(0, 3);
@@ -331,8 +362,10 @@ export default {
 .lyrics-snippet span {
   display: block;
   overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  word-break: break-all;
 }
 
 .lyrics-snippet :deep(em) {

@@ -17,4 +17,8 @@ public class UserSongPlayRecord {
     private Long userId;
     private Long songId;
     private LocalDateTime playedAt;
+    private Integer durationSec;
+    private Integer totalDuration;
+    private Boolean completed;
+    private String source;
 }

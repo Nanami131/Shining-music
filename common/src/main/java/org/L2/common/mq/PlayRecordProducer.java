@@ -24,42 +24,49 @@ public class PlayRecordProducer {
     private final RabbitTemplate rabbitTemplate;
 
     /**
-     * 发送播放事件到 MQ
+     * 发送播放开始事件到 MQ（兼容旧调用）
      */
     public void sendPlayRecord(Long userId, Long songId) {
-        // 组装事件元信息
+        sendPlayEvent(userId, songId, EventType.EVENT_NAME_SONG_PLAY, null);
+    }
+
+    /**
+     * 发送播放结束事件到 MQ（包含播放时长等增强字段）
+     */
+    public void sendPlayEndRecord(Long userId, Long songId, PlaybackInfo playbackInfo) {
+        sendPlayEvent(userId, songId, EventType.EVENT_NAME_SONG_PLAY_END, playbackInfo);
+    }
+
+    private void sendPlayEvent(Long userId, Long songId, String eventName, PlaybackInfo extraInfo) {
         EventInfo eventInfo = new EventInfo()
-                .setEventId(UUID.randomUUID().toString()) // todo
+                .setEventId(UUID.randomUUID().toString())
                 .setEventCategory(EventType.EVENT_CATEGORY_PLAYBACK)
-                .setEventName(EventType.EVENT_NAME_SONG_PLAY)
+                .setEventName(eventName)
                 .setOccurredAt(LocalDateTime.now())
-                .setTraceId(UUID.randomUUID().toString()); // todo
+                .setTraceId(UUID.randomUUID().toString());
 
         UserInfo userInfo = new UserInfo()
                 .setUserId(userId);
 
-        PlaybackInfo playbackInfo = new PlaybackInfo()
-                .setSongId(songId);
+        PlaybackInfo playbackInfo = (extraInfo != null) ? extraInfo : new PlaybackInfo();
+        playbackInfo.setSongId(songId);
 
-        // 顶层消息
         PlaybackEventMessage message = new PlaybackEventMessage()
                 .setEvent(eventInfo)
                 .setUser(userInfo)
                 .setPlayback(playbackInfo);
 
         try {
-            log.info("Sending playback event to RabbitMQ, userId={}, songId={}, eventId={}",
-                    userId, songId, eventInfo.getEventId());
+            log.info("Sending {} event to RabbitMQ, userId={}, songId={}",
+                    eventName, userId, songId);
             rabbitTemplate.convertAndSend(
                     RabbitMQConfig.PLAY_RECORD_EXCHANGE,
                     RabbitMQConfig.PLAY_RECORD_ROUTING_KEY,
                     message
             );
-            log.info("Playback event sent successfully, userId={}, songId={}, eventId={}",
-                    userId, songId, eventInfo.getEventId());
         } catch (Exception e) {
-            log.error("Failed to send playback event, userId={}, songId={}, eventId={}",
-                    userId, songId, eventInfo.getEventId(), e);
+            log.error("Failed to send {} event, userId={}, songId={}",
+                    eventName, userId, songId, e);
             throw e;
         }
     }

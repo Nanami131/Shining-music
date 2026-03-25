@@ -122,6 +122,7 @@
 
 <script>
 import musicApi from '@/api/music';
+import statisticsApi from '@/api/statistics';
 import defaultCover from '@/assets/default-cover.png';
 import { parseLyrics as parseLrc, timeToSeconds, mergeMultiLang, detectLangs } from '@/utils/lrcParser';
 
@@ -167,6 +168,14 @@ export default {
           await this.loadArtistName();
           await this.loadAllLyrics(songId);
           this.isLoaded = true;
+          if (this.userId) {
+            statisticsApi.reportEvent({
+              userId: this.userId,
+              eventType: 'BROWSE',
+              targetType: 'song',
+              targetId: Number(songId),
+            }).catch(() => {});
+          }
         } else {
           this.hasError = true;
           alert('获取歌曲详情失败：' + response.data.message);
@@ -241,6 +250,15 @@ export default {
         if (response.data && response.data.passed) {
           const favorite = response.data.data?.favorite ?? false;
           this.song.favorite = favorite;
+          if (this.userId) {
+            statisticsApi.reportEvent({
+              userId: this.userId,
+              eventType: 'FAVORITE',
+              targetType: 'song',
+              targetId: this.song.id,
+              extraData: { action: favorite ? 'add' : 'remove' },
+            }).catch(() => {});
+          }
         } else {
           const msg = response.data ? response.data.message : '未知错误';
           alert('更新收藏状态失败：' + msg);

@@ -5,10 +5,14 @@
 <mapper namespace="org.L2.statistics.infrastructure.mapper.UserSongPlayRecordMapper">
 
     <resultMap id="UserSongPlayRecordResultMap" type="org.L2.statistics.domain.model.UserSongPlayRecord">
-        <id     column="id"        property="id"/>
-        <result column="user_id"   property="userId"/>
-        <result column="song_id"   property="songId"/>
-        <result column="played_at" property="playedAt"/>
+        <id     column="id"             property="id"/>
+        <result column="user_id"        property="userId"/>
+        <result column="song_id"        property="songId"/>
+        <result column="played_at"      property="playedAt"/>
+        <result column="duration_sec"   property="durationSec"/>
+        <result column="total_duration" property="totalDuration"/>
+        <result column="completed"      property="completed"/>
+        <result column="source"         property="source"/>
     </resultMap>
 
     <resultMap id="UserPlayCountByDateMap" type="org.L2.statistics.domain.model.UserDailyPlayCount">
@@ -23,14 +27,11 @@
     <insert id="insert" parameterType="org.L2.statistics.domain.model.UserSongPlayRecord"
             useGeneratedKeys="true" keyProperty="id">
         INSERT INTO user_song_play_record (
-            user_id,
-            song_id,
-            played_at
+            user_id, song_id, played_at, duration_sec, total_duration, completed, source
         ) VALUES (
-                     #{userId},
-                     #{songId},
-                     #{playedAt}
-                 )
+            #{userId}, #{songId}, #{playedAt},
+            #{durationSec}, #{totalDuration}, #{completed}, #{source}
+        )
     </insert>
 
     <select id="countByUserAndTimeRange" resultType="java.lang.Long">
@@ -89,5 +90,77 @@
         ORDER BY play_count DESC
         LIMIT #{limit}
     </select>
+
+    <select id="topSingersByUser" resultType="java.util.Map">
+        SELECT
+            s.artist_id AS singerId,
+            COUNT(*)    AS playCount
+        FROM user_song_play_record r
+        JOIN `shining-music`.songs s ON r.song_id = s.id
+        WHERE r.user_id = #{userId}
+        GROUP BY s.artist_id
+        ORDER BY playCount DESC
+        LIMIT #{limit}
+    </select>
+
+    <select id="activeHourByUser" resultType="java.util.Map">
+        SELECT
+            HOUR(played_at) AS hour,
+            COUNT(*)        AS cnt
+        FROM user_song_play_record
+        WHERE user_id = #{userId}
+        GROUP BY HOUR(played_at)
+        ORDER BY cnt DESC
+        LIMIT 1
+    </select>
+
+    <select id="avgCompletionByUser" resultType="java.lang.Double">
+        SELECT AVG(
+            CASE
+                WHEN completed = 1 THEN 100.0
+                WHEN total_duration > 0 AND duration_sec > 0
+                    THEN LEAST(duration_sec * 100.0 / total_duration, 100.0)
+                ELSE NULL
+            END
+        )
+        FROM user_song_play_record
+        WHERE user_id = #{userId}
+          AND (completed IS NOT NULL OR (duration_sec IS NOT NULL AND total_duration IS NOT NULL))
+    </select>
+
+    <select id="totalDurationByUser" resultType="java.lang.Long">
+        SELECT COALESCE(SUM(duration_sec), 0)
+        FROM user_song_play_record
+        WHERE user_id = #{userId}
+    </select>
+
+    <select id="firstPlayTimeByUser" resultType="java.time.LocalDateTime">
+        SELECT MIN(played_at)
+        FROM user_song_play_record
+        WHERE user_id = #{userId}
+    </select>
+
+    <select id="lastPlayTimeByUser" resultType="java.time.LocalDateTime">
+        SELECT MAX(played_at)
+        FROM user_song_play_record
+        WHERE user_id = #{userId}
+    </select>
+
+    <select id="allDistinctUserIds" resultType="java.lang.Long">
+        SELECT DISTINCT user_id FROM user_song_play_record
+    </select>
+
+    <update id="updatePlayEndRecord">
+        UPDATE user_song_play_record
+        SET duration_sec = #{durationSec},
+            total_duration = #{totalDuration},
+            completed = #{completed},
+            source = #{source}
+        WHERE user_id = #{userId}
+          AND song_id = #{songId}
+          AND duration_sec IS NULL
+        ORDER BY played_at DESC
+        LIMIT 1
+    </update>
 
 </mapper>

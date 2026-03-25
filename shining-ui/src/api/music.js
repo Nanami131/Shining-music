@@ -175,4 +175,10 @@ export default {
     searchSync() {
         return api.post('/music/search/sync');
     },
+    updateSongDuration(songId, duration) {
+        return api.post(`/music/song/${songId}/duration`, null, { params: { duration } });
+    },
+    reportPlayEnd(data) {
+        return api.post('/music/play/end', data);
+    },
 };

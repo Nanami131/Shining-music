@@ -16,6 +16,7 @@ public class Song {
     private Long albumId;
     private String fileUrl;
     private String coverUrl;
+    private Integer duration;
     private Byte status;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;

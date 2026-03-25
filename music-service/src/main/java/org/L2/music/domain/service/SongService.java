@@ -152,6 +152,26 @@ public class SongService {
         }
     }
 
+    public R updateDuration(Long songId, Integer duration) {
+        try {
+            Song existing = songMapper.selectById(songId);
+            if (existing == null) {
+                return R.error("歌曲不存在");
+            }
+            if (existing.getDuration() != null && existing.getDuration() > 0) {
+                return R.success("歌曲时长已存在，跳过更新", existing.getDuration());
+            }
+            Song update = new Song()
+                    .setId(songId)
+                    .setDuration(duration)
+                    .setUpdatedAt(LocalDateTime.now());
+            songMapper.update(update);
+            return R.success("更新时长成功", duration);
+        } catch (Exception e) {
+            return R.error("更新时长失败: " + e.getMessage());
+        }
+    }
+
     public List<Song> listSongs() {
         return songMapper.query(new Song());
     }

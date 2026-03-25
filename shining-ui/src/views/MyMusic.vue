@@ -79,6 +79,41 @@
         </div>
       </section>
 
+      <section v-if="userProfile" class="profile-section">
+        <div class="section-header">
+          <h3>听歌报告</h3>
+          <button class="refresh-btn" @click="refreshProfile" :disabled="profileLoading">
+            {{ profileLoading ? '更新中...' : '刷新画像' }}
+          </button>
+        </div>
+        <div class="profile-grid">
+          <div class="profile-card">
+            <div class="profile-value">{{ userProfile.totalPlayCount || 0 }}</div>
+            <div class="profile-label">总播放次数</div>
+          </div>
+          <div class="profile-card">
+            <div class="profile-value">{{ formatDuration(userProfile.totalPlayDuration || 0) }}</div>
+            <div class="profile-label">累计听歌时长</div>
+          </div>
+          <div class="profile-card">
+            <div class="profile-value">{{ userProfile.dailyAvgPlays || 0 }}</div>
+            <div class="profile-label">日均播放</div>
+          </div>
+          <div class="profile-card">
+            <div class="profile-value">{{ userProfile.avgCompletionRate || 0 }}%</div>
+            <div class="profile-label">平均完播率</div>
+          </div>
+          <div class="profile-card" v-if="userProfile.activeHour != null">
+            <div class="profile-value">{{ userProfile.activeHour }}:00</div>
+            <div class="profile-label">最活跃时段</div>
+          </div>
+          <div class="profile-card" v-if="topSingerName">
+            <div class="profile-value">{{ topSingerName }}</div>
+            <div class="profile-label">最爱歌手</div>
+          </div>
+        </div>
+      </section>
+
       <section class="statistics-section">
         <div class="section-header statistics-header">
           <h3>最多播放</h3>
@@ -149,6 +184,9 @@ export default {
         { label: '全部', value: 'TOTAL' },
       ],
       selectedTopSongDimension: 'WEEK',
+      userProfile: null,
+      profileLoading: false,
+      topSingerName: null,
     };
   },
   created() {
@@ -158,6 +196,7 @@ export default {
       this.loadFavorites();
       this.loadMyPlaylists();
       this.loadTopSongs();
+      this.loadUserProfile();
     }
   },
   methods: {
@@ -256,6 +295,47 @@ export default {
       this.selectedTopSongDimension = value;
       this.loadTopSongs();
     },
+    async loadUserProfile() {
+      try {
+        const res = await statisticsApi.getUserProfile(this.userId);
+        if (res.data?.passed && res.data.data) {
+          this.userProfile = res.data.data;
+          if (this.userProfile.topSingerId) {
+            this.loadTopSingerName(this.userProfile.topSingerId);
+          }
+        }
+      } catch (e) {
+        console.warn('加载用户画像失败', e);
+      }
+    },
+    async refreshProfile() {
+      this.profileLoading = true;
+      try {
+        await statisticsApi.refreshUserProfile(this.userId);
+        await this.loadUserProfile();
+      } catch (e) {
+        alert('刷新画像失败：' + e.message);
+      } finally {
+        this.profileLoading = false;
+      }
+    },
+    async loadTopSingerName(singerId) {
+      try {
+        const res = await musicApi.getSingerBaseInfo(singerId);
+        if (res.data?.passed && res.data.data) {
+          this.topSingerName = res.data.data.name || `歌手 ${singerId}`;
+        }
+      } catch (e) {
+        this.topSingerName = `歌手 ${singerId}`;
+      }
+    },
+    formatDuration(seconds) {
+      if (!seconds || seconds <= 0) return '0分钟';
+      const hours = Math.floor(seconds / 3600);
+      const minutes = Math.floor((seconds % 3600) / 60);
+      if (hours > 0) return `${hours}小时${minutes}分钟`;
+      return `${minutes}分钟`;
+    },
     async fetchArtistName(artistId) {
       if (!artistId) {
         return '';
@@ -314,6 +394,13 @@ export default {
           if (!favorite) {
             this.favorites = this.favorites.filter(item => item.id !== song.id);
           }
+          statisticsApi.reportEvent({
+            userId: this.userId,
+            eventType: 'FAVORITE',
+            targetType: 'song',
+            targetId: song.id,
+            extraData: { action: favorite ? 'add' : 'remove' },
+          }).catch(() => {});
         } else {
           const msg = response.data ? response.data.message : '未知错误';
           alert('更新收藏状态失败：' + msg);
@@ -580,5 +667,36 @@ h2 {
   margin: 4px 0 0;
   color: #666;
   font-size: 14px;
+}
+
+.profile-section {
+  margin-bottom: 32px;
+}
+.profile-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 16px;
+}
+.profile-card {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border-radius: 14px;
+  padding: 20px 16px;
+  text-align: center;
+  color: #fff;
+  box-shadow: 0 6px 20px rgba(102, 126, 234, 0.25);
+  transition: transform 0.2s;
+}
+.profile-card:hover {
+  transform: translateY(-3px);
+}
+.profile-value {
+  font-size: 24px;
+  font-weight: 700;
+  line-height: 1.2;
+  margin-bottom: 6px;
+}
+.profile-label {
+  font-size: 13px;
+  opacity: 0.85;
 }
 </style>

@@ -46,6 +46,7 @@
 
 <script>
 import musicApi from '@/api/music';
+import statisticsApi from '@/api/statistics';
 import defaultAvatar from '@/assets/default-avatar.png';
 import defaultCover from '@/assets/default-cover.png';
 
@@ -77,6 +78,14 @@ export default {
         if (response.data.passed) {
           this.singer = response.data.data;
           this.isLoaded = true;
+          if (this.userId) {
+            statisticsApi.reportEvent({
+              userId: this.userId,
+              eventType: 'BROWSE',
+              targetType: 'singer',
+              targetId: Number(singerId),
+            }).catch(() => {});
+          }
         } else {
           this.hasError = true;
           alert('获取歌手信息失败：' + response.data.message);

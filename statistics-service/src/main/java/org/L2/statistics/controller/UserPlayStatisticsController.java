@@ -2,22 +2,23 @@ package org.L2.statistics.controller;
 
 import org.L2.common.R;
 import org.L2.statistics.application.service.UserPlayStatisticsService;
+import org.L2.statistics.application.service.UserProfileService;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDateTime;
 
-/**
- * 用户听歌统计对外接口。
- */
 @RestController
 @RequestMapping("/statistics/user")
 public class UserPlayStatisticsController {
 
     private final UserPlayStatisticsService userPlayStatisticsService;
+    private final UserProfileService userProfileService;
 
-    public UserPlayStatisticsController(UserPlayStatisticsService userPlayStatisticsService) {
+    public UserPlayStatisticsController(UserPlayStatisticsService userPlayStatisticsService,
+                                         UserProfileService userProfileService) {
         this.userPlayStatisticsService = userPlayStatisticsService;
+        this.userProfileService = userProfileService;
     }
 
     /**
@@ -67,5 +68,26 @@ public class UserPlayStatisticsController {
                              @RequestParam(value = "dimension", required = false) String dimension,
                              @RequestParam(value = "limit", required = false) Integer limit) {
         return userPlayStatisticsService.getUserTopSongs(userId, dimension, limit);
+    }
+
+    @GetMapping("/{userId}/plays/top-singers")
+    public R getUserTopSingers(@PathVariable("userId") Long userId,
+                               @RequestParam(value = "limit", defaultValue = "5") int limit) {
+        return userPlayStatisticsService.getUserTopSingers(userId, limit);
+    }
+
+    @GetMapping("/{userId}/profile")
+    public R getUserProfile(@PathVariable("userId") Long userId) {
+        return userProfileService.getUserProfile(userId);
+    }
+
+    @PostMapping("/{userId}/profile/refresh")
+    public R refreshUserProfile(@PathVariable("userId") Long userId) {
+        return userProfileService.refreshUserProfile(userId);
+    }
+
+    @PostMapping("/profiles/refresh-all")
+    public R refreshAllProfiles() {
+        return userProfileService.refreshAllProfiles();
     }
 }

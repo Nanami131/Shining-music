@@ -12,4 +12,8 @@ import lombok.experimental.Accessors;
 public class PlaybackInfo {
 
     private Long songId;
+    private Integer durationSec;
+    private Integer totalDurationSec;
+    private Boolean completed;
+    private String source;
 }

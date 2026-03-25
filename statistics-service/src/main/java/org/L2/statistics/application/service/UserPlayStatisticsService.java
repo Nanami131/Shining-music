@@ -48,6 +48,21 @@ public class UserPlayStatisticsService {
             return;
         }
 
+        String eventName = (message.getEvent() != null) ? message.getEvent().getEventName() : null;
+
+        if ("SONG_PLAY_END".equals(eventName)) {
+            userPlayRecordDomainService.updatePlayEndRecord(
+                    userId, songId,
+                    message.getPlayback().getDurationSec(),
+                    message.getPlayback().getTotalDurationSec(),
+                    message.getPlayback().getCompleted(),
+                    message.getPlayback().getSource()
+            );
+            log.info("Updated play end record, userId={}, songId={}, duration={}s",
+                    userId, songId, message.getPlayback().getDurationSec());
+            return;
+        }
+
         LocalDateTime playedAt = null;
         if (message.getEvent() != null) {
             playedAt = message.getEvent().getOccurredAt();
@@ -125,5 +140,14 @@ public class UserPlayStatisticsService {
                         .setPlayCount(song.getPlayCount()))
                 .collect(Collectors.toList());
         return R.success("获取用户常听歌曲成功", dtoList);
+    }
+
+    public R getUserTopSingers(Long userId, int limit) {
+        if (userId == null) {
+            return R.error("用户ID不能为空");
+        }
+        int size = Math.min(Math.max(limit, 1), MAX_TOP_LIMIT);
+        var singers = userPlayRecordDomainService.listTopSingersByUser(userId, size);
+        return R.success("获取用户常听歌手成功", singers);
     }
 }

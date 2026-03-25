@@ -10,23 +10,14 @@ import org.springframework.stereotype.Service;
 import java.time.LocalDateTime;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 
-/**
- * 用户听歌记录的领域服务，封装聚合根的核心行为。
- */
 @Service
 @RequiredArgsConstructor
 public class UserPlayRecordDomainService {
 
     private final UserSongPlayRecordMapper userSongPlayRecordMapper;
 
-    /**
-     * 保存一条听歌记录。
-     *
-     * @param userId   用户 ID
-     * @param songId   歌曲 ID
-     * @param playedAt 播放时间
-     */
     public void saveRecord(Long userId, Long songId, LocalDateTime playedAt) {
         UserSongPlayRecord record = new UserSongPlayRecord()
                 .setUserId(userId)
@@ -35,27 +26,22 @@ public class UserPlayRecordDomainService {
         userSongPlayRecordMapper.insert(record);
     }
 
-    /**
-     * 统计时间范围内的总听歌次数。
-     *
-     * @param userId    用户 ID
-     * @param startTime 起始时间，可为空
-     * @param endTime   结束时间，可为空
-     * @return 区间内的总播放次数
-     */
+    public void saveFullRecord(UserSongPlayRecord record) {
+        userSongPlayRecordMapper.insert(record);
+    }
+
+    public void updatePlayEndRecord(Long userId, Long songId,
+                                     Integer durationSec, Integer totalDuration,
+                                     Boolean completed, String source) {
+        userSongPlayRecordMapper.updatePlayEndRecord(userId, songId,
+                durationSec, totalDuration, completed, source);
+    }
+
     public long countByUserAndRange(Long userId, LocalDateTime startTime, LocalDateTime endTime) {
         Long count = userSongPlayRecordMapper.countByUserAndTimeRange(userId, startTime, endTime);
         return count == null ? 0L : count;
     }
 
-    /**
-     * 获取时间范围内按天聚合的听歌次数。
-     *
-     * @param userId    用户 ID
-     * @param startTime 起始时间，可为空
-     * @param endTime   结束时间，可为空
-     * @return 每日播放次数的列表
-     */
     public List<UserDailyPlayCount> listUserDailyStats(Long userId,
                                                        LocalDateTime startTime,
                                                        LocalDateTime endTime) {
@@ -64,9 +50,6 @@ public class UserPlayRecordDomainService {
         return list == null ? Collections.emptyList() : list;
     }
 
-    /**
-     * 查询某个用户在时间范围内播放次数最多的歌曲。
-     */
     public List<UserTopSong> listTopSongsByUser(Long userId,
                                                 LocalDateTime startTime,
                                                 LocalDateTime endTime,
@@ -74,5 +57,33 @@ public class UserPlayRecordDomainService {
         List<UserTopSong> songs =
                 userSongPlayRecordMapper.topSongsByUserAndRange(userId, startTime, endTime, limit);
         return songs == null ? Collections.emptyList() : songs;
+    }
+
+    public List<Map<String, Object>> listTopSingersByUser(Long userId, int limit) {
+        return userSongPlayRecordMapper.topSingersByUser(userId, limit);
+    }
+
+    public Map<String, Object> getActiveHour(Long userId) {
+        return userSongPlayRecordMapper.activeHourByUser(userId);
+    }
+
+    public Double getAvgCompletion(Long userId) {
+        return userSongPlayRecordMapper.avgCompletionByUser(userId);
+    }
+
+    public Long getTotalDuration(Long userId) {
+        return userSongPlayRecordMapper.totalDurationByUser(userId);
+    }
+
+    public LocalDateTime getFirstPlayTime(Long userId) {
+        return userSongPlayRecordMapper.firstPlayTimeByUser(userId);
+    }
+
+    public LocalDateTime getLastPlayTime(Long userId) {
+        return userSongPlayRecordMapper.lastPlayTimeByUser(userId);
+    }
+
+    public List<Long> getAllDistinctUserIds() {
+        return userSongPlayRecordMapper.allDistinctUserIds();
     }
 }

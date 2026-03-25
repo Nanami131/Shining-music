@@ -137,6 +137,39 @@ public class MusicAppService {
         return getSongDetailsInfo(songId, userId);
     }
 
+    public R updateSongDuration(Long songId, Integer duration) {
+        if (songId == null || duration == null || duration <= 0) {
+            return R.error("参数无效");
+        }
+        return songService.updateDuration(songId, duration);
+    }
+
+    public R reportPlayEnd(java.util.Map<String, Object> body) {
+        Long userId = body.get("userId") != null ? ((Number) body.get("userId")).longValue() : null;
+        Long songId = body.get("songId") != null ? ((Number) body.get("songId")).longValue() : null;
+        if (userId == null || songId == null) {
+            return R.error("userId and songId are required");
+        }
+
+        Integer durationSec = body.get("duration") != null ? ((Number) body.get("duration")).intValue() : null;
+        Integer totalDuration = body.get("totalDuration") != null ? ((Number) body.get("totalDuration")).intValue() : null;
+        Boolean completed = body.get("completed") != null ? (Boolean) body.get("completed") : false;
+        String source = (String) body.get("source");
+
+        try {
+            org.L2.common.event.PlaybackInfo playbackInfo = new org.L2.common.event.PlaybackInfo()
+                    .setSongId(songId)
+                    .setDurationSec(durationSec)
+                    .setTotalDurationSec(totalDuration)
+                    .setCompleted(completed)
+                    .setSource(source);
+            playRecordProducer.sendPlayEndRecord(userId, songId, playbackInfo);
+        } catch (Exception e) {
+            log.error("Failed to send play end record, userId={}, songId={}", userId, songId, e);
+        }
+        return R.success("播放结束事件已记录");
+    }
+
     public R uploadSong(Long id, MultipartFile file, String md5) {
         return songService.uploadSong(id, file);
     }
