@@ -422,6 +422,7 @@ export default {
     },
     playPrev() {
       if (!this.hasPrev) return;
+      this.playSource = 'prev';
       this.currentIndex -= 1;
       const prevId = this.playlist[this.currentIndex];
       if (prevId != null) {
@@ -430,6 +431,7 @@ export default {
     },
     playNext() {
       if (!this.hasNext) return;
+      this.playSource = 'next';
       this.currentIndex += 1;
       const nextId = this.playlist[this.currentIndex];
       if (nextId != null) {
@@ -438,6 +440,7 @@ export default {
     },
     handleEnded() {
       this.reportPlayEnd('ended');
+      this.playSource = 'auto';
       if (this.playMode === 'single') {
         if (this.currentSong && this.currentSong.id) {
           this.playSong(this.currentSong.id);
@@ -620,6 +623,7 @@ export default {
       if (!song) {
         return;
       }
+      this.playSource = 'currentList';
       this.currentIndex = index;
       this.playSong(song.id);
     },

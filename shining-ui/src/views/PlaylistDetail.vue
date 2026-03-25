@@ -375,6 +375,7 @@ export default {
           songId: this.playlistSongs[0].id,
           playlist: this.playlistSongs.map(song => song.id),
           index: 0,
+          source: 'playlistDetail',
         });
       } catch (error) {
         alert('播放全部异常：' + error.message);
@@ -390,6 +391,7 @@ export default {
         songId,
         playlist: [songId],
         index: 0,
+        source: 'playlistDetail',
       });
     },
     async deletePlaylist() {

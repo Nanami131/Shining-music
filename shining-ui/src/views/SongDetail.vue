@@ -301,7 +301,7 @@ export default {
       return timeToSeconds(timeStr);
     },
     playSong() {
-      this.$bus.emit('playSong', { songId: this.song.id });
+      this.$bus.emit('playSong', { songId: this.song.id, source: 'songDetail' });
     },
     hasLang(lang) {
       return this.allLyrics.some(

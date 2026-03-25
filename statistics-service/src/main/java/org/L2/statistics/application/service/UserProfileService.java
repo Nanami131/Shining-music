@@ -88,6 +88,9 @@ public class UserProfileService {
             if (top.get("singerId") != null) {
                 topSingerId = ((Number) top.get("singerId")).longValue();
             }
+            if (top.get("singerName") != null) {
+                topSingerName = top.get("singerName").toString();
+            }
         }
 
         return new UserProfile()

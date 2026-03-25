@@ -45,3 +45,4 @@ start-all.log
 docker-data/
 logs/
 scripts/download/
+sql/elasticsearch_music_search.json

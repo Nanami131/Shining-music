@@ -214,6 +214,7 @@ export default {
           songId: this.songs[0].id,
           playlist: this.songs.map(song => song.id),
           index: 0,
+          source: 'songs',
         });
       } catch (error) {
         alert('播放全部异常：' + error.message);

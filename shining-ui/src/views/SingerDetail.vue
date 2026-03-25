@@ -133,6 +133,7 @@ export default {
           songId: songs[0].id,
           playlist: songs.map(s => s.id),
           index: 0,
+          source: 'singerDetail',
         });
       } catch (error) {
         alert('播放全部异常：' + error.message);
@@ -147,6 +148,7 @@ export default {
         songId,
         playlist: songs.map(s => s.id),
         index,
+        source: 'singerDetail',
       });
     },
   },

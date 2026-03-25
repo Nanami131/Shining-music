@@ -94,11 +94,13 @@
     <select id="topSingersByUser" resultType="java.util.Map">
         SELECT
             s.artist_id AS singerId,
+            si.name     AS singerName,
             COUNT(*)    AS playCount
         FROM user_song_play_record r
         JOIN `shining-music`.songs s ON r.song_id = s.id
+        LEFT JOIN `shining-music`.singers si ON s.artist_id = si.id
         WHERE r.user_id = #{userId}
-        GROUP BY s.artist_id
+        GROUP BY s.artist_id, si.name
         ORDER BY playCount DESC
         LIMIT #{limit}
     </select>
