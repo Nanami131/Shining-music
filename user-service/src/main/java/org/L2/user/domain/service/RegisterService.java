@@ -13,6 +13,7 @@ import org.springframework.security.crypto.bcrypt.BCrypt;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 @Service
@@ -63,8 +64,8 @@ public class RegisterService {
 
         PasswordHistory passwordHistory = new PasswordHistory()
                 .setPassword(hashedPassword)
-                .setSalt(salt);
-        // TODO： 默认头像、默认昵称等
+                .setSalt(salt)
+                .setCreatedAt(LocalDateTime.now());
         return saveUserAndPassword(user,passwordHistory);
     }
 

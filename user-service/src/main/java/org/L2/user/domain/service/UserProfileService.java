@@ -47,9 +47,7 @@ public class UserProfileService {
         user.setAvatarUrl("").setPassword("").setSalt("");
         try {
             userMapper.update(user);
-            if (user.getNickName() != null || user.getSignature() != null) {
-                stringRedisTemplate.delete("cache:userInfo:" + user.getId());
-            }
+            stringRedisTemplate.delete("cache:userInfo:" + user.getId());
             return R.success("用户信息修改成功");
         } catch (Exception e) {
             return R.error("用户信息修改失败" + e.getMessage());
@@ -86,7 +84,8 @@ public class UserProfileService {
 
         PasswordHistory passwordHistory = new PasswordHistory()
                 .setPassword(hashedPassword)
-                .setSalt(newSalt);
+                .setSalt(newSalt)
+                .setCreatedAt(LocalDateTime.now());
         return saveUserAndPassword(user, passwordHistory);
     }
 
@@ -143,6 +142,7 @@ public class UserProfileService {
         }
         try {
             userMapper.update(user);
+            stringRedisTemplate.delete("cache:userInfo:" + id);
         } catch (Exception e) {
             return R.error("数据库更新失败" + e.getMessage());
         }
