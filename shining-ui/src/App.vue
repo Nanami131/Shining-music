@@ -1,9 +1,9 @@
 <template>
-  <div id="app">
+  <div id="app" :class="{ 'has-bar': !isAuthRoute }">
     <CursorTrail />
     <Header v-if="!isAuthRoute" />
     <router-view />
-    <bottom-bar />
+    <bottom-bar v-if="!isAuthRoute" />
   </div>
 </template>
 
@@ -34,6 +34,8 @@ export default {
   -moz-osx-font-smoothing: grayscale;
   color: #2c3e50;
   min-height: 100vh;
-  padding-bottom: 80px; /* 为底部栏预留空间 */
+}
+#app.has-bar {
+  padding-bottom: 80px;
 }
 </style>

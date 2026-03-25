@@ -94,21 +94,33 @@
             <form v-if="showPasswordForm" @submit.prevent="handleResetPassword">
               <div class="form-item">
                 <label>原密码</label>
-                <input
-                  v-model="passwordForm.oldPassword"
-                  type="password"
-                  placeholder="请输入当前密码"
-                  required
-                />
+                <div class="password-wrap">
+                  <input
+                    v-model="passwordForm.oldPassword"
+                    :type="showOldPwd ? 'text' : 'password'"
+                    placeholder="请输入当前密码"
+                    autocomplete="current-password"
+                    required
+                  />
+                  <button type="button" class="toggle-pwd" @click="showOldPwd = !showOldPwd">
+                    {{ showOldPwd ? '隐藏' : '显示' }}
+                  </button>
+                </div>
               </div>
               <div class="form-item">
                 <label>新密码</label>
-                <input
-                  v-model="passwordForm.newPassword"
-                  type="password"
-                  placeholder="请输入新密码"
-                  required
-                />
+                <div class="password-wrap">
+                  <input
+                    v-model="passwordForm.newPassword"
+                    :type="showNewPwd ? 'text' : 'password'"
+                    placeholder="请输入新密码"
+                    autocomplete="new-password"
+                    required
+                  />
+                  <button type="button" class="toggle-pwd" @click="showNewPwd = !showNewPwd">
+                    {{ showNewPwd ? '隐藏' : '显示' }}
+                  </button>
+                </div>
               </div>
               <button type="submit" class="submit-btn danger">确认修改</button>
             </form>
@@ -150,6 +162,8 @@ export default {
       defaultAvatar,
       showProfileForm: false,
       showPasswordForm: false,
+      showOldPwd: false,
+      showNewPwd: false,
     };
   },
   created() {
@@ -404,6 +418,24 @@ export default {
 }
 .form-item {
   margin-bottom: 15px;
+}
+.password-wrap {
+  position: relative;
+}
+.password-wrap input {
+  padding-right: 56px;
+}
+.toggle-pwd {
+  position: absolute;
+  right: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  color: #60a5fa;
+  font-size: 13px;
+  cursor: pointer;
+  padding: 2px 6px;
 }
 label {
   display: block;
