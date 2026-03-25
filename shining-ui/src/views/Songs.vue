@@ -33,10 +33,22 @@
       <p v-else class="placeholder-text">没有找到相关结果</p>
     </section>
 
-    <!-- 推荐歌曲，占位 -->
-    <section v-if="searchResults === null" class="section section-recommend">
-      <h2>推荐歌曲</h2>
-      <p class="placeholder-text">推荐歌曲模块还在路上，先从全部里挑几首喜欢的吧～</p>
+    <section v-if="searchResults === null && recommendedSongs.length" class="section section-recommend">
+      <h2>最近常听</h2>
+      <div class="songs-list">
+        <div
+          v-for="song in recommendedSongs"
+          :key="song.id"
+          class="song-card"
+          @click="goToSong(song.id)"
+        >
+          <img :src="song.coverUrl || defaultCover" class="song-cover" alt="歌曲封面" />
+          <div class="song-info">
+            <h3>{{ song.title || '未知歌曲' }}</h3>
+            <p>{{ artistNameMap[song.artistId] || (song.artistId ? `歌手 ${song.artistId}` : '未知') }}</p>
+          </div>
+        </div>
+      </div>
     </section>
 
     <!-- 全部歌曲 -->
@@ -88,6 +100,7 @@ export default {
   data() {
     return {
       songs: [],
+      recommendedSongs: [],
       defaultCover,
       userId: null,
       artistNameMap: {},
@@ -100,8 +113,37 @@ export default {
     const userBase = JSON.parse(localStorage.getItem('userBase') || '{}');
     this.userId = userBase.id ?? null;
     this.loadSongs();
+    this.loadRecommended();
   },
   methods: {
+    async loadRecommended() {
+      if (!this.userId) return;
+      try {
+        const res = await statisticsApi.getUserTopSongs(this.userId, { limit: 6 });
+        if (res.data && res.data.passed && Array.isArray(res.data.data)) {
+          const topSongIds = res.data.data.map(item => item.songId).filter(Boolean);
+          const songDetails = await Promise.all(
+            topSongIds.map(id => musicApi.getSongBaseInfo(id, this.userId).catch(() => null))
+          );
+          this.recommendedSongs = songDetails
+            .filter(r => r && r.data && r.data.passed && r.data.data)
+            .map(r => r.data.data);
+          const ids = [...new Set(this.recommendedSongs.map(s => s.artistId).filter(Boolean))];
+          await Promise.all(ids.map(id => this.ensureArtistName(id)));
+        }
+      } catch (e) {
+        // silent
+      }
+    },
+    async ensureArtistName(id) {
+      if (!id || this.artistNameMap[id]) return;
+      try {
+        const res = await musicApi.getSingerBaseInfo(id);
+        if (res.data && res.data.passed && res.data.data) {
+          this.$set ? this.$set(this.artistNameMap, id, res.data.data.name) : (this.artistNameMap[id] = res.data.data.name);
+        }
+      } catch (e) { /* silent */ }
+    },
     async loadSongs() {
       try {
         const response = await musicApi.getSongs(this.userId);

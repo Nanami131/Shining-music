@@ -5,10 +5,22 @@
       <input type="text" placeholder="歌手名称、地区等（暂不支持搜索）" disabled />
     </div>
 
-    <!-- 推荐歌手，占位 -->
-    <section class="section section-recommend">
-      <h2>推荐歌手</h2>
-      <p class="placeholder-text">推荐歌手模块还在路上，先从全部里挑几个喜欢的吧～</p>
+    <section v-if="hotSingers.length" class="section section-recommend">
+      <h2>你最爱的歌手</h2>
+      <div class="singers-list">
+        <div
+          v-for="item in hotSingers"
+          :key="item.id"
+          class="singer-card hot"
+          @click="goToSinger(item.id)"
+        >
+          <img :src="item.avatarUrl || defaultAvatar" class="singer-avatar" alt="歌手头像" />
+          <div class="singer-info">
+            <h3>{{ item.name || '未知歌手' }}</h3>
+            <p>播放 {{ item.playCount }} 次</p>
+          </div>
+        </div>
+      </div>
     </section>
 
     <!-- 全部歌手：这里放原来的内容 -->
@@ -34,6 +46,7 @@
 
 <script>
 import musicApi from '@/api/music';
+import statisticsApi from '@/api/statistics';
 import defaultAvatar from '@/assets/default-avatar.png';
 
 export default {
@@ -41,11 +54,16 @@ export default {
   data() {
     return {
       singers: [],
+      hotSingers: [],
       defaultAvatar,
+      userId: null,
     };
   },
   created() {
+    const userBase = JSON.parse(localStorage.getItem('userBase') || '{}');
+    this.userId = userBase.id ?? null;
     this.loadSingers();
+    this.loadHotSingers();
   },
   methods: {
     async loadSingers() {
@@ -60,6 +78,33 @@ export default {
       } catch (error) {
         alert('获取歌手列表失败：' + error.message);
       }
+    },
+    async loadHotSingers() {
+      if (!this.userId) return;
+      try {
+        const res = await statisticsApi.getUserTopSingers(this.userId, 5);
+        if (res.data && res.data.passed && Array.isArray(res.data.data)) {
+          const items = res.data.data;
+          const details = await Promise.all(
+            items.map(item => {
+              const sid = item.singerId || item.singer_id;
+              return sid ? musicApi.getSingerBaseInfo(sid).catch(() => null) : null;
+            })
+          );
+          this.hotSingers = items
+            .map((item, i) => {
+              const d = details[i];
+              const info = d && d.data && d.data.passed ? d.data.data : {};
+              return {
+                id: item.singerId || item.singer_id,
+                name: info.name || `歌手 ${item.singerId || item.singer_id}`,
+                avatarUrl: info.avatarUrl || null,
+                playCount: item.playCount || item.play_count || 0,
+              };
+            })
+            .filter(s => s.id);
+        }
+      } catch (e) { /* silent */ }
     },
     goToSinger(singerId) {
       this.$router.push(`/singer/${singerId}`);
@@ -136,5 +181,9 @@ export default {
   margin: 5px 0 0;
   color: #666;
   font-size: 14px;
+}
+.singer-card.hot {
+  border: 2px solid #f0abfc;
+  background: linear-gradient(135deg, #fdf2f8, #ffffff);
 }
 </style>

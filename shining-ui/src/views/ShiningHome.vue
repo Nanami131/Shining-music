@@ -137,6 +137,7 @@
 
 <script>
 import musicApi from '@/api/music';
+import statisticsApi from '@/api/statistics';
 
 const SONG_LIBRARY = [
   { id: 2, title: '嘘の火花' },
@@ -166,9 +167,9 @@ export default {
   data() {
     return {
       heroStats: [
-        { value: '3.8M+', label: '月播放量' },
-        { value: '21', label: '新入曲库' },
-        { value: '98%', label: '推荐匹配度' },
+        { value: '--', label: '累计播放' },
+        { value: '--', label: '曲库收录' },
+        { value: '--', label: '平均完播率' },
       ],
       featuredMixes: [
         {
@@ -240,6 +241,7 @@ export default {
   },
   created() {
     this.loadFeaturedVideos();
+    this.loadHeroStats();
   },
   computed: {
     songTitlesPreview() {
@@ -247,6 +249,23 @@ export default {
     },
   },
   methods: {
+    async loadHeroStats() {
+      try {
+        const userBase = JSON.parse(localStorage.getItem('userBase') || '{}');
+        const userId = userBase.id;
+        const [songsRes, profileRes] = await Promise.all([
+          musicApi.getSongs().catch(() => null),
+          userId ? statisticsApi.getUserProfile(userId).catch(() => null) : null,
+        ]);
+        const songCount = songsRes?.data?.passed ? (songsRes.data.data || []).length : 0;
+        const profile = profileRes?.data?.passed ? profileRes.data.data : null;
+        this.heroStats = [
+          { value: profile ? `${profile.totalPlayCount}` : '--', label: '累计播放' },
+          { value: songCount ? `${songCount}` : '--', label: '曲库收录' },
+          { value: profile ? `${profile.avgCompletionRate}%` : '--', label: '平均完播率' },
+        ];
+      } catch (e) { /* keep defaults */ }
+    },
     async loadFeaturedVideos() {
       try {
         const response = await musicApi.listVideos();

@@ -82,10 +82,22 @@
       </div>
     </section>
 
-    <!-- 推荐歌单占位 -->
-    <section class="section section-recommend">
-      <h2>推荐歌单</h2>
-      <p class="placeholder-text">推荐歌单模块还在路上，先看看下面的全部歌单吧～</p>
+    <section v-if="discoverList.length" class="section section-recommend">
+      <h2>发现歌单</h2>
+      <div class="playlists-list">
+        <div
+          v-for="pl in discoverList"
+          :key="pl.id"
+          class="playlist-card discover"
+          @click="goToPlaylist(pl.id)"
+        >
+          <img :src="pl.coverUrl || defaultCover" class="playlist-cover" alt="歌单封面" />
+          <div class="playlist-info">
+            <h3>{{ pl.name || '未命名歌单' }}</h3>
+            <p>{{ pl.description || '' }}</p>
+          </div>
+        </div>
+      </div>
     </section>
 
     <!-- 全部歌单 -->
@@ -125,6 +137,7 @@ export default {
   data() {
     return {
       playlists: [],
+      discoverList: [],
       userId: null,
       defaultCover,
       // 创建歌单相关
@@ -150,8 +163,17 @@ export default {
     const userBase = JSON.parse(localStorage.getItem('userBase') || '{}');
     this.userId = userBase.id ?? null;
     this.loadPlaylists();
+    this.loadDiscover();
   },
   methods: {
+    async loadDiscover() {
+      try {
+        const res = await musicApi.discoverPlaylists(this.userId);
+        if (res.data?.passed) {
+          this.discoverList = (res.data.data || []).slice(0, 6);
+        }
+      } catch (e) { /* silent */ }
+    },
     async loadPlaylists() {
       try {
         const response = await musicApi.getPlaylists(this.userId);
@@ -479,6 +501,10 @@ export default {
 
 .playlist-card:hover {
   transform: scale(1.05);
+}
+.playlist-card.discover {
+  border: 2px solid #a78bfa;
+  background: linear-gradient(135deg, #f5f3ff, #ffffff);
 }
 
 .playlist-cover {

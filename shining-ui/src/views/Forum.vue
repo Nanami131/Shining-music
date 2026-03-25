@@ -36,7 +36,7 @@
         <article class="info-card">
           <h3>本周热听轨迹</h3>
           <p class="info-desc">真实曲库里讨论最多的作品，从这些歌开始热身：</p>
-          <div class="song-list">
+          <div v-if="focusSongs.length" class="song-list">
             <div class="song-item" v-for="song in focusSongs" :key="song.id">
               <div class="song-text">
                 <p class="song-title">{{ song.title }}</p>
@@ -45,6 +45,7 @@
               <p class="song-desc">{{ song.desc }}</p>
             </div>
           </div>
+          <p v-else class="info-desc">登录并听几首歌后，这里会展示你的热听轨迹。</p>
         </article>
 
         <article class="rule-card">
@@ -99,6 +100,8 @@
 
 <script>
 import communityApi from '@/api/community';
+import statisticsApi from '@/api/statistics';
+import musicApi from '@/api/music';
 
 export default {
   name: 'Forum',
@@ -107,46 +110,22 @@ export default {
       userId: null,
       posts: [],
       loading: false,
-      focusSongs: [
-        {
-          id: 9,
-          title: '夜に駆ける',
-          mood: '高速都市夜行',
-          desc: '在夜跑和午夜复盘贴里被提及最多的 Vapor 成员。',
-        },
-        {
-          id: 7,
-          title: '深海少女',
-          mood: '沉浸系电子',
-          desc: '关于「失重」和「透明感」的讨论从未间断。',
-        },
-        {
-          id: 16,
-          title: '童游',
-          mood: '原声治愈',
-          desc: '和写作、绘画、手账有关的帖子最爱引用这首歌。',
-        },
-        {
-          id: 20,
-          title: 'Stella-rium',
-          mood: '星际浪漫',
-          desc: '演出回顾与合唱翻唱区的常驻曲目。',
-        },
-      ],
+      focusSongs: [],
+      totalPlays: '--',
     };
   },
   computed: {
     heroStats() {
       return [
         { value: `${this.posts.length || 0}`, label: '实时帖子' },
-        { value: '82%', label: '回应率' },
-        { value: '120+', label: '今日上线乐迷' },
+        { value: this.totalPlays, label: '全站播放量' },
       ];
     },
   },
   created() {
     this.loadUser();
     this.loadPosts();
+    this.loadFocusSongs();
   },
   methods: {
     loadUser() {
@@ -174,6 +153,31 @@ export default {
       } finally {
         this.loading = false;
       }
+    },
+    async loadFocusSongs() {
+      if (!this.userId) return;
+      try {
+        const res = await statisticsApi.getUserTopSongs(this.userId, { limit: 4 });
+        if (res.data?.passed && Array.isArray(res.data.data)) {
+          const items = res.data.data;
+          const details = await Promise.all(
+            items.map(i => musicApi.getSongBaseInfo(i.songId, this.userId).catch(() => null))
+          );
+          this.focusSongs = items.map((item, i) => {
+            const info = details[i]?.data?.passed ? details[i].data.data : {};
+            return {
+              id: item.songId,
+              title: info.title || `歌曲 ${item.songId}`,
+              mood: `播放 ${item.playCount || item.play_count || 0} 次`,
+              desc: info.duration ? `时长 ${Math.floor(info.duration / 60)}分${info.duration % 60}秒` : '',
+            };
+          });
+        }
+        const profileRes = await statisticsApi.getUserProfile(this.userId);
+        if (profileRes.data?.passed && profileRes.data.data) {
+          this.totalPlays = `${profileRes.data.data.totalPlayCount}`;
+        }
+      } catch (e) { /* silent */ }
     },
     formatDate(val) {
       if (!val) return '';
