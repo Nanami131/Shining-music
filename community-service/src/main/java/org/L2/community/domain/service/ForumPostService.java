@@ -43,6 +43,9 @@ public class ForumPostService {
         if (post == null || post.getId() == null) {
             return R.error("帖子ID不能为空");
         }
+        if (forumPostMapper.selectById(post.getId()) == null) {
+            return R.error("帖子不存在");
+        }
         try {
             forumPostMapper.update(post);
             return R.success("帖子更新成功");
@@ -54,6 +57,9 @@ public class ForumPostService {
     public R deletePost(Long id) {
         if (id == null) {
             return R.error("帖子ID不能为空");
+        }
+        if (forumPostMapper.selectById(id) == null) {
+            return R.error("帖子不存在");
         }
         try {
             forumPostMapper.deleteById(id);

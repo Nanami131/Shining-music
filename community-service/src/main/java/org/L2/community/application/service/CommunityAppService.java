@@ -86,8 +86,11 @@ public class CommunityAppService {
      * 删除帖子，同时清理关联评论。
      */
     public R deletePost(Long id) {
-        forumCommentService.deleteByPostId(id);
-        return forumPostService.deletePost(id);
+        R result = forumPostService.deletePost(id);
+        if (result.getPassed()) {
+            forumCommentService.deleteByPostId(id);
+        }
+        return result;
     }
 
     /**

@@ -94,6 +94,7 @@
 import musicApi from '@/api/music';
 import statisticsApi from '@/api/statistics';
 import defaultCover from '@/assets/default-cover.png';
+import DOMPurify from 'dompurify';
 
 export default {
   name: 'Songs',
@@ -296,17 +297,20 @@ export default {
       this.searchKeyword = '';
       this.searchResults = null;
     },
+    sanitizeHighlight(html) {
+      return DOMPurify.sanitize(html, { ALLOWED_TAGS: ['em'] });
+    },
     highlightTitle(item) {
       if (item.highlights && item.highlights.title && item.highlights.title.length) {
-        return item.highlights.title[0];
+        return this.sanitizeHighlight(item.highlights.title[0]);
       }
-      return item.title || '未知歌曲';
+      return this.sanitizeHighlight(item.title || '未知歌曲');
     },
     highlightSinger(item) {
       if (item.highlights && item.highlights.singerName && item.highlights.singerName.length) {
-        return item.highlights.singerName[0];
+        return this.sanitizeHighlight(item.highlights.singerName[0]);
       }
-      return item.singerName || '未知歌手';
+      return this.sanitizeHighlight(item.singerName || '未知歌手');
     },
     hasLyricsHighlight(item) {
       if (!item.highlights) return false;
@@ -335,7 +339,7 @@ export default {
       const all = [];
       for (const key of ['lyricsZh', 'lyricsJa', 'lyricsEn']) {
         if (item.highlights[key]) {
-          all.push(...item.highlights[key].map(f => this.trimAroundHighlight(f)));
+          all.push(...item.highlights[key].map(f => this.sanitizeHighlight(this.trimAroundHighlight(f))));
         }
       }
       return all.slice(0, 3);

@@ -282,7 +282,6 @@ export default {
   },
   created() {
     this._playSeq = 0;
-    this._playingLock = false;
     this._lastPlaylistLoadId = 0;
     this._playlistSetByEvent = false;
     const userBase = JSON.parse(localStorage.getItem('userBase') || '{}');
@@ -410,16 +409,14 @@ export default {
       this._playlistSetByEvent = false;
     },
     async playSong(songId) {
-      if (this._playingLock) return;
-      this._playingLock = true;
       const playId = ++this._playSeq;
-      try {
-        this.reportPlayEnd('switch');
-        this.audio.pause();
-        this.audio.src = '';
-        this.currentTime = 0;
-        this.isPlaying = false;
+      this.reportPlayEnd('switch');
+      this.audio.pause();
+      this.audio.src = '';
+      this.currentTime = 0;
+      this.isPlaying = false;
 
+      try {
         const response = await musicApi.playSong(songId, this.userId);
         if (this._playSeq !== playId) return;
         if (response.data && response.data.passed) {
@@ -432,17 +429,27 @@ export default {
             await this.addSongToCurrentPlaylist(this.currentSong);
           }
           if (this._playSeq !== playId) return;
-          this.audio.src = this.currentSong.fileUrl || '';
-          this.audio.play();
-          this.isPlaying = true;
+          const url = this.currentSong.fileUrl || '';
+          if (!url) return;
+          this.audio.src = url;
+          try {
+            await this.audio.play();
+            if (this._playSeq !== playId) return;
+            this.isPlaying = true;
+          } catch (playErr) {
+            if (this._playSeq === playId) {
+              this.isPlaying = false;
+              console.warn('Audio play blocked:', playErr.message);
+            }
+          }
           this.loadAllLyrics(songId);
         } else {
           this.showApiError(response.data ? response.data.message : '未知错误', '获取歌曲信息失败：');
         }
       } catch (error) {
-        this.showApiError(error.message, '播放歌曲失败：');
-      } finally {
-        this._playingLock = false;
+        if (this._playSeq === playId) {
+          this.showApiError(error.message, '播放歌曲失败：');
+        }
       }
     },
     playPrev() {
