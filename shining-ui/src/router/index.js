@@ -16,6 +16,8 @@ import UserHome from '../views/UserHome.vue';
 import Singers from '../views/Singers.vue';
 import Songs from '../views/Songs.vue';
 import Playlists from '../views/Playlists.vue';
+import PlayHistory from '../views/PlayHistory.vue';
+import Ranking from '../views/Ranking.vue';
 
 import SingerManage from '../views/dev/SingerManage.vue';
 import SongManage from '../views/dev/SongManage.vue';
@@ -86,6 +88,16 @@ const routes = [
         path: '/playlists',
         name: 'playlists',
         component: Playlists,
+    },
+    {
+        path: '/play-history',
+        name: 'play-history',
+        component: PlayHistory,
+    },
+    {
+        path: '/ranking',
+        name: 'ranking',
+        component: Ranking,
     },
     {
         path: '/singer/:id',

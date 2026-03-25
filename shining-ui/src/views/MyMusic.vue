@@ -5,6 +5,16 @@
       请先登录查看你的音乐内容
     </div>
     <div v-else>
+      <div class="quick-links">
+        <div class="quick-link-card" @click="$router.push('/play-history')">
+          <span class="ql-icon">&#9654;</span>
+          <span>播放历史</span>
+        </div>
+        <div class="quick-link-card" @click="$router.push('/ranking')">
+          <span class="ql-icon">&#9733;</span>
+          <span>热门排行</span>
+        </div>
+      </div>
       <section class="favorites-section">
         <div class="section-header">
           <h3>我的收藏</h3>
@@ -699,5 +709,35 @@ h2 {
 .profile-label {
   font-size: 13px;
   opacity: 0.85;
+}
+
+.quick-links {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 24px;
+}
+
+.quick-link-card {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 20px;
+  border-radius: 12px;
+  background: linear-gradient(135deg, #e0f2fe, #f0f9ff);
+  border: 1px solid #bae6fd;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 500;
+  color: #0369a1;
+  transition: transform 0.15s, box-shadow 0.15s;
+}
+
+.quick-link-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(3, 105, 161, 0.15);
+}
+
+.ql-icon {
+  font-size: 16px;
 }
 </style>

@@ -90,4 +90,15 @@ public class UserPlayStatisticsController {
     public R refreshAllProfiles() {
         return userProfileService.refreshAllProfiles();
     }
+
+    @GetMapping("/{userId}/plays/history")
+    public R getRecentPlays(@PathVariable("userId") Long userId,
+                            @RequestParam(value = "limit", defaultValue = "30") int limit) {
+        return userPlayStatisticsService.getRecentPlays(userId, limit);
+    }
+
+    @GetMapping("/ranking/top-songs")
+    public R getGlobalTopSongs(@RequestParam(value = "limit", defaultValue = "20") int limit) {
+        return userPlayStatisticsService.getGlobalTopSongs(limit);
+    }
 }

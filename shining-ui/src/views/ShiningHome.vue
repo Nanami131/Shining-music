@@ -12,6 +12,7 @@
           <button class="primary" @click="goTo('/songs')">去听歌</button>
           <button class="ghost" @click="goTo('/playlists')">逛歌单</button>
           <button class="glass" @click="goTo('/forum')">冲进讨论区</button>
+          <button class="glass ranking-cta" @click="goTo('/ranking')">热门排行榜</button>
         </div>
         <div class="hero-stats">
           <div class="stat-item" v-for="item in heroStats" :key="item.label">
@@ -139,93 +140,57 @@
 import musicApi from '@/api/music';
 import statisticsApi from '@/api/statistics';
 
-const SONG_LIBRARY = [
-  { id: 2, title: '嘘の火花' },
-  { id: 3, title: '破月' },
-  { id: 4, title: '【Ib】絵？あぁ、そう' },
-  { id: 5, title: 'WAVE' },
-  { id: 6, title: 'heart.beat' },
-  { id: 7, title: '深海少女' },
-  { id: 8, title: '嘘' },
-  { id: 9, title: '夜に駆ける' },
-  { id: 10, title: '群青' },
-  { id: 11, title: '六兆年と一夜物語' },
-  { id: 12, title: '「Q」&「A」' },
-  { id: 13, title: '夜雀旋律之心' },
-  { id: 14, title: '無意識レクイエム' },
-  { id: 15, title: '人生進行形' },
-  { id: 16, title: '童游' },
-  { id: 17, title: 'ためすがめ' },
-  { id: 18, title: 'しあわせのかたち' },
-  { id: 19, title: 'サンライトフラワーデ' },
-  { id: 20, title: 'Stella-rium' },
-  { id: 21, title: 'missing promise' },
+const MIX_TEMPLATES = [
+  {
+    title: (s1, s2) => `${s1} · 霓虹电气篇`,
+    desc: (s1, s2) => `从《${s1}》到《${s2}》，把城市霓虹揉进节拍里。`,
+    badges: ['Synthwave', '都市夜色', '重低鼓'],
+    tag: 'LIVE NOW',
+    accent: '#f472b6',
+  },
+  {
+    title: (s1) => `${s1} · 透明呼吸`,
+    desc: (s1, s2) => `《${s1}》的空灵人声衔接《${s2}》，营造失重的水下质感。`,
+    badges: ['Dream Pop', '沉浸', '空灵人声'],
+    tag: '编辑推荐',
+    accent: '#38bdf8',
+  },
+  {
+    title: (s1) => `${s1} · 童话旋律`,
+    desc: (s1, s2) => `以《${s1}》和《${s2}》衍生的原声合集，适合写字和发呆。`,
+    badges: ['原声', '治愈', '木吉他'],
+    tag: '温柔上线',
+    accent: '#facc15',
+  },
 ];
+
+const MOOD_TEMPLATES = [
+  { title: '凌晨写稿', desc: '屏幕泛蓝的凌晨，键盘声和鼓点同步。', tag: 'Night Shift', emoji: '🌃', tips: ['低饱和电子律动', '轻人声样本', '120 BPM 左右'] },
+  { title: '午后梦游', desc: '阳光柔焦到木质桌面，灵感慢慢酝酿。', tag: 'Lazy Noon', emoji: '🌤️', tips: ['Lo-fi hiphop', '口风琴点缀', '轻打击'] },
+  { title: '黄昏疾驰', desc: '地铁窗外闪过的灯带，与耳机里的合成器共鸣。', tag: 'City Rush', emoji: '🚇', tips: ['Future Bass', '切分节奏', '厚重贝斯'] },
+];
+
+function shuffle(arr) {
+  const a = [...arr];
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
 
 export default {
   name: 'ShiningHome',
   data() {
     return {
+      allSongs: [],
       heroStats: [
         { value: '--', label: '累计播放' },
         { value: '--', label: '曲库收录' },
         { value: '--', label: '平均完播率' },
       ],
-      featuredMixes: [
-        {
-          title: '破月夜行 · 霓虹电气篇',
-          desc: '从《破月》到《夜に駆ける》，把城市霓虹揉进节拍里。',
-          badges: ['Synthwave', '都市夜色', '重低鼓'],
-          tag: 'LIVE NOW',
-          accent: '#f472b6',
-          route: '/songs',
-          highlightSong: SONG_LIBRARY.find((s) => s.id === 3),
-        },
-        {
-          title: '深海失重 · 透明呼吸',
-          desc: '《深海少女》 的空灵人声衔接 《Stella-rium》，营造失重的水下质感。',
-          badges: ['Dream Pop', '沉浸', '空灵人声'],
-          tag: '编辑推荐',
-          accent: '#38bdf8',
-          route: '/songs',
-          highlightSong: SONG_LIBRARY.find((s) => s.id === 7),
-        },
-        {
-          title: '童游集市 · 童话旋律',
-          desc: '以《童游》和《しあわせのかたち》衍生的原声合集，适合写字和发呆。',
-          badges: ['原声', '治愈', '木吉他'],
-          tag: '温柔上线',
-          accent: '#facc15',
-          route: '/songs',
-          highlightSong: SONG_LIBRARY.find((s) => s.id === 16),
-        },
-      ],
-      moodSets: [
-        {
-          title: '凌晨写稿',
-          desc: '屏幕泛蓝的凌晨，键盘声和鼓点同步。',
-          tag: 'Night Shift',
-          emoji: '🌃',
-          tips: ['低饱和电子律动', '轻人声样本', '120 BPM 左右'],
-          songs: [9, 11, 20].map((id) => SONG_LIBRARY.find((s) => s.id === id)),
-        },
-        {
-          title: '午后梦游',
-          desc: '阳光柔焦到木质桌面，灵感慢慢酝酿。',
-          tag: 'Lazy Noon',
-          emoji: '🌤️',
-          tips: ['Lo-fi hiphop', '口风琴点缀', '轻打击'],
-          songs: [6, 18, 19].map((id) => SONG_LIBRARY.find((s) => s.id === id)),
-        },
-        {
-          title: '黄昏疾驰',
-          desc: '地铁窗外闪过的灯带，与耳机里的合成器共鸣。',
-          tag: 'City Rush',
-          emoji: '🚇',
-          tips: ['Future Bass', '切分节奏', '厚重贝斯'],
-          songs: [5, 10, 21].map((id) => SONG_LIBRARY.find((s) => s.id === id)),
-        },
-      ],
+      featuredMixes: [],
+      moodSets: [],
       featuredVideos: [],
       sparkPoints: [
         { id: 1, top: '20%', left: '25%', delay: '0s' },
@@ -240,31 +205,76 @@ export default {
     };
   },
   created() {
+    this.loadDynamicContent();
     this.loadFeaturedVideos();
-    this.loadHeroStats();
   },
   computed: {
     songTitlesPreview() {
-      return SONG_LIBRARY.slice(0, 4).map((s) => s.title).join('、');
+      if (!this.allSongs.length) return '...';
+      return this.allSongs.slice(0, 4).map((s) => s.title).join('、');
     },
   },
   methods: {
-    async loadHeroStats() {
+    async loadDynamicContent() {
       try {
-        const userBase = JSON.parse(localStorage.getItem('userBase') || '{}');
-        const userId = userBase.id;
-        const [songsRes, profileRes] = await Promise.all([
+        const [songsRes, topRes] = await Promise.all([
           musicApi.getSongs().catch(() => null),
-          userId ? statisticsApi.getUserProfile(userId).catch(() => null) : null,
+          statisticsApi.getGlobalTopSongs(10).catch(() => null),
         ]);
-        const songCount = songsRes?.data?.passed ? (songsRes.data.data || []).length : 0;
-        const profile = profileRes?.data?.passed ? profileRes.data.data : null;
+
+        const songs = songsRes?.data?.passed ? (songsRes.data.data || []) : [];
+        this.allSongs = songs;
+        const songCount = songs.length;
+
+        let totalPlayCount = 0;
+        const topSongs = topRes?.data?.passed ? (topRes.data.data || []) : [];
+        topSongs.forEach(t => { totalPlayCount += (t.playCount || 0); });
+
+        let userBase = {};
+        try { userBase = JSON.parse(localStorage.getItem('userBase') || '{}'); } catch (e) { /* ignore */ }
+        const userId = userBase.id;
+        let profile = null;
+        if (userId) {
+          try {
+            const profileRes = await statisticsApi.getUserProfile(userId);
+            if (profileRes?.data?.passed) profile = profileRes.data.data;
+          } catch (e) { /* silent */ }
+        }
+
         this.heroStats = [
-          { value: profile ? `${profile.totalPlayCount}` : '--', label: '累计播放' },
+          { value: totalPlayCount > 0 ? `${totalPlayCount}` : (profile ? `${profile.totalPlayCount}` : '--'), label: '全站播放' },
           { value: songCount ? `${songCount}` : '--', label: '曲库收录' },
-          { value: profile ? `${profile.avgCompletionRate}%` : '--', label: '平均完播率' },
+          { value: profile ? `${profile.avgCompletionRate}%` : '--', label: '我的完播率' },
         ];
+
+        this.buildFeaturedMixes(songs);
+        this.buildMoodSets(songs);
       } catch (e) { /* keep defaults */ }
+    },
+    buildFeaturedMixes(songs) {
+      if (songs.length < 6) return;
+      const pool = shuffle(songs);
+      this.featuredMixes = MIX_TEMPLATES.map((tpl, i) => {
+        const s1 = pool[i * 2];
+        const s2 = pool[i * 2 + 1];
+        return {
+          title: tpl.title(s1.title, s2.title),
+          desc: tpl.desc(s1.title, s2.title),
+          badges: tpl.badges,
+          tag: tpl.tag,
+          accent: tpl.accent,
+          route: `/song/${s1.id}`,
+          highlightSong: { id: s1.id, title: s1.title },
+        };
+      });
+    },
+    buildMoodSets(songs) {
+      if (songs.length < 9) return;
+      const pool = shuffle(songs);
+      this.moodSets = MOOD_TEMPLATES.map((tpl, i) => ({
+        ...tpl,
+        songs: pool.slice(i * 3, i * 3 + 3).map(s => ({ id: s.id, title: s.title })),
+      }));
     },
     async loadFeaturedVideos() {
       try {
@@ -376,6 +386,12 @@ export default {
   color: #fff;
   border: 1px solid rgba(255, 255, 255, 0.1);
   box-shadow: 0 10px 25px rgba(15, 23, 42, 0.35);
+}
+
+.ranking-cta {
+  background: rgba(245, 158, 11, 0.2);
+  border-color: rgba(245, 158, 11, 0.5);
+  color: #fbbf24;
 }
 
 .primary:hover,

@@ -6,8 +6,24 @@
         type="text"
         placeholder="搜索歌曲名、歌手、歌词..."
         @keyup.enter="handleSearch"
+        @focus="showHistory = true"
+        @blur="hideHistoryDelayed"
       />
       <button v-if="searchKeyword" class="clear-btn" @click="clearSearch">×</button>
+      <div v-if="showHistory && !searchKeyword && searchHistory.length" class="search-history-dropdown">
+        <div class="search-history-header">
+          <span>最近搜索</span>
+        </div>
+        <div
+          v-for="(item, idx) in searchHistory"
+          :key="idx"
+          class="search-history-item"
+          @mousedown.prevent="useHistoryKeyword(item.keyword)"
+        >
+          {{ item.keyword }}
+          <span v-if="item.cnt > 1" class="search-count">{{ item.cnt }}次</span>
+        </div>
+      </div>
     </div>
 
     <!-- 搜索结果 -->
@@ -58,6 +74,7 @@
         <button class="play-all-btn" :disabled="songOperating || !songs.length" @click="playAllSongs">
           {{ songOperating ? '处理中...' : '播放全部' }}
         </button>
+        <button class="ranking-link-btn" @click="$router.push('/ranking')">热门排行榜</button>
       </div>
       <div class="songs-list">
         <div
@@ -108,6 +125,8 @@ export default {
       songOperating: false,
       searchKeyword: '',
       searchResults: null,
+      searchHistory: [],
+      showHistory: false,
     };
   },
   created() {
@@ -116,6 +135,7 @@ export default {
     this.userId = userBase.id ?? null;
     this.loadSongs();
     this.loadRecommended();
+    this.loadSearchHistory();
   },
   methods: {
     async loadRecommended() {
@@ -260,7 +280,25 @@ export default {
     goToSong(songId) {
       this.$router.push(`/song/${songId}`);
     },
+    async loadSearchHistory() {
+      if (!this.userId) return;
+      try {
+        const res = await statisticsApi.getSearchKeywords(this.userId, 8);
+        if (res.data?.passed && Array.isArray(res.data.data)) {
+          this.searchHistory = res.data.data;
+        }
+      } catch (e) { /* silent */ }
+    },
+    useHistoryKeyword(keyword) {
+      this.searchKeyword = keyword;
+      this.showHistory = false;
+      this.handleSearch();
+    },
+    hideHistoryDelayed() {
+      setTimeout(() => { this.showHistory = false; }, 200);
+    },
     async handleSearch() {
+      this.showHistory = false;
       const kw = this.searchKeyword.trim();
       if (!kw) {
         this.searchResults = null;
@@ -276,6 +314,7 @@ export default {
               eventType: 'SEARCH',
               extraData: { keyword: kw, resultCount: this.searchResults.length },
             }).catch(() => {});
+            this.loadSearchHistory();
           }
         } else {
           alert('搜索失败：' + (response.data?.message || '未知错误'));
@@ -447,6 +486,22 @@ export default {
   cursor: not-allowed;
 }
 
+.ranking-link-btn {
+  border: 1px solid #f59e0b;
+  border-radius: 8px;
+  background: transparent;
+  color: #f59e0b;
+  padding: 9px 14px;
+  font-size: 14px;
+  cursor: pointer;
+  transition: background 0.2s, color 0.2s;
+}
+
+.ranking-link-btn:hover {
+  background: #f59e0b;
+  color: #fff;
+}
+
 .placeholder-text {
   color: #94a3b8;
   font-size: 14px;
@@ -518,5 +573,45 @@ export default {
 .favorite-btn:hover {
   transform: translateY(-2px);
   box-shadow: 0 8px 18px rgba(255, 99, 132, 0.3);
+}
+
+.search-history-dropdown {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  margin-top: 4px;
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+  z-index: 50;
+  overflow: hidden;
+}
+
+.search-history-header {
+  padding: 10px 14px 6px;
+  font-size: 12px;
+  color: #94a3b8;
+  font-weight: 500;
+}
+
+.search-history-item {
+  padding: 8px 14px;
+  font-size: 14px;
+  color: #334155;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  transition: background 0.15s;
+}
+
+.search-history-item:hover {
+  background: #f1f5f9;
+}
+
+.search-count {
+  font-size: 12px;
+  color: #94a3b8;
 }
 </style>

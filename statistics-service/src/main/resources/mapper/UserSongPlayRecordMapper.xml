@@ -153,6 +153,23 @@
         SELECT DISTINCT user_id FROM user_song_play_record
     </select>
 
+    <select id="recentPlaysByUser" resultMap="UserSongPlayRecordResultMap">
+        SELECT id, user_id, song_id, play_session_id, played_at,
+               duration_sec, total_duration, completed, source
+        FROM user_song_play_record
+        WHERE user_id = #{userId}
+        ORDER BY played_at DESC
+        LIMIT #{limit}
+    </select>
+
+    <select id="globalTopSongs" resultType="java.util.HashMap">
+        SELECT song_id AS songId, COUNT(*) AS playCount
+        FROM user_song_play_record
+        GROUP BY song_id
+        ORDER BY playCount DESC
+        LIMIT #{limit}
+    </select>
+
     <update id="updatePlayEndRecord">
         UPDATE user_song_play_record
         SET duration_sec = #{durationSec},

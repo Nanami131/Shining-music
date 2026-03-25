@@ -35,7 +35,7 @@ public class EventController {
     }
 
     @GetMapping("/recent/{userId}")
-    public R getRecentEvents(@PathVariable Long userId,
+    public R getRecentEvents(@PathVariable("userId") Long userId,
                              @RequestParam(value = "eventType", required = false) String eventType,
                              @RequestParam(value = "limit", defaultValue = "20") int limit) {
         Long trustedUserId = UserContext.getUserId();
@@ -46,7 +46,7 @@ public class EventController {
     }
 
     @GetMapping("/search-keywords/{userId}")
-    public R getTopSearchKeywords(@PathVariable Long userId,
+    public R getTopSearchKeywords(@PathVariable("userId") Long userId,
                                   @RequestParam(value = "limit", defaultValue = "10") int limit) {
         Long trustedUserId = UserContext.getUserId();
         if (trustedUserId != null && !trustedUserId.equals(userId)) {

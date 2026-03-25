@@ -158,4 +158,19 @@ public class UserPlayStatisticsService {
         var singers = userPlayRecordDomainService.listTopSingersByUser(userId, size);
         return R.success("获取用户常听歌手成功", singers);
     }
+
+    public R getRecentPlays(Long userId, int limit) {
+        if (userId == null) {
+            return R.error("用户ID不能为空");
+        }
+        int size = Math.min(Math.max(limit, 1), 50);
+        var records = userPlayRecordDomainService.recentPlaysByUser(userId, size);
+        return R.success("获取播放历史成功", records);
+    }
+
+    public R getGlobalTopSongs(int limit) {
+        int size = Math.min(Math.max(limit, 1), 50);
+        var songs = userPlayRecordDomainService.globalTopSongs(size);
+        return R.success("获取全站热门歌曲成功", songs);
+    }
 }
