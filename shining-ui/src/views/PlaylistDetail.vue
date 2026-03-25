@@ -302,6 +302,7 @@ export default {
           const response = await musicApi.managePlaylistSong({
             playlistId: this.playlist.id,
             songId,
+            action: 'add',
           });
           if (!response.data?.passed) {
             alert('添加失败：' + (response.data?.message || '未知错误'));
@@ -327,6 +328,7 @@ export default {
         const response = await musicApi.managePlaylistSong({
           playlistId: this.playlist.id,
           songId,
+          action: 'remove',
         });
         if (!response.data?.passed) {
           alert('移除失败：' + (response.data?.message || '未知错误'));
@@ -362,6 +364,7 @@ export default {
             const addResponse = await musicApi.managePlaylistSong({
               playlistId: currentPlaylistId,
               songId: song.id,
+              action: 'add',
             });
             if (!addResponse.data?.passed) {
               alert('加入当前播放列表失败：' + (addResponse.data?.message || '未知错误'));

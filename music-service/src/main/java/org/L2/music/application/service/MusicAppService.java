@@ -252,8 +252,9 @@ public class MusicAppService {
     public R managePlaylistSong(PlaylistSongRequest playlistSongRequest) {
         Long playlistId = playlistSongRequest.getPlaylistId();
         Long songId = playlistSongRequest.getSongId();
+        String action = playlistSongRequest.getAction();
         try {
-            return playlistService.managePlaylistSong(playlistId, songId);
+            return playlistService.managePlaylistSong(playlistId, songId, action);
         } catch (Exception e) {
             return R.error("操作失败" + e.getMessage());
         }
@@ -264,10 +265,7 @@ public class MusicAppService {
     }
 
     public R clearUserCurrentPlaylist(Long userId) {
-        Playlist playlist = new Playlist()
-                .setUserId(userId)
-                .setType(Constants.CURRENT_PLAYLIST);
-        return playlistService.clearUserCurrentPlaylist(playlist);
+        return playlistService.clearUserCurrentPlaylist(userId);
     }
 
     /**

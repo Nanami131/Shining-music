@@ -14,6 +14,7 @@ import org.L2.music.infrastructure.PlaylistMapper;
 import org.L2.music.infrastructure.SingerMapper;
 import org.L2.music.infrastructure.SongMapper;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.redis.connection.DataType;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
@@ -39,6 +40,20 @@ public class SongService {
     @Autowired
     private StringRedisTemplate stringRedisTemplate;
 
+    private void migrateSetToZSetIfNeeded(String key) {
+        DataType type = stringRedisTemplate.type(key);
+        if (type == DataType.SET) {
+            Set<String> members = stringRedisTemplate.opsForSet().members(key);
+            stringRedisTemplate.delete(key);
+            if (members != null && !members.isEmpty()) {
+                double score = System.currentTimeMillis();
+                for (String member : members) {
+                    stringRedisTemplate.opsForZSet().add(key, member, score++);
+                }
+            }
+        }
+    }
+
     public R getSongInfo(Long songId) {
         // TODO: 可考虑增加热度统计和缓存
         try {
@@ -61,13 +76,11 @@ public class SongService {
         }
     }
 
-    /**
-     * 获取歌单内的歌曲列表
-     * 歌单歌曲关系存储在 Redis Set: key = playlist:{playlistId}, value = songId 字符串
-     */
     public R getPlaylistSongs(Long playlistId) {
         try {
-            Set<String> songIdSet = stringRedisTemplate.opsForSet().members("playlist:" + playlistId);
+            String key = "playlist:" + playlistId;
+            migrateSetToZSetIfNeeded(key);
+            Set<String> songIdSet = stringRedisTemplate.opsForZSet().range(key, 0, -1);
             List<Song> songs = new ArrayList<>();
             if (songIdSet != null && !songIdSet.isEmpty()) {
                 for (String idStr : songIdSet) {
@@ -78,7 +91,6 @@ public class SongService {
                             songs.add(song);
                         }
                     } catch (NumberFormatException ignored) {
-                        // 忽略非法 ID
                     }
                 }
             }

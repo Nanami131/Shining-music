@@ -120,6 +120,7 @@ export default {
             const addResp = await musicApi.managePlaylistSong({
               playlistId,
               songId: song.id,
+              action: 'add',
             });
             if (!addResp.data?.passed) {
               alert('加入播放列表失败：' + (addResp.data?.message || '未知错误'));

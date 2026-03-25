@@ -243,6 +243,7 @@ export default {
             const addResponse = await musicApi.managePlaylistSong({
               playlistId: currentPlaylistId,
               songId: song.id,
+              action: 'add',
             });
             if (!addResponse.data?.passed) {
               alert('加入当前播放列表失败：' + (addResponse.data?.message || '未知错误'));

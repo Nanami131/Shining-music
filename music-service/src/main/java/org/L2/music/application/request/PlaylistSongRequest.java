@@ -9,4 +9,5 @@ public class PlaylistSongRequest {
     private Long Id;
     private Long playlistId;
     private Long songId;
+    private String action;
 }

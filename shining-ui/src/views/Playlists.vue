@@ -280,7 +280,7 @@ export default {
         if (this.selectedFavoriteSongIds.length) {
           for (const songId of this.selectedFavoriteSongIds) {
             try {
-              await musicApi.managePlaylistSong({ playlistId, songId });
+              await musicApi.managePlaylistSong({ playlistId, songId, action: 'add' });
             } catch (e) {
               // 单首失败不影响整体
               console.error('添加歌曲到歌单失败', e);

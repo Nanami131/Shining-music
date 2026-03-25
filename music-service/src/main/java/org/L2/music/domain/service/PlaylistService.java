@@ -16,10 +16,13 @@ import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
+import org.springframework.data.redis.connection.DataType;
+
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 @Service
 public class PlaylistService {
@@ -36,7 +39,25 @@ public class PlaylistService {
     @Autowired
     private SimpleMinioService simpleMinioService;
 
+    private void migrateSetToZSetIfNeeded(String key) {
+        DataType type = stringRedisTemplate.type(key);
+        if (type == DataType.SET) {
+            Set<String> members = stringRedisTemplate.opsForSet().members(key);
+            stringRedisTemplate.delete(key);
+            if (members != null && !members.isEmpty()) {
+                double score = System.currentTimeMillis();
+                for (String member : members) {
+                    stringRedisTemplate.opsForZSet().add(key, member, score++);
+                }
+            }
+        }
+    }
+
     public R managePlaylistSong(Long playlistId, Long songId) throws Exception {
+        return managePlaylistSong(playlistId, songId, null);
+    }
+
+    public R managePlaylistSong(Long playlistId, Long songId, String action) throws Exception {
         if (playlistId == null || songId == null) {
             return R.error("歌单或歌曲不能为空");
         }
@@ -46,20 +67,35 @@ public class PlaylistService {
         if (playlistMapper.selectById(playlistId) == null) {
             return R.error("歌单不存在");
         }
-        boolean exists = Boolean.TRUE.equals(
-                stringRedisTemplate.opsForSet()
-                        .isMember("playlist:" + playlistId, String.valueOf(songId))
-        );
-        if (exists) {
-            stringRedisTemplate.opsForSet().remove("playlist:" + playlistId, String.valueOf(songId));
-        } else {
-            Long size = stringRedisTemplate.opsForSet().size("playlist:" + playlistId);
+        String key = "playlist:" + playlistId;
+        migrateSetToZSetIfNeeded(key);
+        String songKey = String.valueOf(songId);
+        Double score = stringRedisTemplate.opsForZSet().score(key, songKey);
+        boolean exists = score != null;
+        if ("add".equals(action)) {
+            if (exists) return R.success("歌曲已在歌单中");
+            Long size = stringRedisTemplate.opsForZSet().zCard(key);
             if (size != null && size >= Constants.MAX_PLAYLIST_SIZE) {
                 return R.error("歌单歌曲数量已达上限");
             }
-            stringRedisTemplate.opsForSet().add("playlist:" + playlistId, String.valueOf(songId));
+            stringRedisTemplate.opsForZSet().add(key, songKey, System.currentTimeMillis());
+            return R.success("添加成功");
+        } else if ("remove".equals(action)) {
+            if (!exists) return R.success("歌曲不在歌单中");
+            stringRedisTemplate.opsForZSet().remove(key, songKey);
+            return R.success("移除成功");
+        } else {
+            if (exists) {
+                stringRedisTemplate.opsForZSet().remove(key, songKey);
+            } else {
+                Long size = stringRedisTemplate.opsForZSet().zCard(key);
+                if (size != null && size >= Constants.MAX_PLAYLIST_SIZE) {
+                    return R.error("歌单歌曲数量已达上限");
+                }
+                stringRedisTemplate.opsForZSet().add(key, songKey, System.currentTimeMillis());
+            }
+            return R.success("歌单歌曲修改成功");
         }
-        return R.success("歌单歌曲修改成功");
     }
 
     public boolean isSongFavorite(Long userId, Long songId) {
@@ -70,8 +106,10 @@ public class PlaylistService {
         if (favorite == null) {
             return false;
         }
-        return Boolean.TRUE.equals(stringRedisTemplate.opsForSet()
-                .isMember("playlist:" + favorite.getId(), String.valueOf(songId)));
+        String key = "playlist:" + favorite.getId();
+        migrateSetToZSetIfNeeded(key);
+        Double score = stringRedisTemplate.opsForZSet().score(key, String.valueOf(songId));
+        return score != null;
     }
 
     public R toggleFavoriteSong(Long userId, Long songId) {
@@ -86,18 +124,19 @@ public class PlaylistService {
             return R.error("初始化收藏歌单失败");
         }
         String key = "playlist:" + favorite.getId();
+        migrateSetToZSetIfNeeded(key);
         String songKey = String.valueOf(songId);
-        boolean exists = Boolean.TRUE.equals(stringRedisTemplate.opsForSet().isMember(key, songKey));
+        Double score = stringRedisTemplate.opsForZSet().score(key, songKey);
         boolean favoriteNow;
-        if (exists) {
-            stringRedisTemplate.opsForSet().remove(key, songKey);
+        if (score != null) {
+            stringRedisTemplate.opsForZSet().remove(key, songKey);
             favoriteNow = false;
         } else {
-            Long size = stringRedisTemplate.opsForSet().size(key);
+            Long size = stringRedisTemplate.opsForZSet().zCard(key);
             if (size != null && size >= Constants.MAX_PLAYLIST_SIZE) {
                 return R.error("收藏歌单已满");
             }
-            stringRedisTemplate.opsForSet().add(key, songKey);
+            stringRedisTemplate.opsForZSet().add(key, songKey, System.currentTimeMillis());
             favoriteNow = true;
         }
         return R.success("收藏状态更新成功", Map.of(
@@ -285,14 +324,13 @@ public class PlaylistService {
         return R.success("封面修改成功", avatarUrl);
     }
 
-    public R clearUserCurrentPlaylist(Playlist playlist) {
+    public R clearUserCurrentPlaylist(Long userId) {
         try {
-            List<Playlist> query = playlistMapper.query(playlist);
-            if (query == null || query.isEmpty()) {
-                createPlaylist(playlist.setName("当前列表" + playlist.getUserId()));
-                return R.error("当前用户没有播放列表");
+            Playlist playlist = ensureCurrentPlaylist(userId);
+            if (playlist == null || playlist.getId() == null) {
+                return R.error("初始化当前列表失败");
             }
-            stringRedisTemplate.delete("playlist:" + query.get(0).getId());
+            stringRedisTemplate.delete("playlist:" + playlist.getId());
             return R.success("清除成功");
         } catch (Exception e) {
             return R.error("清除失败" + e.getMessage());

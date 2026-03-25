@@ -280,6 +280,10 @@ export default {
     },
   },
   created() {
+    this._playSeq = 0;
+    this._playingLock = false;
+    this._lastPlaylistLoadId = 0;
+    this._playlistSetByEvent = false;
     const userBase = JSON.parse(localStorage.getItem('userBase') || '{}');
     this.userId = userBase.id ?? null;
     if (this.userId) {
@@ -365,6 +369,7 @@ export default {
         this.userId = newUserId;
         await this.loadCurrentPlaylist();
       } else {
+        this.reportPlayEnd('logout');
         this.userId = null;
         this.currentPlaylistId = null;
         this.currentPlaylistSongs = [];
@@ -372,7 +377,10 @@ export default {
         this.currentIndex = -1;
         this.isPlaying = false;
         this.audio.pause();
+        this.audio.src = '';
         this.currentTime = 0;
+        this.duration = 0;
+        this.currentSong = {};
       }
     },
 
@@ -389,11 +397,21 @@ export default {
       } else if (this.userId && this.currentPlaylistSongs.length) {
         this.playlist = this.currentPlaylistSongs.map(song => song.id);
         this.currentIndex = this.playlist.indexOf(songId);
+      } else {
+        this.playlist = [songId];
+        this.currentIndex = 0;
+        this._playlistSetByEvent = true;
       }
       await this.playSong(songId);
+      if (this.currentIndex < 0) {
+        this.currentIndex = this.playlist.indexOf(songId);
+      }
       this._playlistSetByEvent = false;
     },
     async playSong(songId) {
+      if (this._playingLock) return;
+      this._playingLock = true;
+      const playId = ++this._playSeq;
       try {
         this.reportPlayEnd('switch');
         this.audio.pause();
@@ -402,22 +420,27 @@ export default {
         this.isPlaying = false;
 
         const response = await musicApi.playSong(songId, this.userId);
-        if (response.data.passed) {
+        if (this._playSeq !== playId) return;
+        if (response.data && response.data.passed) {
           this.currentSong = response.data.data;
           await this.ensureArtistNameLoaded(this.currentSong.artistId);
+          if (this._playSeq !== playId) return;
           if (this.userId) {
             await this.ensureCurrentPlaylistReady();
             await this.addSongToCurrentPlaylist(this.currentSong);
           }
+          if (this._playSeq !== playId) return;
           this.audio.src = this.currentSong.fileUrl || '';
           this.audio.play();
           this.isPlaying = true;
           this.loadAllLyrics(songId);
         } else {
-          this.showApiError(response.data.message, '获取歌曲信息失败：');
+          this.showApiError(response.data ? response.data.message : '未知错误', '获取歌曲信息失败：');
         }
       } catch (error) {
         this.showApiError(error.message, '播放歌曲失败：');
+      } finally {
+        this._playingLock = false;
       }
     },
     playPrev() {
@@ -577,7 +600,8 @@ export default {
         try {
           const response = await musicApi.managePlaylistSong({
             playlistId: this.currentPlaylistId,
-            songId: song.id
+            songId: song.id,
+            action: 'add',
           });
           if (!response.data || !response.data.passed) {
             throw new Error(response.data ? response.data.message : '未知错误');
@@ -603,12 +627,22 @@ export default {
       if (removedSong && this.currentSong && removedSong.id === this.currentSong.id) {
         this.isPlaying = false;
         this.audio.pause();
+        this.audio.src = '';
         this.currentTime = 0;
+        if (this.currentPlaylistSongs.length > 0) {
+          const nextIdx = Math.min(index, this.currentPlaylistSongs.length - 1);
+          this.currentSong = { ...this.currentPlaylistSongs[nextIdx] };
+          this.currentIndex = nextIdx;
+        } else {
+          this.currentSong = {};
+          this.currentIndex = -1;
+        }
       }
       try {
         const response = await musicApi.managePlaylistSong({
           playlistId: this.currentPlaylistId,
-          songId
+          songId,
+          action: 'remove',
         });
         if (!response.data || !response.data.passed) {
           throw new Error(response.data ? response.data.message : '未知错误');
