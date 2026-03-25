@@ -139,15 +139,19 @@ export default {
       const file = event.target.files[0];
       if (file) {
         this.songFileForm.file = file;
-        const reader = new FileReader();
-        reader.onload = () => {
-          this.songFileForm.md5 = md5(reader.result);
-        };
-        reader.readAsArrayBuffer(file);
+        this._songMd5Promise = new Promise((resolve) => {
+          const reader = new FileReader();
+          reader.onload = () => {
+            this.songFileForm.md5 = md5(reader.result);
+            resolve();
+          };
+          reader.readAsArrayBuffer(file);
+        });
       }
     },
     async handleUploadSong() {
       try {
+        if (this._songMd5Promise) await this._songMd5Promise;
         const response = await musicApi.uploadSong(
             this.songFileForm.id,
             this.songFileForm.file,
@@ -190,15 +194,19 @@ export default {
       const file = event.target.files[0];
       if (file) {
         this.coverForm.file = file;
-        const reader = new FileReader();
-        reader.onload = () => {
-          this.coverForm.md5 = md5(reader.result);
-        };
-        reader.readAsArrayBuffer(file);
+        this._coverMd5Promise = new Promise((resolve) => {
+          const reader = new FileReader();
+          reader.onload = () => {
+            this.coverForm.md5 = md5(reader.result);
+            resolve();
+          };
+          reader.readAsArrayBuffer(file);
+        });
       }
     },
     async handleUploadSongCover() {
       try {
+        if (this._coverMd5Promise) await this._coverMd5Promise;
         const response = await musicApi.uploadSongCover(
             this.coverForm.id,
             this.coverForm.file,

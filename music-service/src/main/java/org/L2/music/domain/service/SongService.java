@@ -101,6 +101,9 @@ public class SongService {
     }
 
     public R uploadSong(Long id, MultipartFile file) {
+        if (songMapper.selectById(id) == null) {
+            return R.error("歌曲不存在");
+        }
         String originalFilename = file.getOriginalFilename();
         String fileName = FileNameGenerateService.defineNamePath(originalFilename, "/song/", id, 5);
         String fileUrl = minioProperties.getEndpoint() + "/" + minioProperties.getBucketName() + fileName;
@@ -110,8 +113,13 @@ public class SongService {
             return R.error(result);
         }
         try {
-            songMapper.update(song);
+            int rows = songMapper.update(song);
+            if (rows == 0) {
+                try { simpleMinioService.deleteFile(fileName); } catch (Exception ignored) {}
+                return R.error("数据库更新0行，歌曲可能已被删除");
+            }
         } catch (Exception e) {
+            try { simpleMinioService.deleteFile(fileName); } catch (Exception ignored) {}
             return R.error("数据库更新失败" + e.getMessage());
         }
 
@@ -119,6 +127,9 @@ public class SongService {
     }
 
     public R uploadSongAvatar(Long id, MultipartFile file) {
+        if (songMapper.selectById(id) == null) {
+            return R.error("歌曲不存在");
+        }
         String originalFilename = file.getOriginalFilename();
         String fileName = FileNameGenerateService.defineNamePath(originalFilename, "/song/cover/", id, 5);
         String avatarUrl = minioProperties.getEndpoint() + "/" + minioProperties.getBucketName() + fileName;
@@ -131,8 +142,13 @@ public class SongService {
             return R.error(result);
         }
         try {
-            songMapper.update(song);
+            int rows = songMapper.update(song);
+            if (rows == 0) {
+                try { simpleMinioService.deleteFile(fileName); } catch (Exception ignored) {}
+                return R.error("数据库更新0行，歌曲可能已被删除");
+            }
         } catch (Exception e) {
+            try { simpleMinioService.deleteFile(fileName); } catch (Exception ignored) {}
             return R.error("数据库更新失败" + e.getMessage());
         }
 

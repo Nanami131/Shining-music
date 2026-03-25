@@ -118,7 +118,7 @@ export default {
     heroStats() {
       return [
         { value: `${this.posts.length || 0}`, label: '实时帖子' },
-        { value: this.totalPlays, label: '全站播放量' },
+        { value: this.totalPlays, label: '我的播放量' },
       ];
     },
   },

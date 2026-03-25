@@ -73,15 +73,19 @@ export default {
       const file = event.target.files[0];
       if (file) {
         this.uploadForm.file = file;
-        const reader = new FileReader();
-        reader.onload = () => {
-          this.uploadForm.md5 = md5(reader.result);
-        };
-        reader.readAsArrayBuffer(file);
+        this._videoMd5Promise = new Promise((resolve) => {
+          const reader = new FileReader();
+          reader.onload = () => {
+            this.uploadForm.md5 = md5(reader.result);
+            resolve();
+          };
+          reader.readAsArrayBuffer(file);
+        });
       }
     },
     async handleUploadVideo() {
       try {
+        if (this._videoMd5Promise) await this._videoMd5Promise;
         const response = await musicApi.uploadVideo(
           this.uploadForm.singerId,
           this.uploadForm.title,

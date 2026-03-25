@@ -107,6 +107,9 @@ public class SingerService {
      * 更新歌手头像
      */
     public R updateSingerAvatar(Long id, MultipartFile file) {
+        if (singerMapper.selectById(id) == null) {
+            return R.error("歌手不存在");
+        }
         String originalFilename = file.getOriginalFilename();
         String fileName = FileNameGenerateService.defineNamePath(originalFilename, "/singer/avator/", id, 5);
         String avatarUrl = minioProperties.getEndpoint() + "/" + minioProperties.getBucketName() + fileName;
@@ -119,8 +122,13 @@ public class SingerService {
             return R.error(result);
         }
         try {
-            singerMapper.update(singer);
+            int rows = singerMapper.update(singer);
+            if (rows == 0) {
+                try { simpleMinioService.deleteFile(fileName); } catch (Exception ignored) {}
+                return R.error("数据库更新0行，歌手可能已被删除");
+            }
         } catch (Exception e) {
+            try { simpleMinioService.deleteFile(fileName); } catch (Exception ignored) {}
             return R.error("数据库更新失败" + e.getMessage());
         }
 
