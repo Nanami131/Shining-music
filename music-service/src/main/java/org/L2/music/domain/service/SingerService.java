@@ -81,9 +81,10 @@ public class SingerService {
         if (singer.getId() == null) {
             return R.error("非法请求");
         }
-        // 不希望因为图片失败影响资料更新，这里不处理头像
+        if (singerMapper.selectById(singer.getId()) == null) {
+            return R.error("歌手不存在");
+        }
         singer.setAvatarUrl(null);
-        // TODO: 需要根据业务补充更严格的校验
         try {
             singerMapper.update(singer);
             return R.success("更新歌手成功");
@@ -133,6 +134,10 @@ public class SingerService {
         }
 
         return R.success("头像修改成功", avatarUrl);
+    }
+
+    public Singer getSingerById(Long id) {
+        return singerMapper.selectById(id);
     }
 
     public List<Singer> listSingers() {

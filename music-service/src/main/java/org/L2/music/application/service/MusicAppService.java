@@ -2,6 +2,7 @@ package org.L2.music.application.service;
 
 import org.L2.common.R;
 import org.L2.common.annotation.PermissionCheck;
+import org.L2.common.context.UserContext;
 import org.L2.common.mq.PlayRecordProducer;
 import org.L2.common.rpc.UserClient;
 import org.L2.music.application.dto.*;
@@ -180,6 +181,7 @@ public class MusicAppService {
             playRecordProducer.sendPlayEndRecord(userId, songId, playbackInfo);
         } catch (Exception e) {
             log.error("Failed to send play end record, userId={}, songId={}", userId, songId, e);
+            return R.error("播放结束事件记录失败");
         }
         return R.success("播放结束事件已记录");
     }
@@ -400,8 +402,20 @@ public class MusicAppService {
     }
 
     public R deleteSinger(Long singerId) {
+        Long currentUserId = UserContext.getUserId();
+        if (currentUserId == null) {
+            return R.error("用户未登录");
+        }
+        Singer existing = singerService.getSingerById(singerId);
+        if (existing == null) {
+            return R.error("歌手不存在");
+        }
+        if (existing.getUserId() != null && !currentUserId.equals(existing.getUserId())) {
+            return R.error("无权删除他人创建的歌手");
+        }
         try {
             singerService.deleteSinger(singerId);
+            searchSyncService.syncSongsBySinger(singerId);
         } catch (Exception e) {
             return R.error("删除失败" + e.getMessage());
         }

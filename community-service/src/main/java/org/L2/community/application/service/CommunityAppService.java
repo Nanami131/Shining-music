@@ -2,6 +2,7 @@ package org.L2.community.application.service;
 
 import org.L2.common.R;
 import org.L2.common.annotation.PermissionCheck;
+import org.L2.common.context.UserContext;
 import org.L2.common.minio.MinioProperties;
 import org.L2.common.minio.service.FileNameGenerateService;
 import org.L2.common.minio.service.SimpleMinioService;
@@ -68,12 +69,15 @@ public class CommunityAppService {
     }
 
     /**
-     * 更新帖子。
+     * 更新帖子（仅作者可操作）。
      */
     public R updatePost(PostUpdateRequest request) {
         if (request == null || request.getId() == null) {
             return R.error("帖子ID不能为空");
         }
+
+        R authorCheck = checkPostAuthor(request.getId());
+        if (authorCheck != null) return authorCheck;
 
         ForumPost post = new ForumPost()
                 .setId(request.getId())
@@ -84,10 +88,13 @@ public class CommunityAppService {
     }
 
     /**
-     * 删除帖子，同时清理关联评论（事务保护）。
+     * 删除帖子，同时清理关联评论（事务保护，仅作者可操作）。
      */
     @Transactional(rollbackFor = Exception.class)
     public R deletePost(Long id) {
+        R authorCheck = checkPostAuthor(id);
+        if (authorCheck != null) return authorCheck;
+
         R result = forumPostService.deletePost(id);
         if (result.getPassed()) {
             forumCommentService.deleteByPostId(id);
@@ -213,6 +220,21 @@ public class CommunityAppService {
         String url = minioProperties.getEndpoint() + "/"
                 + minioProperties.getBucketName() + "/" + objectName;
         return R.success("上传成功", Map.of("url", url));
+    }
+
+    private R checkPostAuthor(Long postId) {
+        Long currentUserId = UserContext.getUserId();
+        if (currentUserId == null) {
+            return R.error("用户未登录");
+        }
+        ForumPost existing = forumPostService.getPostById(postId);
+        if (existing == null) {
+            return R.error("帖子不存在");
+        }
+        if (!currentUserId.equals(existing.getUserId())) {
+            return R.error("无权操作他人帖子");
+        }
+        return null;
     }
 
     /**

@@ -107,24 +107,30 @@ public class ForumCommentService {
                 return R.error("评论不存在");
             }
 
+            int deletedCount = 1;
+            boolean isRootComment = comment.getParentId() == null;
+
+            if (isRootComment) {
+                int childrenDeleted = forumCommentMapper.deleteByRootId(comment.getId());
+                deletedCount += childrenDeleted;
+            }
+
             forumCommentMapper.deleteById(id);
 
             ForumPost post = forumPostMapper.selectById(comment.getPostId());
             if (post != null) {
                 Integer count = post.getCommentCount();
-                post.setCommentCount(count != null && count > 0 ? count - 1 : 0);
+                int newCount = (count != null ? count : 0) - deletedCount;
+                post.setCommentCount(Math.max(newCount, 0));
                 forumPostMapper.update(post);
             }
 
-            if (comment.getParentId() != null) {
-                Long rootId = comment.getRootId();
-                if (rootId != null) {
-                    ForumComment rootComment = forumCommentMapper.selectById(rootId);
-                    if (rootComment != null) {
-                        Integer replyCount = rootComment.getReplyCount();
-                        rootComment.setReplyCount(replyCount != null && replyCount > 0 ? replyCount - 1 : 0);
-                        forumCommentMapper.update(rootComment);
-                    }
+            if (!isRootComment && comment.getRootId() != null) {
+                ForumComment rootComment = forumCommentMapper.selectById(comment.getRootId());
+                if (rootComment != null) {
+                    Integer replyCount = rootComment.getReplyCount();
+                    rootComment.setReplyCount(replyCount != null && replyCount > 0 ? replyCount - 1 : 0);
+                    forumCommentMapper.update(rootComment);
                 }
             }
 

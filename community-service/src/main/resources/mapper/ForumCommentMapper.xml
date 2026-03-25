@@ -123,6 +123,10 @@
         DELETE FROM post_comments WHERE post_id = #{postId}
     </delete>
 
+    <delete id="deleteByRootId" parameterType="long">
+        DELETE FROM post_comments WHERE root_id = #{rootId} AND id != #{rootId}
+    </delete>
+
     <select id="getMaxFloorNo" parameterType="long" resultType="java.lang.Integer">
         SELECT MAX(floor_no) FROM post_comments WHERE post_id = #{postId} AND comment_type = 1
     </select>

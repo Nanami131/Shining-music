@@ -407,6 +407,7 @@ export default {
           alert('删除失败：' + (response.data?.message || '未知错误'));
           return;
         }
+        this.$bus.emit('refreshCurrentPlaylist');
         alert('删除成功');
         this.$router.push('/playlists');
       } catch (error) {

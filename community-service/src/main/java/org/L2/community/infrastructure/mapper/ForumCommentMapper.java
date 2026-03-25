@@ -21,6 +21,8 @@ public interface ForumCommentMapper {
 
     void deleteByPostId(Long postId);
 
+    int deleteByRootId(Long rootId);
+
     Integer getMaxFloorNo(Long postId);
 
     List<ForumComment> query(ForumComment condition);
