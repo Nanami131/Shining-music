@@ -100,8 +100,6 @@ public class SingerService {
     public void deleteSinger(Long singerId) {
         singerMapper.deleteById(singerId);
         songMapper.deleteBySingerId(singerId);
-        // TODO: 这里还可以补充删除评论、社区动态等关联数据
-        // 歌单关系存储在 redis 中，不需要物理级联删除
     }
 
     /**

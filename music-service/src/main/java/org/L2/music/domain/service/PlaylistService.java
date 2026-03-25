@@ -269,9 +269,16 @@ public class PlaylistService {
     public R getPlaylistInfo(Long playlistId) {
         try {
             Playlist playlist = playlistMapper.selectById(playlistId);
-            // TODO: 这里后续可以加上基于 visibility 的权限校验
             if (playlist == null) {
                 return R.error("歌单不存在");
+            }
+            boolean isPrivate = playlist.getVisibility() != null && playlist.getVisibility() == 1;
+            if (isPrivate) {
+                Long currentUserId = UserContext.getUserId();
+                boolean isOwner = currentUserId != null && currentUserId.equals(playlist.getUserId());
+                if (!isOwner) {
+                    return R.error("该歌单为私密歌单，无权访问");
+                }
             }
             return R.success("获取歌单信息成功", playlist);
         } catch (Exception e) {
@@ -302,7 +309,10 @@ public class PlaylistService {
         }
         playlist.setUpdatedAt(LocalDateTime.now());
         try {
-            playlistMapper.update(playlist);
+            int rows = playlistMapper.update(playlist);
+            if (rows == 0) {
+                return R.error("歌单更新失败，可能已被删除");
+            }
             return R.success("歌单更新成功");
         } catch (Exception e) {
             return R.error("歌单更新失败" + e.getMessage());
@@ -395,11 +405,11 @@ public class PlaylistService {
      */
     private R checkPlaylistOwnership(Playlist playlist) {
         Long currentUserId = UserContext.getUserId();
-        if (currentUserId == null) {
-            return null;
-        }
         if (playlist.getUserId() == null) {
             return null;
+        }
+        if (currentUserId == null) {
+            return R.error("用户未登录");
         }
         if (!currentUserId.equals(playlist.getUserId())) {
             return R.error("无权操作他人歌单");

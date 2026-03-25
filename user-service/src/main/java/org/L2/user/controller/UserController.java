@@ -1,6 +1,7 @@
 package org.L2.user.controller;
 
 import org.L2.common.R;
+import org.L2.common.context.UserContext;
 import org.L2.user.application.request.LoginRequest;
 import org.L2.user.application.request.RegisterRequest;
 import org.L2.user.application.request.ResetPasswordRequest;
@@ -53,6 +54,10 @@ public class UserController {
      */
     @PostMapping("/reset-password")
     public R resetPassword(@RequestBody ResetPasswordRequest resetPasswordRequest) {
+        Long trustedUserId = UserContext.getUserId();
+        if (trustedUserId != null && !trustedUserId.equals(resetPasswordRequest.getId())) {
+            return R.error("无权修改他人密码");
+        }
         return userAppService.resetPassword(resetPasswordRequest);
     }
 
@@ -96,6 +101,10 @@ public class UserController {
     public R updateAvatar(@RequestParam("id") Long id,
                           @RequestParam("avatarFile") MultipartFile avatarFile,
                           @RequestParam("md5") String md5) {
+        Long trustedUserId = UserContext.getUserId();
+        if (trustedUserId != null && !trustedUserId.equals(id)) {
+            return R.error("无权修改他人头像");
+        }
         return userAppService.updateAvatar(id, avatarFile, md5);
     }
 
@@ -108,6 +117,10 @@ public class UserController {
      */
     @PostMapping("/logout")
     public R logout(@RequestParam("userId") Long userId, @RequestParam("deviceCode") String deviceCode) {
+        Long trustedUserId = UserContext.getUserId();
+        if (trustedUserId != null) {
+            userId = trustedUserId;
+        }
         return userAppService.logout(userId, deviceCode);
     }
     /**

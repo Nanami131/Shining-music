@@ -101,6 +101,17 @@ public class SearchSyncService {
     }
 
     /**
+     * 从 ES 中删除指定歌曲 ID 列表的文档（歌手被删除后，歌曲已从 DB 移除，需手动清理 ES）。
+     */
+    public void deleteFromES(List<Long> songIds) {
+        if (songIds == null || songIds.isEmpty()) return;
+        for (Long songId : songIds) {
+            searchService.deleteDoc(songId);
+        }
+        log.info("Deleted {} song docs from ES after singer deletion", songIds.size());
+    }
+
+    /**
      * 增量同步单首歌曲（新增/更新歌曲或歌词后调用）。
      */
     public void syncSong(Long songId) {

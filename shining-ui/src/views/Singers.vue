@@ -71,7 +71,8 @@ export default {
     },
   },
   created() {
-    const userBase = JSON.parse(localStorage.getItem('userBase') || '{}');
+    let userBase = {};
+    try { userBase = JSON.parse(localStorage.getItem('userBase') || '{}'); } catch (e) { /* ignore */ }
     this.userId = userBase.id ?? null;
     this.loadSingers();
     this.loadHotSingers();

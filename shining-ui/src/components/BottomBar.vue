@@ -284,7 +284,8 @@ export default {
     this._playSeq = 0;
     this._lastPlaylistLoadId = 0;
     this._playlistSetByEvent = false;
-    const userBase = JSON.parse(localStorage.getItem('userBase') || '{}');
+    let userBase = {};
+    try { userBase = JSON.parse(localStorage.getItem('userBase') || '{}'); } catch (e) { /* ignore */ }
     this.userId = userBase.id ?? null;
     if (this.userId) {
       this.loadCurrentPlaylist();
@@ -362,7 +363,8 @@ export default {
 
     async handleUserStateChange() {
       const token = localStorage.getItem('token');
-      const userBase = JSON.parse(localStorage.getItem('userBase') || '{}');
+      let userBase = {};
+      try { userBase = JSON.parse(localStorage.getItem('userBase') || '{}'); } catch (e) { /* ignore */ }
       const newUserId = userBase.id ?? null;
 
       if (token && newUserId) {

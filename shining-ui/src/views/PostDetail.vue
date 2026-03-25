@@ -130,6 +130,12 @@ export default {
     this.loadUser();
     this.loadDetails();
   },
+  watch: {
+    '$route.params.id'(newId) {
+      this.postId = Number(newId);
+      this.loadDetails();
+    },
+  },
   computed: {
     sanitizedContent() {
       if (!this.post || !this.post.content) return '';

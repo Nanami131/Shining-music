@@ -139,12 +139,13 @@ export default {
       const file = event.target.files[0];
       if (file) {
         this.songFileForm.file = file;
-        this._songMd5Promise = new Promise((resolve) => {
+        this._songMd5Promise = new Promise((resolve, reject) => {
           const reader = new FileReader();
           reader.onload = () => {
             this.songFileForm.md5 = md5(reader.result);
             resolve();
           };
+          reader.onerror = () => reject(new Error('文件读取失败'));
           reader.readAsArrayBuffer(file);
         });
       }
@@ -194,12 +195,13 @@ export default {
       const file = event.target.files[0];
       if (file) {
         this.coverForm.file = file;
-        this._coverMd5Promise = new Promise((resolve) => {
+        this._coverMd5Promise = new Promise((resolve, reject) => {
           const reader = new FileReader();
           reader.onload = () => {
             this.coverForm.md5 = md5(reader.result);
             resolve();
           };
+          reader.onerror = () => reject(new Error('文件读取失败'));
           reader.readAsArrayBuffer(file);
         });
       }

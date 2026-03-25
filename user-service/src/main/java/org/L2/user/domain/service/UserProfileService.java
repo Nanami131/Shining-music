@@ -44,6 +44,13 @@ public class UserProfileService {
 
     @AutoFill(OperationType.UPDATE)
     public R updateUserProfile(User user) {
+        if (user.getId() == null) {
+            return R.error("用户ID不能为空");
+        }
+        List<User> existing = userMapper.query(new User().setId(user.getId()));
+        if (existing == null || existing.isEmpty()) {
+            return R.error("用户不存在");
+        }
         user.setAvatarUrl("").setPassword("").setSalt("");
         try {
             userMapper.update(user);
@@ -131,6 +138,13 @@ public class UserProfileService {
     }
 
     public R updateUserAvatar(Long id, MultipartFile file) {
+        if (id == null) {
+            return R.error("用户ID不能为空");
+        }
+        List<User> existing = userMapper.query(new User().setId(id));
+        if (existing == null || existing.isEmpty()) {
+            return R.error("用户不存在");
+        }
         String originalFilename = file.getOriginalFilename();
         String fileName = FileNameGenerateService.defineNamePath(originalFilename, "/user/avator/", id, 5);
         String avatarUrl = minioProperties.getEndpoint() + "/" + minioProperties.getBucketName() + fileName;

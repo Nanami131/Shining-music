@@ -401,6 +401,7 @@ public class MusicAppService {
         return singerService.createSinger(singer);
     }
 
+    @SuppressWarnings("unchecked")
     public R deleteSinger(Long singerId) {
         Long currentUserId = UserContext.getUserId();
         if (currentUserId == null) {
@@ -413,9 +414,16 @@ public class MusicAppService {
         if (existing.getUserId() != null && !currentUserId.equals(existing.getUserId())) {
             return R.error("无权删除他人创建的歌手");
         }
+        List<Long> songIds = new ArrayList<>();
+        R songsResult = songService.getSingerSongs(singerId);
+        if (songsResult.getPassed() && songsResult.getData() instanceof List) {
+            for (Song s : (List<Song>) songsResult.getData()) {
+                songIds.add(s.getId());
+            }
+        }
         try {
             singerService.deleteSinger(singerId);
-            searchSyncService.syncSongsBySinger(singerId);
+            searchSyncService.deleteFromES(songIds);
         } catch (Exception e) {
             return R.error("删除失败" + e.getMessage());
         }
@@ -423,6 +431,8 @@ public class MusicAppService {
     }
 
     public R updateSingerProfile(SingerFieldsUpdateRequest singerFieldsUpdateRequest) {
+        R ownerCheck = checkSingerOwnership(singerFieldsUpdateRequest.getId());
+        if (ownerCheck != null) return ownerCheck;
         Singer singer = new Singer();
         BeanUtils.copyProperties(singerFieldsUpdateRequest, singer);
         R result = singerService.updateSinger(singer);
@@ -433,11 +443,25 @@ public class MusicAppService {
     }
 
     public R updateSingerAvatar(Long id, MultipartFile avatarFile, String md5) {
+        R ownerCheck = checkSingerOwnership(id);
+        if (ownerCheck != null) return ownerCheck;
         R result = singerService.updateSingerAvatar(id, avatarFile);
         if (result.getPassed()) {
             searchSyncService.syncSongsBySinger(id);
         }
         return result;
+    }
+
+    private R checkSingerOwnership(Long singerId) {
+        if (singerId == null) return R.error("歌手ID不能为空");
+        Long currentUserId = UserContext.getUserId();
+        if (currentUserId == null) return R.error("用户未登录");
+        Singer singer = singerService.getSingerById(singerId);
+        if (singer == null) return R.error("歌手不存在");
+        if (singer.getUserId() != null && !currentUserId.equals(singer.getUserId())) {
+            return R.error("无权修改他人创建的歌手");
+        }
+        return null;
     }
 
     public R toggleFavoriteSong(Long userId, Long songId) {

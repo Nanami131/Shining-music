@@ -38,6 +38,11 @@ public class ForumCommentService {
         }
 
         try {
+            ForumPost post = forumPostMapper.selectById(comment.getPostId());
+            if (post == null) {
+                return R.error("帖子不存在");
+            }
+
             boolean isRootComment = (comment.getParentId() == null);
 
             if (isRootComment) {
@@ -50,6 +55,9 @@ public class ForumCommentService {
                 ForumComment parentComment = forumCommentMapper.selectById(comment.getParentId());
                 if (parentComment == null) {
                     return R.error("父评论不存在");
+                }
+                if (!comment.getPostId().equals(parentComment.getPostId())) {
+                    return R.error("父评论不属于当前帖子");
                 }
                 Long rootId = parentComment.getCommentType() == 1
                         ? parentComment.getId()
@@ -75,16 +83,13 @@ public class ForumCommentService {
                 }
             }
 
-            ForumPost post = forumPostMapper.selectById(comment.getPostId());
-            if (post != null) {
-                Integer count = post.getCommentCount();
-                if (count == null) {
-                    count = 0;
-                }
-                post.setCommentCount(count + 1);
-                post.setLastCommentAt(LocalDateTime.now());
-                forumPostMapper.update(post);
+            Integer count = post.getCommentCount();
+            if (count == null) {
+                count = 0;
             }
+            post.setCommentCount(count + 1);
+            post.setLastCommentAt(LocalDateTime.now());
+            forumPostMapper.update(post);
 
             return R.success("评论成功");
         } catch (Exception e) {

@@ -55,6 +55,18 @@ public class RegisterService {
         if(query!=null&&!query.isEmpty()){
             return R.error("用户名已存在");
         }
+        if (hasEmail) {
+            List<User> emailCheck = userMapper.query(new User().setEmail(user.getEmail()));
+            if (emailCheck != null && !emailCheck.isEmpty()) {
+                return R.error("该邮箱已被注册");
+            }
+        }
+        if (hasPhone) {
+            List<User> phoneCheck = userMapper.query(new User().setPhone(user.getPhone()));
+            if (phoneCheck != null && !phoneCheck.isEmpty()) {
+                return R.error("该手机号已被注册");
+            }
+        }
 
         String salt = BCrypt.gensalt(); // 生成随机盐值
         String hashedPassword = BCrypt.hashpw(user.getPassword(), salt);//加密

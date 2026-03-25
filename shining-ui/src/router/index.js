@@ -17,11 +17,19 @@ import Singers from '../views/Singers.vue';
 import Songs from '../views/Songs.vue';
 import Playlists from '../views/Playlists.vue';
 
-// 开发者模式路由，生产环境注释以下导入和路由
 import SingerManage from '../views/dev/SingerManage.vue';
 import SongManage from '../views/dev/SongManage.vue';
 import PlaylistManage from '../views/dev/PlaylistManage.vue';
 import VideoManage from '../views/dev/VideoManage.vue';
+
+const devGuard = (to, from, next) => {
+    const token = localStorage.getItem('token');
+    if (!token) {
+        next('/login');
+    } else {
+        next();
+    }
+};
 
 const routes = [
     {
@@ -105,26 +113,29 @@ const routes = [
         component: UserHome,
     },
 
-    // 开发者模式路由，生产环境注释以下路由
     {
         path: '/dev/singer',
         name: 'singer-manage',
         component: SingerManage,
+        beforeEnter: devGuard,
     },
     {
         path: '/dev/song',
         name: 'song-manage',
         component: SongManage,
+        beforeEnter: devGuard,
     },
     {
         path: '/dev/playlist',
         name: 'playlist-manage',
         component: PlaylistManage,
+        beforeEnter: devGuard,
     },
     {
         path: '/dev/video',
         name: 'video-manage',
         component: VideoManage,
+        beforeEnter: devGuard,
     },
 ];
 

@@ -113,6 +113,10 @@ public class MusicController {
     @GetMapping("/play/song/{songId}")
     public R playSong(@PathVariable("songId") Long songId,
                       @RequestParam(value = "userId", required = false) Long userId) {
+        Long trustedUserId = UserContext.getUserId();
+        if (trustedUserId != null) {
+            userId = trustedUserId;
+        }
         return musicAppService.playSong(songId, userId);
     }
 
@@ -124,6 +128,10 @@ public class MusicController {
 
     @PostMapping("/play/end")
     public R reportPlayEnd(@RequestBody java.util.Map<String, Object> body) {
+        Long trustedUserId = UserContext.getUserId();
+        if (trustedUserId != null) {
+            body.put("userId", trustedUserId);
+        }
         return musicAppService.reportPlayEnd(body);
     }
 
@@ -180,6 +188,10 @@ public class MusicController {
      */
     @PostMapping("/curPlaylist")
     public R createUserCurrentPlaylist(@RequestBody Long userId) {
+        Long trustedUserId = UserContext.getUserId();
+        if (trustedUserId != null) {
+            userId = trustedUserId;
+        }
         return musicAppService.createUserCurrentPlaylist(userId);
     }
 
@@ -213,6 +225,10 @@ public class MusicController {
      */
     @PostMapping("/playlist/clear")
     public R clearUserCurrentPlaylist(@RequestParam("userId") Long userId) {
+        Long trustedUserId = UserContext.getUserId();
+        if (trustedUserId != null) {
+            userId = trustedUserId;
+        }
         return musicAppService.clearUserCurrentPlaylist(userId);
     }
     /**
@@ -272,6 +288,10 @@ public class MusicController {
      */
     @GetMapping("/playlist/current")
     public R getCurrentPlaylist(@RequestParam("userId") Long userId) {
+        Long trustedUserId = UserContext.getUserId();
+        if (trustedUserId != null) {
+            userId = trustedUserId;
+        }
         return musicAppService.getCurrentPlaylist(userId);
     }
 

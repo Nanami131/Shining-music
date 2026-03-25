@@ -3,6 +3,7 @@ package org.L2.music.domain.service;
 import org.L2.common.R;
 import org.L2.music.domain.model.Lyrics;
 import org.L2.music.infrastructure.LyricsMapper;
+import org.L2.music.infrastructure.SongMapper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -16,6 +17,8 @@ import java.util.List;
 public class LyricsService {
     @Autowired
     private LyricsMapper lyricsMapper;
+    @Autowired
+    private SongMapper songMapper;
 
     private final LrcParser lrcParser = new LrcParser();
 
@@ -32,6 +35,9 @@ public class LyricsService {
     public R uploadLyrics(Long songId, MultipartFile file, String lang) {
         if (songId == null || songId <= 0) {
             return R.error("无效的歌曲ID");
+        }
+        if (songMapper.selectById(songId) == null) {
+            return R.error("歌曲不存在");
         }
         if (file == null || file.isEmpty()) {
             return R.error("文件不能为空");

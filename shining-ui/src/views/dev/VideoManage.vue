@@ -73,12 +73,13 @@ export default {
       const file = event.target.files[0];
       if (file) {
         this.uploadForm.file = file;
-        this._videoMd5Promise = new Promise((resolve) => {
+        this._videoMd5Promise = new Promise((resolve, reject) => {
           const reader = new FileReader();
           reader.onload = () => {
             this.uploadForm.md5 = md5(reader.result);
             resolve();
           };
+          reader.onerror = () => reject(new Error('文件读取失败'));
           reader.readAsArrayBuffer(file);
         });
       }

@@ -36,7 +36,7 @@ export default {
   name: 'Header',
   data() {
     return {
-      userBase: JSON.parse(localStorage.getItem('userBase') || '{}'),
+      userBase: (() => { try { return JSON.parse(localStorage.getItem('userBase') || '{}'); } catch (e) { return {}; } })(),
       isLoggedIn: !!localStorage.getItem('token'),
       defaultAvatar,
     };
@@ -53,7 +53,7 @@ export default {
   methods: {
     updateLoginState() {
       this.isLoggedIn = !!localStorage.getItem('token');
-      this.userBase = JSON.parse(localStorage.getItem('userBase') || '{}');
+      try { this.userBase = JSON.parse(localStorage.getItem('userBase') || '{}'); } catch (e) { this.userBase = {}; }
     },
     // 统一处理接口错误，“登录已过期，请重新登录”只弹一次
     showApiError(message, prefix = '') {

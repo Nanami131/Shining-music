@@ -167,7 +167,8 @@ export default {
     };
   },
   created() {
-    const userBase = JSON.parse(localStorage.getItem('userBase') || '{}');
+    let userBase = {};
+    try { userBase = JSON.parse(localStorage.getItem('userBase') || '{}'); } catch (e) { /* ignore */ }
     if (!userBase.id) {
       alert('请先登录再查看个人信息');
       this.$router.push('/login');

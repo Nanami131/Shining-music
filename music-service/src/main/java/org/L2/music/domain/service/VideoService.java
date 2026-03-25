@@ -6,6 +6,7 @@ import org.L2.common.minio.MinioProperties;
 import org.L2.common.minio.service.FileNameGenerateService;
 import org.L2.common.minio.service.SimpleMinioService;
 import org.L2.music.domain.model.Video;
+import org.L2.music.infrastructure.SingerMapper;
 import org.L2.music.infrastructure.VideoMapper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -20,6 +21,8 @@ public class VideoService {
 
     @Autowired
     private VideoMapper videoMapper;
+    @Autowired
+    private SingerMapper singerMapper;
     @Autowired
     private MinioProperties minioProperties;
     @Autowired
@@ -40,6 +43,9 @@ public class VideoService {
             return R.error("文件名非法");
         }
 
+        if (singerId != null && singerMapper.selectById(singerId) == null) {
+            return R.error("歌手不存在");
+        }
         long identity = singerId == null ? 0L : singerId;
         String fileName = FileNameGenerateService.defineNamePath(originalFilename, "/video/file/", identity, 6);
         String fileUrl = minioProperties.getEndpoint() + "/" + minioProperties.getBucketName() + fileName;
