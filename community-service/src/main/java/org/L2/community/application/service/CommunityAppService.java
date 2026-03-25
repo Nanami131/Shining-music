@@ -17,6 +17,7 @@ import org.L2.community.domain.service.ForumCommentService;
 import org.L2.community.domain.service.ForumPostService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.util.*;
@@ -83,8 +84,9 @@ public class CommunityAppService {
     }
 
     /**
-     * 删除帖子，同时清理关联评论。
+     * 删除帖子，同时清理关联评论（事务保护）。
      */
+    @Transactional(rollbackFor = Exception.class)
     public R deletePost(Long id) {
         R result = forumPostService.deletePost(id);
         if (result.getPassed()) {

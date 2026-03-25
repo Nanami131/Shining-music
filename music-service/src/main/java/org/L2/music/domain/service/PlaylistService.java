@@ -310,6 +310,9 @@ public class PlaylistService {
     }
 
     public R uploadPlaylistAvatar(Long id, MultipartFile file) {
+        if (playlistMapper.selectById(id) == null) {
+            return R.error("歌单不存在");
+        }
         String originalFilename = file.getOriginalFilename();
         String fileName = FileNameGenerateService.defineNamePath(originalFilename, "/playlist/cover/", id, 5);
         String avatarUrl = minioProperties.getEndpoint() + "/" + minioProperties.getBucketName() + fileName;
@@ -322,8 +325,13 @@ public class PlaylistService {
             return R.error(result);
         }
         try {
-            playlistMapper.update(playlist);
+            int rows = playlistMapper.update(playlist);
+            if (rows == 0) {
+                try { simpleMinioService.deleteFile(fileName); } catch (Exception ignored) {}
+                return R.error("数据库更新0行，歌单可能已被删除");
+            }
         } catch (Exception e) {
+            try { simpleMinioService.deleteFile(fileName); } catch (Exception ignored) {}
             return R.error("数据库更新失败" + e.getMessage());
         }
 

@@ -228,40 +228,30 @@ export default {
       }
       this.songOperating = true;
       try {
-        if (this.userId) {
-          const clearResponse = await musicApi.clearCurrentPlaylist(this.userId);
-          if (!clearResponse.data?.passed) {
-            alert('清空当前播放列表失败：' + (clearResponse.data?.message || '未知错误'));
-            return;
-          }
-          const currentResponse = await musicApi.getCurrentPlaylist(this.userId);
-          if (!currentResponse.data?.passed || !currentResponse.data?.data?.id) {
-            alert('获取当前播放列表失败：' + (currentResponse.data?.message || '未知错误'));
-            return;
-          }
-          const currentPlaylistId = currentResponse.data.data.id;
-          for (const song of this.songs) {
-            const addResponse = await musicApi.managePlaylistSong({
-              playlistId: currentPlaylistId,
-              songId: song.id,
-              action: 'add',
-            });
-            if (!addResponse.data?.passed) {
-              alert('加入当前播放列表失败：' + (addResponse.data?.message || '未知错误'));
-              return;
-            }
-          }
-          this.$bus.emit('refreshCurrentPlaylist');
-        }
-
         this.$bus.emit('playSong', {
           songId: this.songs[0].id,
           playlist: this.songs.map(song => song.id),
           index: 0,
           source: 'songs',
         });
+
+        if (this.userId) {
+          await musicApi.clearCurrentPlaylist(this.userId).catch(() => {});
+          const currentResponse = await musicApi.getCurrentPlaylist(this.userId);
+          const currentPlaylistId = currentResponse.data?.data?.id;
+          if (currentPlaylistId) {
+            for (const song of this.songs) {
+              await musicApi.managePlaylistSong({
+                playlistId: currentPlaylistId,
+                songId: song.id,
+                action: 'add',
+              }).catch(() => {});
+            }
+          }
+          this.$bus.emit('refreshCurrentPlaylist');
+        }
       } catch (error) {
-        alert('播放全部异常：' + error.message);
+        console.error('播放全部服务端同步异常', error);
       } finally {
         this.songOperating = false;
       }
