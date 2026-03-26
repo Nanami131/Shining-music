@@ -284,11 +284,13 @@ export default {
     this._playSeq = 0;
     this._lastPlaylistLoadId = 0;
     this._playlistSetByEvent = false;
+    this._saveStateTimer = null;
     let userBase = {};
     try { userBase = JSON.parse(localStorage.getItem('userBase') || '{}'); } catch (e) { /* ignore */ }
     this.userId = userBase.id ?? null;
     if (this.userId) {
       this.loadCurrentPlaylist();
+      this.restorePlaybackState();
     }
     this.audio.addEventListener('timeupdate', this.updateProgress);
     this.audio.addEventListener('loadedmetadata', this.updateDuration);
@@ -296,9 +298,11 @@ export default {
     this.$bus.on('playSong', this.handlePlaySongEvent);
     this.$bus.on('refreshCurrentPlaylist', this.loadCurrentPlaylist);
     window.addEventListener('userBaseUpdated', this.handleUserStateChange);
+    window.addEventListener('beforeunload', this.onBeforeUnload);
   },
   beforeDestroy() {
     this.reportPlayEnd('destroy');
+    this.savePlaybackStateNow();
     this.audio.removeEventListener('timeupdate', this.updateProgress);
     this.audio.removeEventListener('loadedmetadata', this.updateDuration);
     this.audio.removeEventListener('ended', this.handleEnded);
@@ -309,8 +313,55 @@ export default {
     window.removeEventListener('userBaseUpdated', this.handleUserStateChange);
     window.removeEventListener('mousemove', this.onLyricsResizing);
     window.removeEventListener('mouseup', this.stopLyricsResize);
+    window.removeEventListener('beforeunload', this.onBeforeUnload);
+    if (this._saveStateTimer) clearTimeout(this._saveStateTimer);
   },
   methods: {
+    async restorePlaybackState() {
+      if (!this.userId) return;
+      try {
+        const res = await musicApi.getPlaybackState(this.userId);
+        if (res.data && res.data.passed && res.data.data) {
+          const state = res.data.data;
+          if (state.playMode) {
+            this.playMode = state.playMode;
+          }
+          if (state.volume !== undefined && state.volume !== null) {
+            this.audio.volume = parseFloat(state.volume) || 1;
+          }
+          if (state.lastSongId) {
+            const songId = parseInt(state.lastSongId);
+            if (songId > 0) {
+              this._restoredPosition = state.lastPosition ? parseFloat(state.lastPosition) : 0;
+              await this.playSong(songId);
+              this.audio.pause();
+              this.isPlaying = false;
+              if (this._restoredPosition > 0) {
+                this.audio.currentTime = this._restoredPosition;
+                this.currentTime = this._restoredPosition;
+              }
+            }
+          }
+        }
+      } catch (e) { /* ignore restore failure */ }
+    },
+    debounceSavePlaybackState() {
+      if (this._saveStateTimer) clearTimeout(this._saveStateTimer);
+      this._saveStateTimer = setTimeout(() => this.savePlaybackStateNow(), 500);
+    },
+    savePlaybackStateNow() {
+      if (!this.userId) return;
+      const state = {
+        playMode: this.playMode,
+        lastSongId: this.currentSong?.id ? String(this.currentSong.id) : '',
+        lastPosition: String(this.audio.currentTime || 0),
+        volume: String(this.audio.volume ?? 1),
+      };
+      musicApi.savePlaybackState(this.userId, state).catch(() => {});
+    },
+    onBeforeUnload() {
+      this.savePlaybackStateNow();
+    },
     showApiError(message, prefix = '') {
       const loginExpiredText = '登录已过期，请重新登录';
       const msg = message || '';
@@ -438,6 +489,7 @@ export default {
             await this.audio.play();
             if (this._playSeq !== playId) return;
             this.isPlaying = true;
+            this.debounceSavePlaybackState();
           } catch (playErr) {
             if (this._playSeq === playId) {
               this.isPlaying = false;
@@ -522,6 +574,7 @@ export default {
     setPlayMode(mode) {
       if (mode === 'single' || mode === 'sequential' || mode === 'stop' || mode === 'shuffle') {
         this.playMode = mode;
+        this.debounceSavePlaybackState();
       }
       this.showPlayModeMenu = false;
     },

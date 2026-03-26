@@ -428,5 +428,16 @@ public class MusicController {
     public R listVideos() {
         return musicAppService.listVideos();
     }
+
+    @GetMapping("/playback-state")
+    public R getPlaybackState(@RequestParam(value = "userId", required = false) Long userId) {
+        return musicAppService.getPlaybackState(userId);
+    }
+
+    @PutMapping("/playback-state")
+    public R savePlaybackState(@RequestParam(value = "userId", required = false) Long userId,
+                               @RequestBody java.util.Map<String, String> state) {
+        return musicAppService.savePlaybackState(userId, state);
+    }
 }
 

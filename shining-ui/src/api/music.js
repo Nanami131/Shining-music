@@ -181,4 +181,10 @@ export default {
     reportPlayEnd(data) {
         return api.post('/music/play/end', data);
     },
+    getPlaybackState(userId) {
+        return api.get('/music/playback-state', { params: { userId } });
+    },
+    savePlaybackState(userId, state) {
+        return api.put('/music/playback-state', state, { params: { userId } });
+    },
 };

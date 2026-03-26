@@ -435,6 +435,40 @@ public class PlaylistService {
             return R.error("删除歌单失败" + e.getMessage());
         }
     }
+
+    private static final String PLAYBACK_STATE_KEY_PREFIX = "user:playback_state:";
+
+    public R getPlaybackState(Long userId) {
+        try {
+            String key = PLAYBACK_STATE_KEY_PREFIX + userId;
+            Map<Object, Object> entries = stringRedisTemplate.opsForHash().entries(key);
+            if (entries.isEmpty()) {
+                return R.success("无播放状态", Map.of());
+            }
+            return R.success("获取播放状态成功", entries);
+        } catch (Exception e) {
+            return R.success("获取播放状态失败，返回默认值", Map.of());
+        }
+    }
+
+    public R savePlaybackState(Long userId, Map<String, String> state) {
+        try {
+            String key = PLAYBACK_STATE_KEY_PREFIX + userId;
+            if (state.containsKey("playMode")) {
+                stringRedisTemplate.opsForHash().put(key, "playMode", state.get("playMode"));
+            }
+            if (state.containsKey("lastSongId")) {
+                stringRedisTemplate.opsForHash().put(key, "lastSongId", state.get("lastSongId"));
+            }
+            if (state.containsKey("lastPosition")) {
+                stringRedisTemplate.opsForHash().put(key, "lastPosition", state.get("lastPosition"));
+            }
+            if (state.containsKey("volume")) {
+                stringRedisTemplate.opsForHash().put(key, "volume", state.get("volume"));
+            }
+            return R.success("保存播放状态成功");
+        } catch (Exception e) {
+            return R.error("保存播放状态失败: " + e.getMessage());
+        }
+    }
 }
-
-

@@ -568,7 +568,25 @@ public class MusicAppService {
         return null;
     }
 
+    public R getPlaybackState(Long userId) {
+        Long trustedUserId = UserContext.getUserId();
+        if (trustedUserId != null) {
+            userId = trustedUserId;
+        }
+        if (userId == null) {
+            return R.error("用户未登录");
+        }
+        return playlistService.getPlaybackState(userId);
+    }
+
+    public R savePlaybackState(Long userId, java.util.Map<String, String> state) {
+        Long trustedUserId = UserContext.getUserId();
+        if (trustedUserId != null) {
+            userId = trustedUserId;
+        }
+        if (userId == null) {
+            return R.error("用户未登录");
+        }
+        return playlistService.savePlaybackState(userId, state);
+    }
 }
-
-
-
