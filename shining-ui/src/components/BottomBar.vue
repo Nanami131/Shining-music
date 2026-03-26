@@ -239,6 +239,8 @@ export default {
       playlist: [],
       currentIndex: -1,
       showPlayModeMenu: false,
+      shuffleHistory: [],
+      shuffleHistoryIndex: -1,
 
       // 歌词区域拖拽相关状态
       lyricsPanelHeight: 200,
@@ -254,9 +256,15 @@ export default {
   },
   computed: {
     hasPrev() {
+      if (this.playMode === 'shuffle') {
+        return this.playlist.length > 1;
+      }
       return this.playlist.length > 0 && this.currentIndex > 0;
     },
     hasNext() {
+      if (this.playMode === 'shuffle') {
+        return this.playlist.length > 1;
+      }
       return (
           this.playlist.length > 0 &&
           this.currentIndex >= 0 &&
@@ -455,6 +463,10 @@ export default {
         this.currentIndex = 0;
         this._playlistSetByEvent = true;
       }
+      if (this.playMode === 'shuffle') {
+        this.shuffleHistory = [songId];
+        this.shuffleHistoryIndex = 0;
+      }
       await this.playSong(songId);
       if (this.currentIndex < 0) {
         this.currentIndex = this.playlist.indexOf(songId);
@@ -509,19 +521,60 @@ export default {
     playPrev() {
       if (!this.hasPrev) return;
       this.playSource = 'prev';
-      this.currentIndex -= 1;
-      const prevId = this.playlist[this.currentIndex];
-      if (prevId != null) {
-        this.playSong(prevId);
+      if (this.playMode === 'shuffle') {
+        if (this.shuffleHistoryIndex > 0) {
+          this.shuffleHistoryIndex--;
+          const prevId = this.shuffleHistory[this.shuffleHistoryIndex];
+          this.currentIndex = this.playlist.indexOf(prevId);
+          if (prevId != null) this.playSong(prevId);
+        } else {
+          let prevIndex;
+          if (this.playlist.length === 1) {
+            prevIndex = 0;
+          } else {
+            do {
+              prevIndex = Math.floor(Math.random() * this.playlist.length);
+            } while (prevIndex === this.currentIndex);
+          }
+          this.currentIndex = prevIndex;
+          const prevId = this.playlist[prevIndex];
+          this.shuffleHistory.unshift(prevId);
+          if (prevId != null) this.playSong(prevId);
+        }
+      } else {
+        this.currentIndex -= 1;
+        const prevId = this.playlist[this.currentIndex];
+        if (prevId != null) this.playSong(prevId);
       }
     },
     playNext() {
       if (!this.hasNext) return;
       this.playSource = 'next';
-      this.currentIndex += 1;
-      const nextId = this.playlist[this.currentIndex];
-      if (nextId != null) {
-        this.playSong(nextId);
+      if (this.playMode === 'shuffle') {
+        if (this.shuffleHistoryIndex < this.shuffleHistory.length - 1) {
+          this.shuffleHistoryIndex++;
+          const nextId = this.shuffleHistory[this.shuffleHistoryIndex];
+          this.currentIndex = this.playlist.indexOf(nextId);
+          if (nextId != null) this.playSong(nextId);
+        } else {
+          let nextIndex;
+          if (this.playlist.length === 1) {
+            nextIndex = 0;
+          } else {
+            do {
+              nextIndex = Math.floor(Math.random() * this.playlist.length);
+            } while (nextIndex === this.currentIndex);
+          }
+          this.currentIndex = nextIndex;
+          const nextId = this.playlist[nextIndex];
+          this.shuffleHistory.push(nextId);
+          this.shuffleHistoryIndex = this.shuffleHistory.length - 1;
+          if (nextId != null) this.playSong(nextId);
+        }
+      } else {
+        this.currentIndex += 1;
+        const nextId = this.playlist[this.currentIndex];
+        if (nextId != null) this.playSong(nextId);
       }
     },
     handleEnded() {
@@ -557,6 +610,8 @@ export default {
           this.currentIndex = nextIndex;
           const nextId = this.playlist[this.currentIndex];
           if (nextId != null) {
+            this.shuffleHistory.push(nextId);
+            this.shuffleHistoryIndex = this.shuffleHistory.length - 1;
             this.playSong(nextId);
           }
         } else {
@@ -574,6 +629,10 @@ export default {
     setPlayMode(mode) {
       if (mode === 'single' || mode === 'sequential' || mode === 'stop' || mode === 'shuffle') {
         this.playMode = mode;
+        if (mode === 'shuffle' && this.currentSong && this.currentSong.id) {
+          this.shuffleHistory = [this.currentSong.id];
+          this.shuffleHistoryIndex = 0;
+        }
         this.debounceSavePlaybackState();
       }
       this.showPlayModeMenu = false;
@@ -790,11 +849,12 @@ export default {
       this.parsedLyrics = parseLrc(content);
     },
     buildBilingual() {
+      const zhLast = langs => langs.sort((a, b) => (a === 'zh' ? 1 : b === 'zh' ? -1 : 0));
       const parsed = this.parsedLyrics;
       const inlineLangs = detectLangs(parsed);
       if (inlineLangs.length > 0) {
         this.bilingualLyrics = parsed;
-        this.availableLangs = inlineLangs;
+        this.availableLangs = zhLast(inlineLangs);
         return;
       }
       if (this.allLyrics.length >= 2) {
@@ -803,7 +863,7 @@ export default {
           .map(l => ({ lang: l.languageMsg.toLowerCase().trim(), lines: parseLrc(l.content || '') }));
         if (sources.length >= 2) {
           this.bilingualLyrics = mergeMultiLang(sources);
-          this.availableLangs = sources.map(s => s.lang);
+          this.availableLangs = zhLast(sources.map(s => s.lang));
           return;
         }
       }
