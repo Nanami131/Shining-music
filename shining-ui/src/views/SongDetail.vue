@@ -5,11 +5,8 @@
       <div class="song-content">
         <img :src="song.coverUrl || defaultCover" class="song-cover" alt="歌曲封面" />
         <div class="song-info">
-          <p><strong>歌手：</strong>{{ artistName || '未知' }}</p>
-          <p><strong>专辑 ID：</strong>{{ song.albumId || '未知' }}</p>
-          <p><strong>状态：</strong>{{ song.status || '未知' }}</p>
-          <p><strong>创建时间：</strong>{{ song.createdAt || '未知' }}</p>
-          <p><strong>更新时间：</strong>{{ song.updatedAt || '未知' }}</p>
+          <p class="artist-link" @click="goToArtist"><strong>歌手：</strong>{{ artistName || '未知' }}</p>
+          <p v-if="song.duration"><strong>时长：</strong>{{ formatDuration(song.duration) }}</p>
           <div class="action-buttons">
             <button class="play-btn" @click="playSong">播放</button>
             <button
@@ -309,6 +306,17 @@ export default {
     playSong() {
       this.$bus.emit('playSong', { songId: this.song.id, source: 'songDetail' });
     },
+    goToArtist() {
+      if (this.song && this.song.artistId) {
+        this.$router.push(`/singer/${this.song.artistId}`);
+      }
+    },
+    formatDuration(seconds) {
+      if (!seconds) return '';
+      const m = Math.floor(seconds / 60);
+      const s = seconds % 60;
+      return `${m}:${String(s).padStart(2, '0')}`;
+    },
     hasLang(lang) {
       return this.allLyrics.some(
         l => l.languageMsg && l.languageMsg.toLowerCase().trim() === lang
@@ -360,6 +368,13 @@ h2 {
 .song-info p {
   margin: 10px 0;
   font-size: 16px;
+}
+.artist-link {
+  cursor: pointer;
+  transition: color 0.2s;
+}
+.artist-link:hover {
+  color: #4facfe;
 }
 .action-buttons {
   display: flex;

@@ -1,6 +1,11 @@
 <template>
   <div class="header">
-    <div class="logo">Shining</div>
+    <div class="logo-area">
+      <span v-if="showBack" class="back-btn" @click="goBack">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+      </span>
+      <div class="logo" @click="goToDiscover">Shining</div>
+    </div>
     <div class="nav">
       <span class="nav-item" @click="goToDiscover">发现音乐</span>
       <span class="nav-item" @click="goToMyMusic">我的音乐</span>
@@ -41,6 +46,11 @@ export default {
       defaultAvatar,
     };
   },
+  computed: {
+    showBack() {
+      return this.$route.path !== '/';
+    },
+  },
   created() {
     this.updateLoginState();
     window.addEventListener('storage', this.updateLoginState);
@@ -69,6 +79,13 @@ export default {
         alert(loginExpiredText);
       } else {
         alert(fullMessage || prefix || '未知错误');
+      }
+    },
+    goBack() {
+      if (window.history.length > 1) {
+        this.$router.back();
+      } else {
+        this.$router.push('/');
       }
     },
     goToLogin() {
@@ -145,12 +162,38 @@ export default {
   box-shadow: 0 10px 30px rgba(15, 23, 42, 0.35);
   color: #e5f0ff;
 }
+.logo-area {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.back-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  cursor: pointer;
+  color: #cbd5e1;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  transition: all 0.2s ease;
+  flex-shrink: 0;
+}
+.back-btn:hover {
+  background: rgba(255, 255, 255, 0.18);
+  color: #f8fafc;
+  transform: translateX(-2px);
+  box-shadow: 0 0 12px rgba(56, 189, 248, 0.3);
+}
 .logo {
   font-size: 22px;
   font-weight: 700;
   letter-spacing: 0.16em;
   text-transform: uppercase;
   color: #fdf2ff;
+  cursor: pointer;
   text-shadow:
       0 0 8px rgba(244, 219, 255, 0.9),
       0 0 16px rgba(56, 189, 248, 0.7);
