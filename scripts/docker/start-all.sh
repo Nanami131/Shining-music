@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-PROJECT_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+PROJECT_ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 JDK21_HOME="${JDK21_HOME:-$HOME/.local/java/jdk-21.0.10+7}"
 JAVA="$JDK21_HOME/bin/java"
 LOG_DIR="$PROJECT_ROOT/logs"
