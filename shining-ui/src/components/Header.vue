@@ -1,8 +1,8 @@
 <template>
   <div class="header">
     <div class="logo-area">
-      <span v-if="showBack" class="back-btn" @click="goBack">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+      <span v-if="showBack" class="back-btn" @click="goBack" title="返回">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
       </span>
       <div class="logo" @click="goToDiscover">Shining</div>
     </div>
@@ -171,21 +171,18 @@ export default {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 32px;
-  height: 32px;
   cursor: pointer;
-  color: #cbd5e1;
-  border-radius: 8px;
-  background: rgba(255, 255, 255, 0.08);
-  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: #fdf2ff;
+  opacity: 0.7;
   transition: all 0.2s ease;
   flex-shrink: 0;
+  text-shadow: 0 0 8px rgba(244, 219, 255, 0.9), 0 0 16px rgba(56, 189, 248, 0.7);
+  filter: drop-shadow(0 0 4px rgba(56, 189, 248, 0.4));
 }
 .back-btn:hover {
-  background: rgba(255, 255, 255, 0.18);
-  color: #f8fafc;
-  transform: translateX(-2px);
-  box-shadow: 0 0 12px rgba(56, 189, 248, 0.3);
+  opacity: 1;
+  transform: translateX(-3px);
+  filter: drop-shadow(0 0 8px rgba(56, 189, 248, 0.7));
 }
 .logo {
   font-size: 22px;
