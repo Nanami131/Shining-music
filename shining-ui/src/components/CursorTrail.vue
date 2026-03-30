@@ -49,19 +49,19 @@ export default {
       this.lastEmitTime = now;
       const x = event.clientX;
       const y = event.clientY;
-      for (let i = 0; i < 2; i++) {
+      for (let i = 0; i < 1; i++) {
         this.particles.push({
           x,
           y,
-          vx: (Math.random() - 0.5) * 0.6,
-          vy: (Math.random() - 0.8) * 0.6,
-          radius: 2 + Math.random() * 4,
+          vx: (Math.random() - 0.5) * 0.4,
+          vy: (Math.random() - 0.8) * 0.4,
+          radius: 1.5 + Math.random() * 3,
           life: 0,
-          maxLife: 40 + Math.random() * 20,
+          maxLife: 30 + Math.random() * 15,
         });
       }
-      if (this.particles.length > 180) {
-        this.particles.splice(0, this.particles.length - 180);
+      if (this.particles.length > 100) {
+        this.particles.splice(0, this.particles.length - 100);
       }
     },
     animate() {
@@ -75,7 +75,7 @@ export default {
         p.y += p.vy;
         p.life++;
         const t = p.life / p.maxLife;
-        const alpha = 0.4 * (1 - t);
+        const alpha = 0.2 * (1 - t);
         if (alpha <= 0) return;
         const radius = p.radius * (1 - t * 0.4);
         const gradient = ctx.createRadialGradient(
