@@ -109,6 +109,39 @@
           </p>
         </div>
       </div>
+
+      <!-- 歌曲标签 -->
+      <div class="tags-section" v-if="tagCategories.length">
+        <h3>歌曲标签</h3>
+        <div class="tag-categories">
+          <div
+            v-for="cat in tagCategories"
+            :key="cat.category"
+            class="tag-category"
+          >
+            <div class="category-header" @click="toggleCategory(cat.category)">
+              <span class="category-arrow" :class="{ open: expandedCategories[cat.category] }">▸</span>
+              <span class="category-name">{{ cat.label }}</span>
+              <span class="category-count">{{ cat.tags.length }} 维</span>
+            </div>
+            <transition name="slide">
+              <div v-if="expandedCategories[cat.category]" class="category-tags">
+                <div v-for="tag in cat.tags" :key="tag.name" class="tag-row">
+                  <span class="tag-label">{{ tag.labelZh || tag.name }}</span>
+                  <div class="tag-bar-wrapper">
+                    <div class="tag-bar" :style="{ width: (tag.value * 100) + '%' }" :class="'bar-' + cat.category"></div>
+                  </div>
+                  <span class="tag-value">{{ tag.value.toFixed(2) }}</span>
+                </div>
+              </div>
+            </transition>
+          </div>
+        </div>
+      </div>
+      <div class="tags-section tags-empty" v-else-if="isLoaded && tagsFetched && !tagCategories.length">
+        <h3>歌曲标签</h3>
+        <p class="no-tags">暂无标签数据</p>
+      </div>
     </div>
     <div v-else-if="hasError">
       <h2>歌曲信息加载失败</h2>
@@ -120,6 +153,7 @@
 <script>
 import musicApi from '@/api/music';
 import statisticsApi from '@/api/statistics';
+import recommendApi from '@/api/recommend';
 import defaultCover from '@/assets/default-cover.png';
 import { parseLyrics as parseLrc, timeToSeconds, mergeMultiLang, detectLangs } from '@/utils/lrcParser';
 
@@ -141,11 +175,40 @@ export default {
       highlightColor: 'pink',
       userId: null,
       artistName: null,
+      tagDefinitions: {},
+      songTags: [],
+      tagsFetched: false,
+      expandedCategories: {},
     };
   },
   computed: {
     displayLyrics() {
       return this.bilingualMode ? this.bilingualLyrics : this.parsedLyrics;
+    },
+    tagCategories() {
+      const categoryLabels = {
+        language: '语言', source: '来源', mood: '情绪',
+        vocal: '声线', audio: '音频特征', era: '年代',
+      };
+      const categoryOrder = ['language', 'source', 'mood', 'vocal', 'audio', 'era'];
+      const tagValueMap = {};
+      this.songTags.forEach(st => { tagValueMap[st.tagId] = st.value; });
+
+      const result = [];
+      for (const cat of categoryOrder) {
+        const defs = this.tagDefinitions[cat];
+        if (!defs || !defs.length) continue;
+        const tags = defs.map(d => ({
+          name: d.name,
+          labelZh: d.labelZh,
+          value: tagValueMap[d.id] !== undefined ? tagValueMap[d.id] : 0,
+        }));
+        const hasAnyValue = tags.some(t => t.value > 0);
+        if (hasAnyValue) {
+          result.push({ category: cat, label: categoryLabels[cat] || cat, tags });
+        }
+      }
+      return result;
     },
   },
   created() {
@@ -160,6 +223,31 @@ export default {
     },
   },
   methods: {
+    toggleCategory(cat) {
+      this.expandedCategories[cat] = !this.expandedCategories[cat];
+    },
+    async fetchTags(songId) {
+      try {
+        const [defRes, tagRes] = await Promise.all([
+          recommendApi.getAllTagDefinitions(),
+          recommendApi.getSongTags(songId),
+        ]);
+        if (defRes.data && defRes.data.passed) {
+          this.tagDefinitions = defRes.data.data || {};
+        }
+        if (tagRes.data && tagRes.data.passed) {
+          this.songTags = tagRes.data.data || [];
+        }
+        this.$nextTick(() => {
+          if (this.tagCategories.length) {
+            this.expandedCategories[this.tagCategories[0].category] = true;
+          }
+        });
+      } catch (e) {
+        console.warn('标签加载失败', e);
+      }
+      this.tagsFetched = true;
+    },
     async loadSongDetails() {
       this.isLoaded = false;
       this.hasError = false;
@@ -171,6 +259,7 @@ export default {
           await this.loadArtistName();
           await this.loadAllLyrics(songId);
           this.isLoaded = true;
+          this.fetchTags(songId);
           if (this.userId) {
             statisticsApi.reportEvent({
               userId: this.userId,
@@ -575,6 +664,118 @@ h3 {
   text-align: center;
   font-size: 18px;
   color: #666;
+}
+
+/* ---- 歌曲标签区 ---- */
+.tags-section {
+  margin-top: 30px;
+  padding: 0 10px;
+}
+.tags-section h3 {
+  font-size: 20px;
+  margin-bottom: 16px;
+  color: #333;
+}
+.tags-empty .no-tags {
+  color: #999;
+  font-size: 14px;
+}
+.tag-category {
+  margin-bottom: 12px;
+  border: 1px solid #eee;
+  border-radius: 8px;
+  overflow: hidden;
+}
+.category-header {
+  display: flex;
+  align-items: center;
+  padding: 10px 14px;
+  background: #fafafa;
+  cursor: pointer;
+  user-select: none;
+}
+.category-header:hover {
+  background: #f0f0f0;
+}
+.category-arrow {
+  display: inline-block;
+  transition: transform 0.2s;
+  margin-right: 8px;
+  font-size: 14px;
+  color: #888;
+}
+.category-arrow.open {
+  transform: rotate(90deg);
+}
+.category-name {
+  font-weight: 600;
+  font-size: 15px;
+  color: #444;
+}
+.category-count {
+  margin-left: auto;
+  font-size: 12px;
+  color: #aaa;
+}
+.category-tags {
+  padding: 10px 14px;
+}
+.tag-row {
+  display: flex;
+  align-items: center;
+  margin-bottom: 8px;
+}
+.tag-row:last-child {
+  margin-bottom: 0;
+}
+.tag-label {
+  width: 100px;
+  flex-shrink: 0;
+  font-size: 13px;
+  color: #555;
+  text-align: right;
+  padding-right: 12px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.tag-bar-wrapper {
+  flex: 1;
+  height: 14px;
+  background: #eee;
+  border-radius: 7px;
+  overflow: hidden;
+}
+.tag-bar {
+  height: 100%;
+  border-radius: 7px;
+  transition: width 0.4s ease;
+}
+.bar-language { background: linear-gradient(90deg, #667eea, #764ba2); }
+.bar-source   { background: linear-gradient(90deg, #f093fb, #f5576c); }
+.bar-mood     { background: linear-gradient(90deg, #4facfe, #00f2fe); }
+.bar-vocal    { background: linear-gradient(90deg, #43e97b, #38f9d7); }
+.bar-audio    { background: linear-gradient(90deg, #fa709a, #fee140); }
+.bar-era      { background: linear-gradient(90deg, #a18cd1, #fbc2eb); }
+.tag-value {
+  width: 45px;
+  flex-shrink: 0;
+  text-align: right;
+  font-size: 12px;
+  color: #888;
+  padding-left: 8px;
+}
+
+.slide-enter-active, .slide-leave-active {
+  transition: all 0.25s ease;
+  max-height: 600px;
+  overflow: hidden;
+}
+.slide-enter, .slide-leave-to {
+  max-height: 0;
+  opacity: 0;
+  padding-top: 0;
+  padding-bottom: 0;
 }
 </style>
 
