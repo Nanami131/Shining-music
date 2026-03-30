@@ -274,11 +274,12 @@ export default {
       this.parsedLyrics = parseLrc(content);
     },
     buildBilingual() {
+      const zhLast = langs => langs.sort((a, b) => (a === 'zh' ? 1 : b === 'zh' ? -1 : 0));
       const parsed = this.parsedLyrics;
       const inlineLangs = detectLangs(parsed);
       if (inlineLangs.length > 0) {
         this.bilingualLyrics = parsed;
-        this.availableLangs = inlineLangs;
+        this.availableLangs = zhLast(inlineLangs);
         return;
       }
       if (this.allLyrics.length >= 2) {
@@ -287,7 +288,7 @@ export default {
           .map(l => ({ lang: l.languageMsg.toLowerCase().trim(), lines: parseLrc(l.content || '') }));
         if (sources.length >= 2) {
           this.bilingualLyrics = mergeMultiLang(sources);
-          this.availableLangs = sources.map(s => s.lang);
+          this.availableLangs = zhLast(sources.map(s => s.lang));
           return;
         }
       }
