@@ -36,8 +36,8 @@ done
 ok "Middleware ready"
 
 # ---------- 2. Backend services ----------
-SERVICES=(gateway-service user-service music-service community-service statistics-service)
-PORTS=(8080 8081 8082 8083 8084)
+SERVICES=(gateway-service user-service music-service community-service statistics-service recommend-service)
+PORTS=(8080 8081 8082 8083 8084 8085)
 
 for i in "${!SERVICES[@]}"; do
     svc="${SERVICES[$i]}"
