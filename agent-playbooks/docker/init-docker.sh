@@ -123,7 +123,7 @@ if [[ -f "$ES_JSON" ]]; then
     wait_for "Elasticsearch" "curl -sf http://localhost:9200/_cluster/health" 40 5
 
     info "Restoring Elasticsearch index from $ES_JSON ..."
-    python3 "$PROJECT_ROOT/scripts/migration/restore-es.py" "$ES_JSON"
+    python3 "$PROJECT_ROOT/agent-playbooks/migration/restore-es.py" "$ES_JSON"
     ok "Elasticsearch data restored"
 else
     info "No Elasticsearch export found, skipping ES restore."
@@ -142,4 +142,4 @@ curl -sf http://localhost:9200/music_search/_count 2>/dev/null | grep -q '"count
 
 echo ""
 ok "=== Initialization complete. All middleware running. ==="
-echo "   Next: run  scripts/docker/start-all.sh  to start backend + frontend"
+echo "   Next: run  agent-playbooks/docker/start-all.sh  to start backend + frontend"

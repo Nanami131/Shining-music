@@ -25,7 +25,7 @@
 
 ```bash
 # 需要迁移包路径作为参数
-bash scripts/docker/init-docker.sh ~/下载/migration-package
+bash agent-playbooks/docker/init-docker.sh ~/下载/migration-package
 ```
 
 迁移包目录结构要求：
@@ -44,10 +44,10 @@ migration-package/
 
 ```bash
 # 启动所有服务
-bash scripts/docker/start-all.sh
+bash agent-playbooks/docker/start-all.sh
 
 # 停止所有服务
-bash scripts/docker/stop-all.sh
+bash agent-playbooks/docker/stop-all.sh
 ```
 
 ## 服务端口

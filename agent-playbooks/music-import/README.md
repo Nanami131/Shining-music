@@ -67,7 +67,7 @@ Body: { "username": "admin", "password": "xxx" }
 | RabbitMQ | 5672 | `docker ps \| grep shining-rabbitmq` |
 | Nacos | 8848 | `curl localhost:8848/nacos` |
 
-**启动脚本**: `scripts/docker/start-all.sh`
+**启动脚本**: `agent-playbooks/docker/start-all.sh`
 
 如果启动失败的常见原因：
 - **Address already in use**: 用 `lsof -i :端口` 找到旧进程并 kill
@@ -108,22 +108,22 @@ Body: { "username": "admin", "password": "xxx" }
 
 系统提供两套下载脚本，按优先级使用：
 
-### A.1 Bilibili 下载（推荐）— `scripts/music-import/bili-music-download.py`
+### A.1 Bilibili 下载（推荐）— `agent-playbooks/music-import/bili-music-download.py`
 
 从 Bilibili 搜索歌手 MV 视频，提取高质量音频。
 
 ```bash
 # 下载周杰伦的 20 首歌
-python3 scripts/music-import/bili-music-download.py "周杰伦" --count 20
+python3 agent-playbooks/music-import/bili-music-download.py "周杰伦" --count 20
 
 # 下载自定义歌曲列表
-python3 scripts/music-import/bili-music-download.py "周杰伦" --songs my_songs.txt --count 30
+python3 agent-playbooks/music-import/bili-music-download.py "周杰伦" --songs my_songs.txt --count 30
 
 # 下载其他歌手（自动通过酷我发现歌曲列表）
-python3 scripts/music-import/bili-music-download.py "五月天" --count 15
+python3 agent-playbooks/music-import/bili-music-download.py "五月天" --count 15
 ```
 
-**输出目录**: `scripts/download/{歌手名}_bili/`  
+**输出目录**: `agent-playbooks/download/{歌手名}_bili/`  
 **文件命名**: `歌手名 - 歌曲名.mp3`
 
 #### 工作原理
@@ -146,12 +146,12 @@ python3 scripts/music-import/bili-music-download.py "五月天" --count 15
 | 下载了 MV 版而非录音室版 | MV 视频通常有前后空白段（5:30 vs 4:28）。优先搜索"无损音质"或"完整版"而非"MV"关键词 |
 | 歌曲全名与简称不一致 | 如"天龙八部之宿敌"简称"宿敌"。导入时使用完整名称，搜索时也要用完整名称 |
 
-### A.2 酷我下载（备选）— `scripts/music-import/music-download.py`
+### A.2 酷我下载（备选）— `agent-playbooks/music-import/music-download.py`
 
 从酷我音乐搜索并直接下载 MP3。适用于 Bilibili 搜不到的冷门歌曲。
 
 ```bash
-python3 scripts/music-import/music-download.py "周杰伦" --studio-only --pages 3
+python3 agent-playbooks/music-import/music-download.py "周杰伦" --studio-only --pages 3
 ```
 
 #### 已知限制
