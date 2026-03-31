@@ -15,6 +15,7 @@ public class PlaybackInfo {
     private String playSessionId;
     private Integer durationSec;
     private Integer totalDurationSec;
+    private Integer actualListenedTime;
     private Boolean completed;
     private String source;
 }

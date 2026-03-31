@@ -48,6 +48,8 @@ public interface UserSongPlayRecordMapper {
 
     List<Map<String, Object>> globalTopSongs(@Param("limit") int limit);
 
+    List<Long> distinctSongIdsByUser(@Param("userId") Long userId);
+
     void updatePlayEndRecord(@Param("userId") Long userId,
                              @Param("songId") Long songId,
                              @Param("playSessionId") String playSessionId,

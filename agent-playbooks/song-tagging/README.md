@@ -51,7 +51,7 @@ python3 -c "import jieba; import essentia.standard; print('OK')"
 
 | 类别 | 维度数 | dim_index | 打标方式 |
 |------|--------|-----------|----------|
-| Language | 4 | 0~3 | 读 lyrics 表 |
+| Language | 4 | 0~3 | **上网搜索歌曲资料**（禁止看标题字符集） |
 | Source | 6 | 4~9 | 数据库 + 上网查询 |
 | Mood | 8 | 10~17 | **`analyze_mood.py`**（MEmoLon + jieba） |
 | Vocal | 3 | 18~20 | 读 singers.sex |
@@ -65,27 +65,28 @@ python3 -c "import jieba; import essentia.standard; print('OK')"
 
 ## Step 1: Language（4 维）
 
-**数据源**：`lyrics` 表
-
-```sql
-SELECT song_id, GROUP_CONCAT(language_msg) as langs
-FROM lyrics GROUP BY song_id;
-```
+**数据源**：**上网搜索歌曲资料**
 
 **⚠️ 重要：Language 标签反映歌曲的原始演唱语言，不是歌词翻译的可用性。**
 
 本系统中，几乎每首歌都有中文翻译歌词。不能因为数据库里有 `language_msg='zh'` 的歌词记录就标 `lang_zh=1`。
 
-判断方法：
-1. 看歌曲**标题字符集**：日文假名/汉字混合 → 日语；纯汉字 → 可能中文；拉丁字母 → 可能英文
-2. 看歌手**主要语言**：日本歌手通常唱日语，中国歌手唱中文
-3. **读歌词原文内容**确认（不是看 language_msg 字段）
-4. 纯音乐（无人声）→ `instrumental = 1`，其他语言标签全 0
+**⚠️ 禁止使用以下方法判断语言**（已在实践中被证明不可靠）：
+- ❌ 看标题字符集（大量日语歌用英文标题：WAVE、heart.beat、Stella-rium、Real or Fake 等）
+- ❌ 看歌词 `language_msg` 字段（每首歌都有中文翻译版）
+- ❌ 靠歌手国籍猜测（陈昕桐是中国歌手但有日语歌）
+
+**正确做法：Agent 必须逐首上网搜索确认**：
+1. 搜索 `"歌名" "歌手名"` 查找歌曲资料页面（网易云音乐、Apple Music、Wikipedia 等）
+2. 确认该歌曲的**原始演唱语言**
+3. 纯音乐（无人声）→ `instrumental = 1`，其他语言标签全 0
 
 示例：
 - 「嘘の火花」(96猫) → `lang_ja=1`（日语原唱），`lang_zh=0`（中文只是翻译）
+- 「WAVE」(96猫) → `lang_ja=1`（日语原唱，虽然标题是英文）
 - 「七里香」(周杰伦) → `lang_zh=1`（中文原唱），`lang_ja=0`
 - 「Hollow Knight OST」→ `instrumental=1`，其他全 0
+- 「Mysterious Night」(R-ORANGE) → `lang_ja=1`（日语原唱，虽然标题全英文）
 
 ---
 

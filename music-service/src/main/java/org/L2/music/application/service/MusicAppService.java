@@ -165,6 +165,7 @@ public class MusicAppService {
 
         Integer durationSec = body.get("duration") != null ? ((Number) body.get("duration")).intValue() : null;
         Integer totalDuration = body.get("totalDuration") != null ? ((Number) body.get("totalDuration")).intValue() : null;
+        Integer actualListenedTime = body.get("actualListenedTime") != null ? ((Number) body.get("actualListenedTime")).intValue() : null;
         Boolean completed = body.get("completed") != null ? (Boolean) body.get("completed") : false;
         String source = (String) body.get("source");
 
@@ -176,6 +177,7 @@ public class MusicAppService {
                     .setPlaySessionId(playSessionId)
                     .setDurationSec(durationSec)
                     .setTotalDurationSec(totalDuration)
+                    .setActualListenedTime(actualListenedTime)
                     .setCompleted(completed)
                     .setSource(source);
             playRecordProducer.sendPlayEndRecord(userId, songId, playbackInfo);

@@ -3,8 +3,10 @@ package org.L2.recommend.controller;
 import org.L2.common.R;
 import org.L2.recommend.domain.model.SongTag;
 import org.L2.recommend.domain.model.TagDefinition;
+import org.L2.recommend.service.RecommendationService;
 import org.L2.recommend.service.TagService;
 import org.L2.recommend.service.TagVectorService;
+import org.L2.recommend.service.UserPreferenceService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
@@ -17,6 +19,12 @@ public class RecommendController {
 
     @Autowired
     private TagVectorService tagVectorService;
+
+    @Autowired
+    private UserPreferenceService userPreferenceService;
+
+    @Autowired
+    private RecommendationService recommendationService;
 
     // ─── 标签定义 ───
 
@@ -88,5 +96,28 @@ public class RecommendController {
         } catch (Exception e) {
             return R.error("维度重载失败: " + e.getMessage());
         }
+    }
+
+    // ─── 推荐 ───
+
+    @GetMapping("/daily")
+    public R getDailyRecommendation(@RequestParam("userId") Long userId,
+                                    @RequestParam(value = "limit", defaultValue = "20") int limit) {
+        return recommendationService.recommend(userId, limit);
+    }
+
+    @GetMapping("/preference")
+    public R getUserPreference(@RequestParam("userId") Long userId) {
+        float[] vector = userPreferenceService.getPreferenceVector(userId);
+        if (vector == null) {
+            return R.error("暂无偏好数据，请先播放一些歌曲");
+        }
+        return R.success("查询成功", vector);
+    }
+
+    @PostMapping("/preference/rebuild")
+    public R rebuildPreference(@RequestParam("userId") Long userId) {
+        int count = userPreferenceService.rebuildFromHistory(userId);
+        return R.success("偏好向量重建完成，处理 " + count + " 条记录", count);
     }
 }

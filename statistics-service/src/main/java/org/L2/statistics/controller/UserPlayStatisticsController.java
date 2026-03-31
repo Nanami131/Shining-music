@@ -97,6 +97,11 @@ public class UserPlayStatisticsController {
         return userPlayStatisticsService.getRecentPlays(userId, limit);
     }
 
+    @GetMapping("/{userId}/plays/song-ids")
+    public R getPlayedSongIds(@PathVariable("userId") Long userId) {
+        return userPlayStatisticsService.getDistinctPlayedSongIds(userId);
+    }
+
     @GetMapping("/ranking/top-songs")
     public R getGlobalTopSongs(@RequestParam(value = "limit", defaultValue = "20") int limit) {
         return userPlayStatisticsService.getGlobalTopSongs(limit);

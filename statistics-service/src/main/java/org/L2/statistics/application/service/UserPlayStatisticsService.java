@@ -173,4 +173,12 @@ public class UserPlayStatisticsService {
         var songs = userPlayRecordDomainService.globalTopSongs(size);
         return R.success("获取全站热门歌曲成功", songs);
     }
+
+    public R getDistinctPlayedSongIds(Long userId) {
+        if (userId == null) {
+            return R.error("用户ID不能为空");
+        }
+        var songIds = userPlayRecordDomainService.distinctSongIdsByUser(userId);
+        return R.success("获取已播放歌曲ID成功", songIds);
+    }
 }

@@ -46,8 +46,8 @@ def analyze(audio_path):
         spec = spectrum_algo(frame)
         flatness_values.append(flatness_algo(spec))
     flatness_mean = float(np.mean(flatness_values))
-    # 低 flatness = 高 acousticness
-    acousticness_norm = max(0.0, min(1.0, 1.0 - flatness_mean * 10))
+    # 低 flatness = 高 acousticness; 典型音乐 flatness 在 0.15~0.35
+    acousticness_norm = max(0.0, min(1.0, 1.0 - flatness_mean / 0.35))
 
     # --- Speechiness (人声占比) ---
     # 使用 zero crossing rate 作为粗略代理

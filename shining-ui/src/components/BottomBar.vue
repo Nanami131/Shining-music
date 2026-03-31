@@ -229,6 +229,8 @@ export default {
       isPlaying: false,
       currentTime: 0,
       duration: 0,
+      actualListenedTime: 0,
+      lastKnownAudioTime: 0,
       showLyrics: false,
       defaultCover,
       highlightColor: 'pink',
@@ -479,6 +481,8 @@ export default {
       this.audio.pause();
       this.audio.src = '';
       this.currentTime = 0;
+      this.actualListenedTime = 0;
+      this.lastKnownAudioTime = 0;
       this.isPlaying = false;
 
       try {
@@ -919,7 +923,13 @@ export default {
       }
     },
     updateProgress() {
-      this.currentTime = this.audio.currentTime || 0;
+      const now = this.audio.currentTime || 0;
+      const delta = now - this.lastKnownAudioTime;
+      if (delta > 0 && delta < 2) {
+        this.actualListenedTime += delta;
+      }
+      this.lastKnownAudioTime = now;
+      this.currentTime = now;
     },
     updateDuration() {
       this.duration = this.audio.duration || 0;
@@ -936,14 +946,18 @@ export default {
         playSessionId: this.currentPlaySessionId || null,
         duration: Math.round(this.currentTime),
         totalDuration: Math.round(this.duration),
+        actualListenedTime: Math.round(this.actualListenedTime),
         completed: reason === 'ended',
         source: this.playSource || 'unknown',
       };
       musicApi.reportPlayEnd(payload).catch(() => {});
+      this.actualListenedTime = 0;
+      this.lastKnownAudioTime = this.audio.currentTime || 0;
     },
     seek() {
       if (this.audio.src) {
         this.audio.currentTime = this.currentTime;
+        this.lastKnownAudioTime = this.currentTime;
       }
     },
     toggleLyrics() {

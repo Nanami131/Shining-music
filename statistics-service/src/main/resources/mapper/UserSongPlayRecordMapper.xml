@@ -170,6 +170,12 @@
         LIMIT #{limit}
     </select>
 
+    <select id="distinctSongIdsByUser" resultType="java.lang.Long">
+        SELECT DISTINCT song_id
+        FROM user_song_play_record
+        WHERE user_id = #{userId}
+    </select>
+
     <update id="updatePlayEndRecord">
         UPDATE user_song_play_record
         SET duration_sec = #{durationSec},

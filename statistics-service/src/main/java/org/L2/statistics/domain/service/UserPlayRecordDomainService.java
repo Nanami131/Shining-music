@@ -94,4 +94,8 @@ public class UserPlayRecordDomainService {
     public List<java.util.Map<String, Object>> globalTopSongs(int limit) {
         return userSongPlayRecordMapper.globalTopSongs(limit);
     }
+
+    public List<Long> distinctSongIdsByUser(Long userId) {
+        return userSongPlayRecordMapper.distinctSongIdsByUser(userId);
+    }
 }
