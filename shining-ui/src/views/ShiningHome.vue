@@ -34,6 +34,48 @@
       </div>
     </section>
 
+    <section v-if="dailyRecommendations.length" class="recommend-panel">
+      <div class="panel-head">
+        <div>
+          <h2>每日推荐 · 基于你的听歌画像</h2>
+          <p>由 Ribecky (2021) 多维相似度算法驱动，语种分流 + 五维加权匹配。</p>
+        </div>
+        <button class="ghost" @click="refreshRecommendations">刷新推荐</button>
+      </div>
+      <div class="recommend-grid">
+        <article
+          v-for="(rec, idx) in dailyRecommendations"
+          :key="rec.songId"
+          class="recommend-card"
+          @click="goTo(`/song/${rec.songId}`)"
+        >
+          <div class="rec-rank">{{ idx + 1 }}</div>
+          <div class="rec-cover" :style="{ backgroundImage: rec.coverUrl ? `url(${rec.coverUrl})` : '' }">
+            <span v-if="!rec.coverUrl" class="rec-icon">♪</span>
+          </div>
+          <div class="rec-info">
+            <h4>{{ rec.title || `歌曲 #${rec.songId}` }}</h4>
+            <p class="rec-artist">{{ rec.singerName || '未知歌手' }}</p>
+            <div class="rec-match">
+              <div class="match-bar">
+                <div class="match-fill" :style="{ width: (rec.similarity * 100) + '%' }"></div>
+              </div>
+              <span class="match-pct">{{ (rec.similarity * 100).toFixed(1) }}%</span>
+            </div>
+          </div>
+        </article>
+      </div>
+    </section>
+
+    <section v-else-if="isLoggedIn" class="recommend-panel recommend-empty">
+      <div class="panel-head">
+        <div>
+          <h2>每日推荐 · 基于你的听歌画像</h2>
+          <p>多听几首歌，推荐引擎就能认识你的口味了。</p>
+        </div>
+      </div>
+    </section>
+
     <section class="featured-panel">
       <div class="panel-head">
         <div>
@@ -139,6 +181,7 @@
 <script>
 import musicApi from '@/api/music';
 import statisticsApi from '@/api/statistics';
+import recommendApi from '@/api/recommend';
 
 const MIX_TEMPLATES = [
   {
@@ -184,6 +227,8 @@ export default {
   data() {
     return {
       allSongs: [],
+      dailyRecommendations: [],
+      isLoggedIn: false,
       heroStats: [
         { value: '--', label: '累计播放' },
         { value: '--', label: '曲库收录' },
@@ -204,9 +249,15 @@ export default {
       ],
     };
   },
-  created() {
-    this.loadDynamicContent();
+  async created() {
+    let userBase = {};
+    try { userBase = JSON.parse(localStorage.getItem('userBase') || '{}'); } catch (e) { /* ignore */ }
+    this.isLoggedIn = !!userBase.id;
+    await this.loadDynamicContent();
     this.loadFeaturedVideos();
+    if (this.isLoggedIn) {
+      this.loadRecommendations(userBase.id);
+    }
   },
   computed: {
     songTitlesPreview() {
@@ -295,6 +346,53 @@ export default {
         }
       } catch (error) {
         this.featuredVideos = [];
+      }
+    },
+    async loadRecommendations(userId) {
+      try {
+        const res = await recommendApi.getDailyRecommendations(userId, 10);
+        if (res?.data?.passed && Array.isArray(res.data.data)) {
+          const recs = res.data.data;
+          const songMap = {};
+          this.allSongs.forEach(s => { songMap[s.id] = s; });
+
+          const enriched = [];
+          for (const rec of recs) {
+            const song = songMap[rec.songId];
+            if (song) {
+              enriched.push({
+                songId: rec.songId,
+                similarity: rec.similarity,
+                title: song.title,
+                singerName: song.singerName || song.singer || '',
+                coverUrl: song.coverUrl || song.pic || '',
+              });
+            } else {
+              try {
+                const infoRes = await musicApi.getSongBaseInfo(rec.songId);
+                const info = infoRes?.data?.passed ? infoRes.data.data : null;
+                enriched.push({
+                  songId: rec.songId,
+                  similarity: rec.similarity,
+                  title: info?.title || `歌曲 #${rec.songId}`,
+                  singerName: info?.singerName || '',
+                  coverUrl: info?.coverUrl || info?.pic || '',
+                });
+              } catch (e) {
+                enriched.push({ songId: rec.songId, similarity: rec.similarity, title: `歌曲 #${rec.songId}`, singerName: '', coverUrl: '' });
+              }
+            }
+          }
+          this.dailyRecommendations = enriched;
+        }
+      } catch (e) { /* silent */ }
+    },
+    async refreshRecommendations() {
+      let userBase = {};
+      try { userBase = JSON.parse(localStorage.getItem('userBase') || '{}'); } catch (e) { /* ignore */ }
+      if (userBase.id) {
+        this.dailyRecommendations = [];
+        await this.loadRecommendations(userBase.id);
       }
     },
     goTo(path) {
@@ -711,6 +809,119 @@ export default {
   border-radius: 999px;
   background: rgba(255, 255, 255, 0.15);
   font-size: 12px;
+}
+
+.recommend-panel {
+  padding: clamp(20px, 4vw, 28px);
+  border-radius: 28px;
+  background: linear-gradient(135deg, rgba(59, 130, 246, 0.12), rgba(168, 85, 247, 0.1));
+  border: 1px solid rgba(168, 85, 247, 0.2);
+  box-shadow: 0 25px 55px rgba(1, 2, 23, 0.6);
+}
+
+.recommend-empty {
+  opacity: 0.7;
+}
+
+.recommend-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 14px;
+}
+
+.recommend-card {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 14px;
+  border-radius: 18px;
+  background: rgba(1, 3, 20, 0.7);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  cursor: pointer;
+  transition: transform 0.2s ease, border-color 0.2s ease;
+}
+
+.recommend-card:hover {
+  transform: translateY(-2px);
+  border-color: rgba(168, 85, 247, 0.35);
+}
+
+.rec-rank {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #a855f7, #6366f1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+.rec-cover {
+  width: 52px;
+  height: 52px;
+  border-radius: 12px;
+  background: linear-gradient(135deg, rgba(99, 102, 241, 0.3), rgba(168, 85, 247, 0.2));
+  background-size: cover;
+  background-position: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.rec-icon {
+  font-size: 22px;
+  opacity: 0.5;
+}
+
+.rec-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.rec-info h4 {
+  margin: 0 0 2px;
+  font-size: 15px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.rec-artist {
+  margin: 0 0 6px;
+  font-size: 12px;
+  color: rgba(236, 242, 255, 0.6);
+}
+
+.rec-match {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.match-bar {
+  flex: 1;
+  height: 4px;
+  border-radius: 2px;
+  background: rgba(255, 255, 255, 0.1);
+  overflow: hidden;
+}
+
+.match-fill {
+  height: 100%;
+  border-radius: 2px;
+  background: linear-gradient(90deg, #a855f7, #38bdf8);
+  transition: width 0.6s ease;
+}
+
+.match-pct {
+  font-size: 11px;
+  color: rgba(168, 85, 247, 0.9);
+  font-family: 'JetBrains Mono', monospace;
+  white-space: nowrap;
 }
 
 @media (max-width: 768px) {

@@ -1,23 +1,16 @@
-import axios from 'axios';
-
-const recommendApi = axios.create({
-    baseURL: '/api',
-    timeout: 5000,
-});
-
-recommendApi.interceptors.request.use((config) => {
-    const token = localStorage.getItem('token');
-    if (token) {
-        config.headers.Authorization = `Bearer ${token}`;
-    }
-    return config;
-});
+import api from './index';
 
 export default {
     getAllTagDefinitions() {
-        return recommendApi.get('/recommend/tags');
+        return api.get('/recommend/tags');
     },
     getSongTags(songId) {
-        return recommendApi.get(`/recommend/songs/${songId}/tags`);
+        return api.get(`/recommend/songs/${songId}/tags`);
+    },
+    getDailyRecommendations(userId, limit = 20) {
+        return api.get('/recommend/daily', { params: { userId, limit } });
+    },
+    getUserPreference(userId) {
+        return api.get('/recommend/preference', { params: { userId } });
     },
 };
