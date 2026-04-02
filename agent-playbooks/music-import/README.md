@@ -88,7 +88,7 @@ Body: { "username": "admin", "password": "xxx" }
 （密码在 Nacos `secret.yaml` 中配置，默认 `password`）
 
 关键表结构：
-- `songs`: id, title, artist_id, album_id, file_url, cover_url, status
+- `songs`: id, title, artist_id, album_id, file_url, cover_url, duration, status, genre, release_year
 - `singers`: id, name, sex, profile, genre, country, status, avatar_url
 - `lyrics`: id, song_id, language_msg, content
 
@@ -146,9 +146,31 @@ python3 agent-playbooks/music-import/bili-music-download.py "五月天" --count 
 | 下载了 MV 版而非录音室版 | MV 视频通常有前后空白段（5:30 vs 4:28）。优先搜索"无损音质"或"完整版"而非"MV"关键词 |
 | 歌曲全名与简称不一致 | 如"天龙八部之宿敌"简称"宿敌"。导入时使用完整名称，搜索时也要用完整名称 |
 
-### A.2 酷我下载（备选）— `agent-playbooks/music-import/music-download.py`
+#### ⚠️ EXCLUDE_RE 必须覆盖的关键词（教训总结）
 
-从酷我音乐搜索并直接下载 MP3。适用于 Bilibili 搜不到的冷门歌曲。
+Bilibili 视频筛选时，以下关键词**必须**被排除，否则会导入错误音频：
+
+```python
+EXCLUDE_RE = re.compile(
+    r"(?i)(live|演唱会|现场|concert|翻唱|cover|教学|教程|钢琴版|钢琴改编|吉他|伴奏"
+    r"|instrumental|karaoke|反应|reaction|混剪|合集|\bAI\b|鬼畜|搞笑|舞蹈|choreography"
+    r"|弹幕|切片|手势舞|指弹|鼓谱|鼓|drum|bass|TAB|谱"
+    r"|踊ってみた|歌ってみた|叩いてみた|弾いてみた"                # 日语翻跳/翻唱/翻奏
+    r"|舞萌|maimai|音游|Phigros|Arcaea|osu|rhythm|beatmania"     # 音游视频
+    r"|English\s*Ver|英文版|英语版|粤语版|国语版"                   # 非原版语言
+    r"|Nightcore|bootleg|sped up|slowed|8D|ASMR|耳机|录音棚"
+    r"|编舞|原创编舞|口琴|尤克里里|ukulele|单簧管|黑管)")
+```
+
+**已发生的事故**：
+- 下载了「舞萌(maimai)音游」视频当作残響散歌原曲 → 音频含游戏音效，时长不对
+- 下载了「踊ってみた」舞蹈翻跳视频当作カタオモイ → 舞蹈剪辑版，时长从5:40缩到3:48
+- 下载了「English Ver.」英文版当作アイドル日文版 → 语种完全错误
+- 下载了「录音棚大声听」二创视频 → 可能有额外音频处理
+
+### A.2 酷我下载（备选，仅中文歌曲）— `agent-playbooks/music-import/music-download.py`
+
+从酷我音乐搜索并直接下载 MP3。**仅适用于中文歌曲**。
 
 ```bash
 python3 agent-playbooks/music-import/music-download.py "周杰伦" --studio-only --pages 3
@@ -159,6 +181,7 @@ python3 agent-playbooks/music-import/music-download.py "周杰伦" --studio-only
 - 部分歌曲只有 30 秒试听片段（付费限制）
 - 需要 `--studio-only` 过滤现场版/合唱版
 - 音质不如 Bilibili MV 提取
+- **⚠️ 不适用于日文/外文歌曲**：酷我的日文歌库覆盖率低，搜索结果大量混入中文翻唱版、KTV 版、错误匹配。实测表现极差，已被确认不可用于日文歌曲发现
 
 ### A.3 音频文件质量检查
 
@@ -176,6 +199,8 @@ if duration < 60:
 if bitrate < 128:
     print(f"WARNING: {filename} 比特率仅 {bitrate}kbps，音质较低")
 ```
+
+**⚠️ 时长比对是必需的**。对每首歌，Agent 必须知道原版时长并与实际下载时长比较。偏差超过 30 秒说明下载了错误版本（剪辑版、片段、音游截取等）。可以通过 NetEase 搜索结果获取原版时长。
 
 ---
 
@@ -264,17 +289,25 @@ if r.status_code == 200:
 
 ```
 POST /api/music/singer
-Body: { "name": "周杰伦", "sex": 0, "status": 1 }
+Body: { "name": "周杰伦", "sex": 0, "status": 0 }
 → data.id
 ```
+
+**⚠️ 歌手 status 含义与歌曲不同**：歌手 `status=0` 表示"活跃"，`status=1` 表示"停更/退役"。歌曲 `status=1` 表示"正常可用"，`status=0` 表示"禁用"。两者含义相反，切勿混淆。
 
 ### 已知问题与注意事项
 
 | 问题 | 原因 | 解决方案 |
 |------|------|----------|
-| `Column 'status' cannot be null` | 后端 createSinger 曾不设默认值 | **已修复**：status 默认 1，sex 默认 0。但建议仍显式传值 |
-| 歌手重复创建 | 同一歌手可能有多种名称（真名/艺名/外文名） | 创建前先 `GET /api/music/singers` 搜索已有列表 |
+| `Column 'status' cannot be null` | 后端 createSinger 曾不设默认值 | **已修复**：status 默认 0（活跃），sex 默认 0。但建议仍显式传值 |
+| 歌手重复创建 | 同一歌手可能有多种名称（真名/艺名/外文名） | 创建前**必须** `GET /api/music/singers` 搜索已有列表，用名称精确匹配 |
 | 歌手信息不全 | 仅传了名字，没有性别/简介/头像 | 必须调研歌手资料后完整填写 |
+
+**⚠️ 歌手去重是硬性要求**。已发生事故：YOASOBI 被重复创建（id=3 和 id=31），导致歌曲关联到错误歌手、头像丢失。创建前必须：
+1. `GET /api/music/singers` 获取全部歌手列表
+2. 搜索匹配（注意大小写、全角半角）
+3. 匹配到已有歌手 → 直接使用其 id
+4. 未匹配 → 才创建新歌手
 
 ### 更新歌手详细信息
 
@@ -309,6 +342,22 @@ Body: { "title": "七里香", "artistId": <singerId>, "status": 1 }
 - `title` 从文件名提取：去掉扩展名，按 ` - ` 分割取后半部分
 - `status: 1` 表示正常可用
 - 返回的 `song_id` 后续所有操作都会用到，务必保存
+
+### 补充字段（创建后更新）
+
+歌曲创建后，**必须**通过 SQL 补全以下字段：
+
+```sql
+UPDATE songs SET genre = 'J-Pop', release_year = 2023, duration = 226 WHERE id = <song_id>;
+```
+
+| 字段 | 说明 | 必填 |
+|------|------|------|
+| `genre` | 音乐流派（J-Pop, J-Rock, Electropop, Pop, Rock 等） | ✅ |
+| `release_year` | 发行年份（用于 Era 标签计算） | ✅ |
+| `duration` | 时长（秒），从 mutagen 读取 | ✅ |
+
+不填 `genre` 和 `release_year` 会导致标签系统的 Source 和 Era 维度无法自动补全。
 
 ---
 
@@ -505,13 +554,26 @@ POST /api/music/search/sync
     □ 如有翻译歌词（tlyric），也上传（msg=对应语言）
   □ 每完成一首歌，追加到 import_results.json
 
-□ Step 3: POST /api/music/search/sync 全量同步 ES
+□ Step 3: 补全元数据
+  □ UPDATE songs SET genre, release_year, duration WHERE id IN (...)
+  □ 验证：SELECT id, title, genre, release_year, duration FROM songs WHERE ...
 
-□ Step 4: 最终验证
+□ Step 4: POST /api/music/search/sync 全量同步 ES
+
+□ Step 5: 歌曲标签打标（⚠️ 必须严格遵守 song-tagging/README.md）
+  □ 运行 batch_tag.py 或手动逐首打标
+  □ 确认 28 维标签全部写入（Language 4 + Source 6 + Vocal 3 + Audio 6 + Mood 8 + Era 1）
+  □ POST /recommend/songs/rebuild-all 重建向量
+  □ 验证：SELECT song_id, COUNT(*) FROM song_tags WHERE song_id IN (...) GROUP BY song_id → 每首 28
+
+□ Step 6: 最终验证（逐首检查，不能跳过）
   □ DB 验证：SELECT count(*) FROM songs WHERE artist_id = <singer_id>
   □ 封面验证：所有 cover_url 不同，HEAD 请求检查 Content-Length 各不相同
   □ 歌词验证：每首歌 lyrics 表有记录，content 有效行数 >= 10
-  □ ES 验证：GET /api/music/search?keyword=<歌名> 能命中
+  □ 标签验证：每首歌 song_tags 有 28 条记录，Source 和 Era 不能全为 0
+  □ 音频验证：时长与预期偏差 < 30s，比特率 >= 128kbps
+  □ ES 验证：搜索 songId 在 music_search 索引中存在
+  □ 歌手验证：avatar_url 非空，sex 正确
   □ 前端验证：歌手详情页能看到所有歌曲，播放全部功能正常
 ```
 
@@ -542,6 +604,16 @@ POST /api/music/search/sync
 2. **分阶段保存进度**：每完成一首歌就将 `{song_id, title, audio, cover, lyrics}` 追加到 `import_results.json`
 3. **封面和歌词问题必须单独修复脚本**：批量导入时封面/歌词最容易出错，失败的部分要能单独重跑
 4. **Agent 必须参与异常处理**：纯脚本无法处理所有边界情况（API 限流、歌词格式异常、封面重复等），Agent 需要在脚本执行过程中监控输出并介入
+5. **导入后必须逐首验证**：不能只看推荐分数。必须检查每首歌的音频是否原版、标签是否正确、字段是否完整。"看起来能跑" ≠ "质量合格"
+
+## 8.1 关联文档（必读）
+
+| 文档 | 路径 | 用途 |
+|------|------|------|
+| **歌曲标签打标指南** | `agent-playbooks/song-tagging/README.md` | 28 维标签打标的完整规范，包括 Language/Source/Mood/Vocal/Audio/Era 六类 |
+| **外部发现与推荐指南** | `agent-playbooks/external-discover/README.md` | 从外部平台发现歌曲、评估匹配度并导入系统的完整流程 |
+
+**导入歌曲后必须完成标签打标**，否则推荐系统无法正常工作。标签打标必须严格按照 `song-tagging/README.md` 的规范执行。
 
 ---
 
