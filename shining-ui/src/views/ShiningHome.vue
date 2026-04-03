@@ -63,6 +63,12 @@
               <span class="match-pct">{{ (rec.similarity * 100).toFixed(1) }}%</span>
             </div>
           </div>
+          <button
+            class="rec-add-btn"
+            :class="{ added: rec._added }"
+            :title="rec._added ? '已加入歌单' : '加入当前歌单'"
+            @click.stop="addRecToPlaylist(rec)"
+          >{{ rec._added ? '✓' : '+' }}</button>
         </article>
       </div>
     </section>
@@ -394,6 +400,16 @@ export default {
         this.dailyRecommendations = [];
         await this.loadRecommendations(userBase.id);
       }
+    },
+    addRecToPlaylist(rec) {
+      if (rec._added) return;
+      this.$bus.emit('playSong', {
+        id: rec.songId,
+        title: rec.title,
+        artistId: rec.singerId,
+        coverUrl: rec.coverUrl,
+      });
+      rec._added = true;
     },
     goTo(path) {
       this.$router.push(path);
@@ -839,6 +855,37 @@ export default {
   border: 1px solid rgba(255, 255, 255, 0.06);
   cursor: pointer;
   transition: transform 0.2s ease, border-color 0.2s ease;
+  position: relative;
+}
+
+.rec-add-btn {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: 1px solid rgba(168, 85, 247, 0.4);
+  background: rgba(168, 85, 247, 0.15);
+  color: #a855f7;
+  font-size: 18px;
+  line-height: 1;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.rec-add-btn:hover {
+  background: rgba(168, 85, 247, 0.35);
+  border-color: #a855f7;
+  transform: scale(1.1);
+}
+
+.rec-add-btn.added {
+  background: rgba(34, 197, 94, 0.2);
+  border-color: rgba(34, 197, 94, 0.5);
+  color: #22c55e;
+  cursor: default;
 }
 
 .recommend-card:hover {
