@@ -2,8 +2,8 @@
 set -euo pipefail
 
 PROJECT_ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
-JDK21_HOME="${JDK21_HOME:-$HOME/.local/java/jdk-21.0.10+7}"
-JAVA="$JDK21_HOME/bin/java"
+JDK18_HOME="${JDK18_HOME:-${JDK21_HOME:-$HOME/.local/java/jdk-18}}"
+JAVA="$JDK18_HOME/bin/java"
 LOG_DIR="$PROJECT_ROOT/logs"
 
 info()  { echo -e "\033[1;34m[INFO]\033[0m  $*"; }
@@ -11,8 +11,8 @@ ok()    { echo -e "\033[1;32m[OK]\033[0m    $*"; }
 err()   { echo -e "\033[1;31m[ERROR]\033[0m $*" >&2; }
 
 if [[ ! -x "$JAVA" ]]; then
-    err "JDK 21 not found at $JDK21_HOME"
-    err "Set JDK21_HOME env var or install JDK 21 to ~/.local/java/"
+    err "JDK 18 not found at $JDK18_HOME"
+    err "Set JDK18_HOME env var or install JDK 18 to ~/.local/java/"
     exit 1
 fi
 
@@ -47,7 +47,7 @@ for i in "${!SERVICES[@]}"; do
     if [[ ! -f "$jar" ]]; then
         info "JAR not found for $svc, building..."
         cd "$PROJECT_ROOT"
-        JAVA_HOME="$JDK21_HOME" PATH="$JDK21_HOME/bin:$PATH" \
+        JAVA_HOME="$JDK18_HOME" PATH="$JDK18_HOME/bin:$PATH" \
             mvn package -DskipTests -pl common,"$svc" -am -q
     fi
 

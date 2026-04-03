@@ -3,7 +3,7 @@ set -euo pipefail
 
 PROJECT_ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 DOCKER_DATA="$PROJECT_ROOT/docker-data"
-JDK21_HOME="$HOME/.local/java/jdk-21.0.10+7"
+JDK18_HOME="${JDK18_HOME:-${JDK21_HOME:-$HOME/.local/java/jdk-18}}"
 
 # ---------- helpers ----------
 info()  { echo -e "\033[1;34m[INFO]\033[0m  $*"; }

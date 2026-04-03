@@ -17,7 +17,7 @@
 
 - **Gateway 路由规则**：`/api/music/**` → music-service（StripPrefix=1，即去掉 `/api`），`/api/user/**` → user-service
 - **所有外部 API 调用统一走 gateway**: `http://localhost:8080/api/...`
-- **JDK 版本**：必须使用 JDK 21（路径：`~/.local/java/jdk-21.0.10+7/bin/java`）
+- **JDK 版本**：统一使用 JDK 18（例如：`~/.local/java/jdk-18/bin/java`）
 
 ### 0.2 认证
 
@@ -71,7 +71,7 @@ Body: { "username": "admin", "password": "xxx" }
 
 如果启动失败的常见原因：
 - **Address already in use**: 用 `lsof -i :端口` 找到旧进程并 kill
-- **music-service 启动报 UnsupportedClassVersionError**: 没用 JDK 21
+- **music-service 启动报 UnsupportedClassVersionError**: 没用 JDK 18
 - **common 模块找不到**: 先在项目根目录执行 `cd common && mvn install -DskipTests`
 - **ES 启动报 AccessDeniedException**: `chmod 777 docker-data/elasticsearch/`
 

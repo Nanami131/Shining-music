@@ -15,7 +15,7 @@
 ## 前置要求
 
 - Docker & Docker Compose
-- JDK 21（默认路径 `~/.local/java/jdk-21.0.10+7`，可通过 `JDK21_HOME` 环境变量覆盖）
+- JDK 18（默认路径 `~/.local/java/jdk-18`，可通过 `JDK18_HOME` 环境变量覆盖；脚本仍兼容旧的 `JDK21_HOME`）
 - Node.js & npm（前端构建）
 - 项目根目录下已有 `docker-compose.yml`
 
