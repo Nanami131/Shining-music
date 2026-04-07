@@ -45,7 +45,7 @@
           </div>
           <div class="info-row">
             <span class="label">简介</span>
-            <span class="value multi-line">{{ userDetails.profile || '写一点关于你的故事吧～' }}</span>
+            <span class="value">{{ userDetails.profile || '写一点关于你的故事吧～' }}</span>
           </div>
         </div>
 
@@ -161,7 +161,7 @@ export default {
         md5: '',
       },
       defaultAvatar,
-      showProfileForm: false,
+      showProfileForm: true,
       showPasswordForm: false,
       showOldPwd: false,
       showNewPwd: false,
@@ -279,37 +279,41 @@ export default {
 .profile-container {
   display: flex;
   justify-content: center;
-  padding: 40px 20px 60px;
-  background: radial-gradient(circle at 0% 0%, rgba(186, 230, 253, 0.9), transparent 55%),
-              radial-gradient(circle at 100% 0%, rgba(244, 219, 255, 0.95), transparent 55%),
-              linear-gradient(to bottom right, #0f172a, #020617);
+  min-height: calc(100vh - 60px);
+  padding: 36px 24px 80px;
+  background:
+    radial-gradient(circle at 15% 10%, rgba(56, 189, 248, 0.35), transparent 50%),
+    radial-gradient(circle at 80% 20%, rgba(168, 85, 247, 0.3), transparent 50%),
+    linear-gradient(150deg, #020617, #0f0a2a 50%, #1a0e3a);
+  align-items: flex-start;
 }
 .profile-card {
   width: 100%;
-  max-width: 900px;
+  max-width: 1100px;
   border-radius: 24px;
-  padding: 24px 26px 26px;
-  background: radial-gradient(circle at 0 0, rgba(56, 189, 248, 0.18), transparent 60%),
-              radial-gradient(circle at 100% 100%, rgba(129, 230, 217, 0.16), transparent 60%),
-              rgba(15, 23, 42, 0.82);
-  box-shadow: 0 26px 60px rgba(15, 23, 42, 0.75);
-  color: #e5f0ff;
-  backdrop-filter: blur(22px);
+  padding: 32px 36px 40px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  box-shadow: 0 26px 60px rgba(2, 6, 23, 0.7);
+  color: #e4ebff;
+  backdrop-filter: blur(16px);
 }
 .profile-header {
   display: flex;
   align-items: center;
-  gap: 20px;
-  margin-bottom: 22px;
+  gap: 24px;
+  margin-bottom: 30px;
+  padding-bottom: 24px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
 }
 .title-block h2 {
-  margin: 0 0 4px;
-  font-size: 22px;
+  margin: 0 0 6px;
+  font-size: 24px;
 }
 .subtitle {
   margin: 0;
-  font-size: 13px;
-  color: #9ca3af;
+  font-size: 14px;
+  color: rgba(228, 235, 255, 0.45);
 }
 .home-link {
   margin-top: 8px;
@@ -363,54 +367,53 @@ export default {
 }
 .profile-content {
   display: grid;
-  grid-template-columns: 1.1fr 1.2fr;
-  gap: 20px;
+  grid-template-columns: 1fr 1.3fr;
+  gap: 28px;
 }
 .glass {
-  background: radial-gradient(circle at 0 0, rgba(15, 23, 42, 0.85), transparent 70%),
-              rgba(15, 23, 42, 0.83);
+  background: rgba(255, 255, 255, 0.03);
   border-radius: 18px;
-  padding: 16px 18px;
-  border: 1px solid rgba(148, 163, 184, 0.5);
-  box-shadow: 0 18px 36px rgba(15, 23, 42, 0.55);
+  padding: 16px 20px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
 }
 .info-panel {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 4px;
+  align-self: start;
 }
 .info-row {
   display: flex;
   justify-content: space-between;
-  gap: 10px;
-  padding: 6px 0;
-  border-bottom: 1px dashed rgba(148, 163, 184, 0.35);
+  align-items: flex-start;
+  gap: 16px;
+  padding: 10px 0;
+  border-bottom: 1px dashed rgba(255, 255, 255, 0.06);
 }
 .info-row:last-child {
   border-bottom: none;
 }
 .label {
-  font-size: 13px;
-  color: #9ca3af;
+  font-size: 14px;
+  color: rgba(228, 235, 255, 0.5);
+  flex-shrink: 0;
+  min-width: 60px;
 }
 .value {
-  font-size: 13px;
-  color: #e5f0ff;
+  font-size: 14px;
+  color: rgba(228, 235, 255, 0.9);
   text-align: right;
-}
-.value.multi-line {
-  max-width: 240px;
-  white-space: pre-wrap;
+  word-break: break-word;
 }
 .forms-panel {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 22px;
 }
 .section {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 12px;
 }
 .section-header {
   display: flex;
@@ -423,20 +426,21 @@ export default {
   font-size: 16px;
 }
 .pill-btn {
-  padding: 4px 12px;
+  padding: 5px 14px;
   border-radius: 999px;
-  border: none;
-  background: rgba(148, 163, 184, 0.24);
-  color: #e5f0ff;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.06);
+  color: #e4ebff;
   font-size: 12px;
   cursor: pointer;
-  backdrop-filter: blur(8px);
+  transition: all 0.2s;
 }
 .pill-btn:hover {
-  background: rgba(96, 165, 250, 0.65);
+  background: rgba(56, 189, 248, 0.2);
+  border-color: rgba(56, 189, 248, 0.3);
 }
 .form-item {
-  margin-bottom: 15px;
+  margin-bottom: 18px;
 }
 .password-wrap {
   position: relative;
@@ -458,18 +462,24 @@ export default {
 }
 label {
   display: block;
-  margin-bottom: 5px;
+  margin-bottom: 6px;
   font-size: 14px;
+  color: rgba(228, 235, 255, 0.6);
 }
 input,
 textarea {
   width: 100%;
-  padding: 8px;
-  border: 1px solid rgba(148, 163, 184, 0.6);
-  border-radius: 8px;
+  padding: 10px 12px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
   font-size: 14px;
-  background: rgba(15, 23, 42, 0.8);
-  color: #e5f0ff;
+  background: rgba(255, 255, 255, 0.05);
+  color: #e4ebff;
+}
+input:focus,
+textarea:focus {
+  outline: none;
+  border-color: rgba(56, 189, 248, 0.5);
 }
 textarea {
   height: 100px;
@@ -480,19 +490,20 @@ textarea {
   padding: 10px;
   border: none;
   border-radius: 999px;
-  background: linear-gradient(to right, #4facfe, #22d3ee);
+  background: linear-gradient(135deg, #38bdf8, #818cf8);
   color: white;
   font-size: 16px;
   cursor: pointer;
-  box-shadow: 0 12px 30px rgba(56, 189, 248, 0.6);
+  box-shadow: 0 8px 24px rgba(56, 189, 248, 0.3);
+  transition: all 0.2s;
 }
 .submit-btn.danger {
-  background: linear-gradient(to right, #fb7185, #f97316);
-  box-shadow: 0 12px 30px rgba(248, 113, 113, 0.65);
+  background: linear-gradient(135deg, #fb7185, #f97316);
+  box-shadow: 0 8px 24px rgba(248, 113, 113, 0.3);
 }
 .submit-btn:hover {
   transform: translateY(-1px);
-  box-shadow: 0 16px 40px rgba(56, 189, 248, 0.8);
+  box-shadow: 0 12px 32px rgba(56, 189, 248, 0.45);
 }
 @media (max-width: 768px) {
   .profile-card {

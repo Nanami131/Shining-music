@@ -62,6 +62,12 @@
             <div class="stat-value">{{ posts.length }}</div>
             <div class="stat-label">帖子</div>
           </div>
+        </div>
+      </section>
+
+      <!-- Follow Stats (always visible) -->
+      <section class="stats-section">
+        <div class="stats-grid">
           <div class="stat-card clickable" @click="activeTab = 'following'">
             <div class="stat-value">{{ followCount.following }}</div>
             <div class="stat-label">关注</div>
