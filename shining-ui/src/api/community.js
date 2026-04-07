@@ -68,6 +68,34 @@ export default {
         return api.get(`/community/user/${userId}/recent-comments`, { params: { limit } });
     },
 
+    // ---- 关注 ----
+    follow(targetUserId) {
+        return api.post('/community/follow', { targetUserId });
+    },
+    unfollow(targetUserId) {
+        return api.delete(`/community/follow/${targetUserId}`);
+    },
+    getFollowing(userId, page = 1, size = 20) {
+        return api.get('/community/following', { params: { userId, page, size } });
+    },
+    getFollowers(userId, page = 1, size = 20) {
+        return api.get('/community/followers', { params: { userId, page, size } });
+    },
+    getFollowStatus(targetUserId) {
+        return api.get('/community/follow/status', { params: { targetUserId } });
+    },
+    getFollowCount(userId) {
+        return api.get('/community/follow/count', { params: { userId } });
+    },
+
+    // ---- 点赞 ----
+    toggleLike(postId) {
+        return api.post(`/community/post/${postId}/like`);
+    },
+    getLikeStatus(postId) {
+        return api.get(`/community/post/${postId}/like/status`);
+    },
+
     /**
      * 上传社区附件（图片 / 文件）
      * @param {File} file 原生 File 对象

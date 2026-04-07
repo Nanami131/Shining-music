@@ -17,6 +17,7 @@
         <div class="title-block">
           <h2>个人信息</h2>
           <p class="subtitle">在这里维护你的专属 Shining 形象</p>
+          <button class="home-link" @click="goMyHome">查看我的主页 →</button>
         </div>
       </div>
 
@@ -265,6 +266,11 @@ export default {
     togglePasswordForm() {
       this.showPasswordForm = !this.showPasswordForm;
     },
+    goMyHome() {
+      if (this.profileForm.id) {
+        this.$router.push({ name: 'user-home', params: { id: this.profileForm.id } });
+      }
+    },
   },
 };
 </script>
@@ -305,6 +311,18 @@ export default {
   font-size: 13px;
   color: #9ca3af;
 }
+.home-link {
+  margin-top: 8px;
+  padding: 5px 14px;
+  border-radius: 999px;
+  border: 1px solid rgba(96, 165, 250, 0.5);
+  background: rgba(96, 165, 250, 0.12);
+  color: #93c5fd;
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.home-link:hover { background: rgba(96, 165, 250, 0.25); }
 .avatar-wrapper {
   position: relative;
   width: 96px;

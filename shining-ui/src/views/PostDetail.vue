@@ -27,8 +27,14 @@
           <span v-if="post.commentCount">{{ post.commentCount }} 条评论</span>
         </div>
         <div class="post-body" v-html="sanitizedContent"></div>
-        <div v-if="post.lastCommentAt" class="post-last-comment">
-          最后评论于 {{ formatDate(post.lastCommentAt) }}
+        <div class="post-footer">
+          <button class="like-btn" :class="{ liked: isLiked }" @click="handleLike">
+            <span class="like-icon">{{ isLiked ? '❤️' : '🤍' }}</span>
+            <span>{{ post.likeCount || 0 }}</span>
+          </button>
+          <span v-if="post.lastCommentAt" class="post-last-comment-inline">
+            最后评论于 {{ formatDate(post.lastCommentAt) }}
+          </span>
         </div>
       </article>
 
@@ -157,12 +163,14 @@ export default {
       showReplyFor: null,
       replyText: '',
       nickNameMap: {},
+      isLiked: false,
     };
   },
   created() {
     this.postId = Number(this.$route.params.id);
     this.loadUser();
     this.loadDetails();
+    this.loadLikeStatus();
   },
   watch: {
     '$route.params.id'(newId) {
@@ -200,6 +208,7 @@ export default {
             title: data.title,
             content: data.content,
             commentCount: data.commentCount,
+            likeCount: data.likeCount || 0,
             lastCommentAt: data.lastCommentAt,
             createdAt: data.createdAt,
           };
@@ -304,6 +313,26 @@ export default {
         this.showReplyFor = id;
         this.replyText = '';
       }
+    },
+    async loadLikeStatus() {
+      if (!this.postId) return;
+      try {
+        const res = await communityApi.getLikeStatus(this.postId);
+        if (res.data?.passed) this.isLiked = res.data.data?.liked || false;
+      } catch { /* silent */ }
+    },
+    async handleLike() {
+      if (!this.userId) return;
+      try {
+        const res = await communityApi.toggleLike(this.postId);
+        if (res.data?.passed) {
+          this.isLiked = res.data.data?.liked || false;
+          if (this.post) {
+            this.post.likeCount = (this.post.likeCount || 0) + (this.isLiked ? 1 : -1);
+            if (this.post.likeCount < 0) this.post.likeCount = 0;
+          }
+        }
+      } catch { /* silent */ }
     },
     goUser(userId) {
       if (userId != null) {
@@ -529,12 +558,38 @@ export default {
 }
 .post-body :deep(p) { margin: 10px 0; }
 
-.post-last-comment {
+.post-footer {
   margin-top: 20px;
   padding-top: 16px;
   border-top: 1px solid rgba(255, 255, 255, 0.06);
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+.like-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 18px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.04);
+  color: rgba(228, 235, 255, 0.7);
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.like-btn:hover { border-color: rgba(236, 72, 153, 0.4); background: rgba(236, 72, 153, 0.08); }
+.like-btn.liked {
+  border-color: rgba(236, 72, 153, 0.5);
+  background: rgba(236, 72, 153, 0.12);
+  color: #f9a8d4;
+}
+.like-icon { font-size: 16px; }
+.post-last-comment-inline {
   font-size: 12px;
   color: rgba(228, 235, 255, 0.4);
+  margin-left: auto;
 }
 
 /* ======== Comment Section ======== */

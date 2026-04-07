@@ -23,6 +23,8 @@ public class PostDetailsDTO {
 
     private Integer commentCount;
 
+    private Integer likeCount;
+
     private LocalDateTime lastCommentAt;
 
     private LocalDateTime createdAt;

@@ -121,6 +121,7 @@ public class CommunityAppService {
                         .setTitle(post.getTitle())
                         .setContent(post.getContent())
                         .setCommentCount(post.getCommentCount())
+                        .setLikeCount(post.getLikeCount())
                         .setLastCommentAt(post.getLastCommentAt())
                         .setCreatedAt(post.getCreatedAt());
                 dtoList.add(dto);
@@ -145,6 +146,7 @@ public class CommunityAppService {
                 .setTitle(post.getTitle())
                 .setContent(post.getContent())
                 .setCommentCount(post.getCommentCount())
+                .setLikeCount(post.getLikeCount())
                 .setLastCommentAt(post.getLastCommentAt())
                 .setCreatedAt(post.getCreatedAt());
 

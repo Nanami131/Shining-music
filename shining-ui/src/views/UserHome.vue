@@ -19,6 +19,14 @@
             </div>
           </div>
           <button v-if="isSelf" class="edit-btn" @click="$router.push('/profile')">编辑资料</button>
+          <button
+            v-if="!isSelf && currentUserId"
+            class="follow-btn"
+            :class="{ followed: followStatus === 'FOLLOWING' || followStatus === 'MUTUAL' }"
+            @click="handleFollowToggle"
+          >
+            {{ followBtnText }}
+          </button>
         </div>
       </section>
 
@@ -53,6 +61,14 @@
           <div class="stat-card">
             <div class="stat-value">{{ posts.length }}</div>
             <div class="stat-label">帖子</div>
+          </div>
+          <div class="stat-card clickable" @click="activeTab = 'following'">
+            <div class="stat-value">{{ followCount.following }}</div>
+            <div class="stat-label">关注</div>
+          </div>
+          <div class="stat-card clickable" @click="activeTab = 'followers'">
+            <div class="stat-value">{{ followCount.followers }}</div>
+            <div class="stat-label">粉丝</div>
           </div>
         </div>
       </section>
@@ -176,6 +192,44 @@
             </div>
           </div>
         </div>
+
+        <!-- Tab: Following -->
+        <div v-if="activeTab === 'following'">
+          <div v-if="followingList.length === 0" class="empty">暂未关注任何人</div>
+          <div v-else class="user-list">
+            <div
+              v-for="uid in followingList"
+              :key="'fg' + uid"
+              class="user-list-item"
+              @click="$router.push({ name: 'user-home', params: { id: uid } })"
+            >
+              <img :src="(followingUsers[uid] && followingUsers[uid].avatarUrl) || defaultAvatar" class="user-list-avatar" alt="" />
+              <div class="user-list-info">
+                <p class="user-list-name">{{ (followingUsers[uid] && (followingUsers[uid].nickName || followingUsers[uid].username)) || `用户 ${uid}` }}</p>
+                <p class="user-list-sig">{{ (followingUsers[uid] && followingUsers[uid].signature) || '' }}</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Tab: Followers -->
+        <div v-if="activeTab === 'followers'">
+          <div v-if="followersList.length === 0" class="empty">暂无粉丝</div>
+          <div v-else class="user-list">
+            <div
+              v-for="uid in followersList"
+              :key="'fr' + uid"
+              class="user-list-item"
+              @click="$router.push({ name: 'user-home', params: { id: uid } })"
+            >
+              <img :src="(followersUsers[uid] && followersUsers[uid].avatarUrl) || defaultAvatar" class="user-list-avatar" alt="" />
+              <div class="user-list-info">
+                <p class="user-list-name">{{ (followersUsers[uid] && (followersUsers[uid].nickName || followersUsers[uid].username)) || `用户 ${uid}` }}</p>
+                <p class="user-list-sig">{{ (followersUsers[uid] && followersUsers[uid].signature) || '' }}</p>
+              </div>
+            </div>
+          </div>
+        </div>
       </section>
     </template>
   </div>
@@ -209,6 +263,8 @@ export default {
         { key: 'topSingers', label: '最爱歌手' },
         { key: 'posts', label: '帖子' },
         { key: 'playlists', label: '歌单' },
+        { key: 'following', label: '关注' },
+        { key: 'followers', label: '粉丝' },
       ],
 
       dimensions: [
@@ -230,11 +286,23 @@ export default {
 
       playlists: [],
       playlistsLoading: false,
+
+      followStatus: 'NONE',
+      followCount: { following: 0, followers: 0 },
+      followingList: [],
+      followersList: [],
+      followingUsers: {},
+      followersUsers: {},
     };
   },
   computed: {
     isSelf() {
       return this.currentUserId != null && this.currentUserId === this.targetUserId;
+    },
+    followBtnText() {
+      if (this.followStatus === 'MUTUAL') return '互关';
+      if (this.followStatus === 'FOLLOWING') return '已关注';
+      return '关注';
     },
   },
   created() {
@@ -274,6 +342,7 @@ export default {
         this.loadTopSingers();
         this.loadPlaylists();
         this.loadRecentComments();
+        this.loadFollowData();
       }
     },
 
@@ -343,6 +412,67 @@ export default {
         }
       } catch { this.topSingers = []; }
       finally { this.topSingersLoading = false; }
+    },
+
+    async loadFollowData() {
+      try {
+        const [countRes, statusRes] = await Promise.all([
+          communityApi.getFollowCount(this.targetUserId),
+          this.currentUserId ? communityApi.getFollowStatus(this.targetUserId) : null,
+        ]);
+        if (countRes?.data?.passed) {
+          this.followCount = countRes.data.data;
+        }
+        if (statusRes?.data?.passed) {
+          this.followStatus = statusRes.data.data;
+        }
+      } catch { /* silent */ }
+
+      this.loadFollowingList();
+      this.loadFollowersList();
+    },
+
+    async loadFollowingList() {
+      try {
+        const res = await communityApi.getFollowing(this.targetUserId, 1, 50);
+        if (res.data?.passed) {
+          this.followingList = res.data.data || [];
+          await this.resolveUserInfos(this.followingList, this.followingUsers);
+        }
+      } catch { this.followingList = []; }
+    },
+
+    async loadFollowersList() {
+      try {
+        const res = await communityApi.getFollowers(this.targetUserId, 1, 50);
+        if (res.data?.passed) {
+          this.followersList = res.data.data || [];
+          await this.resolveUserInfos(this.followersList, this.followersUsers);
+        }
+      } catch { this.followersList = []; }
+    },
+
+    async resolveUserInfos(ids, cache) {
+      const toFetch = ids.filter(id => !cache[id]);
+      await Promise.all(toFetch.map(async id => {
+        try {
+          const res = await userApi.getUserBaseInfo(id);
+          if (res.data?.passed && res.data.data) {
+            cache[id] = res.data.data;
+          }
+        } catch { /* silent */ }
+      }));
+    },
+
+    async handleFollowToggle() {
+      try {
+        if (this.followStatus === 'FOLLOWING' || this.followStatus === 'MUTUAL') {
+          await communityApi.unfollow(this.targetUserId);
+        } else {
+          await communityApi.follow(this.targetUserId);
+        }
+        await this.loadFollowData();
+      } catch { /* silent */ }
     },
 
     async loadRecentComments() {
@@ -533,6 +663,25 @@ export default {
 }
 .edit-btn:hover { background: rgba(255, 255, 255, 0.1); transform: translateY(-2px); }
 
+.follow-btn {
+  padding: 10px 24px;
+  border-radius: 999px;
+  border: none;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  background: linear-gradient(135deg, #a855f7, #ec4899);
+  color: #fff;
+  transition: transform 0.2s, box-shadow 0.2s, opacity 0.2s;
+  flex-shrink: 0;
+}
+.follow-btn:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(168, 85, 247, 0.4); }
+.follow-btn.followed {
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  color: rgba(228, 235, 255, 0.8);
+}
+
 /* ---- Bio ---- */
 .bio-section {
   max-width: 900px;
@@ -569,6 +718,7 @@ export default {
   transition: transform 0.2s, border-color 0.2s;
 }
 .stat-card:hover { transform: translateY(-3px); border-color: rgba(56, 189, 248, 0.3); }
+.stat-card.clickable { cursor: pointer; }
 .stat-value { font-size: 22px; font-weight: 700; margin-bottom: 4px; }
 .stat-value-text { font-size: 16px; }
 .stat-label { font-size: 12px; color: rgba(228, 235, 255, 0.55); }
@@ -851,4 +1001,33 @@ export default {
   overflow: hidden;
   text-overflow: ellipsis;
 }
+
+/* ---- User List (Follow/Fans) ---- */
+.user-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.user-list-item {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 14px 16px;
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  cursor: pointer;
+  transition: transform 0.15s, border-color 0.2s;
+}
+.user-list-item:hover { transform: translateX(4px); border-color: rgba(168, 85, 247, 0.3); }
+.user-list-avatar {
+  width: 44px; height: 44px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 2px solid rgba(255, 255, 255, 0.1);
+  flex-shrink: 0;
+}
+.user-list-info { flex: 1; min-width: 0; }
+.user-list-name { margin: 0; font-size: 15px; font-weight: 600; }
+.user-list-sig { margin: 2px 0 0; font-size: 13px; color: rgba(228, 235, 255, 0.5); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 </style>

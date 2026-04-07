@@ -84,7 +84,10 @@
           <article class="post-card" v-for="post in posts" :key="post.id">
             <div class="post-card-head">
               <h3>{{ post.title }}</h3>
-              <span class="comment-count">{{ post.commentCount ?? 0 }} 评论</span>
+              <div class="post-badges">
+                <span class="like-badge" v-if="post.likeCount">❤ {{ post.likeCount }}</span>
+                <span class="comment-count">💬 {{ post.commentCount ?? 0 }}</span>
+              </div>
             </div>
             <p class="excerpt">{{ makeExcerpt(post.content) }}</p>
             <div class="post-meta">
@@ -532,7 +535,17 @@ export default {
   gap: 12px;
 }
 
+.post-badges {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  flex-shrink: 0;
+}
 .comment-count {
+  font-size: 12px;
+  color: rgba(236, 72, 153, 0.85);
+}
+.like-badge {
   font-size: 12px;
   color: rgba(236, 72, 153, 0.85);
 }

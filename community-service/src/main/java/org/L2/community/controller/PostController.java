@@ -1,13 +1,17 @@
 package org.L2.community.controller;
 
 import org.L2.common.R;
+import org.L2.common.context.UserContext;
 import org.L2.community.application.request.CommentCreateRequest;
 import org.L2.community.application.request.PostCreateRequest;
 import org.L2.community.application.request.PostUpdateRequest;
 import org.L2.community.application.service.CommunityAppService;
+import org.L2.community.domain.service.PostLikeService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
+
+import java.util.Map;
 
 /**
  * 社区帖子/评论相关接口。
@@ -19,6 +23,9 @@ public class PostController {
 
     @Autowired
     private CommunityAppService communityAppService;
+
+    @Autowired
+    private PostLikeService postLikeService;
 
     // -------- 帖子 --------
 
@@ -64,6 +71,24 @@ public class PostController {
             @PathVariable("userId") Long userId,
             @RequestParam(value = "limit", defaultValue = "10") int limit) {
         return communityAppService.getRecentCommentsByUser(userId, limit);
+    }
+
+    // -------- 点赞 --------
+
+    @PostMapping("/post/{id}/like")
+    public R toggleLike(@PathVariable("id") Long id) {
+        Long userId = UserContext.getUserId();
+        if (userId == null) return R.error("用户未登录");
+        boolean liked = postLikeService.toggleLike(id, userId);
+        return R.success(liked ? "已点赞" : "已取消", Map.of("liked", liked));
+    }
+
+    @GetMapping("/post/{id}/like/status")
+    public R getLikeStatus(@PathVariable("id") Long id) {
+        Long userId = UserContext.getUserId();
+        if (userId == null) return R.success("查询成功", Map.of("liked", false));
+        boolean liked = postLikeService.isLiked(id, userId);
+        return R.success("查询成功", Map.of("liked", liked));
     }
 
     // -------- 文件上传 --------

@@ -20,7 +20,8 @@ public class ForumPost {
      * 帖子状态：0-正常，1-删除，2-审核中
      */
     private Byte status;
-    private Integer commentCount; //评论总数
+    private Integer commentCount;
+    private Integer likeCount;
     private LocalDateTime lastCommentAt;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
