@@ -66,6 +66,14 @@ services:
       timeout: 5s
       retries: 30
 
+  sentinel:
+    image: bladex/sentinel-dashboard:1.8.8
+    container_name: shining-sentinel
+    ports:
+      - "8858:8858"
+    environment:
+      JAVA_OPTS: "-Xms128m -Xmx256m"
+
   nacos:
     image: nacos/nacos-server:v2.5.0
     container_name: shining-nacos

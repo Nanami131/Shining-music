@@ -23,6 +23,16 @@
             <artifactId>common</artifactId>
         </dependency>
 
+        <!-- Sentinel Gateway 限流 -->
+        <dependency>
+            <groupId>com.alibaba.cloud</groupId>
+            <artifactId>spring-cloud-alibaba-sentinel-gateway</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.alibaba.cloud</groupId>
+            <artifactId>spring-cloud-starter-alibaba-sentinel</artifactId>
+        </dependency>
+
         <!-- JJWT 相关 -->
         <dependency>
             <groupId>io.jsonwebtoken</groupId>

@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="org.L2.community.infrastructure.mapper.UserFollowMapper">
+
+    <resultMap id="UserFollowResultMap" type="org.L2.community.domain.model.UserFollow">
+        <id     column="id"           property="id"/>
+        <result column="follower_id"  property="followerId"/>
+        <result column="following_id" property="followingId"/>
+        <result column="created_at"   property="createdAt"/>
+    </resultMap>
+
+    <insert id="insert"
+            parameterType="org.L2.community.domain.model.UserFollow"
+            useGeneratedKeys="true"
+            keyProperty="id">
+        INSERT IGNORE INTO user_follows (follower_id, following_id)
+        VALUES (#{followerId}, #{followingId})
+    </insert>
+
+    <delete id="delete">
+        DELETE FROM user_follows
+        WHERE follower_id = #{followerId} AND following_id = #{followingId}
+    </delete>
+
+    <select id="selectFollowing" resultMap="UserFollowResultMap">
+        SELECT id, follower_id, following_id, created_at
+        FROM user_follows
+        WHERE follower_id = #{userId}
+        ORDER BY created_at DESC
+        LIMIT #{limit} OFFSET #{offset}
+    </select>
+
+    <select id="selectFollowers" resultMap="UserFollowResultMap">
+        SELECT id, follower_id, following_id, created_at
+        FROM user_follows
+        WHERE following_id = #{userId}
+        ORDER BY created_at DESC
+        LIMIT #{limit} OFFSET #{offset}
+    </select>
+
+    <select id="countFollowing" resultType="int">
+        SELECT COUNT(*) FROM user_follows WHERE follower_id = #{userId}
+    </select>
+
+    <select id="countFollowers" resultType="int">
+        SELECT COUNT(*) FROM user_follows WHERE following_id = #{userId}
+    </select>
+
+    <select id="selectByPair" resultMap="UserFollowResultMap">
+        SELECT id, follower_id, following_id, created_at
+        FROM user_follows
+        WHERE follower_id = #{followerId} AND following_id = #{followingId}
+    </select>
+</mapper>

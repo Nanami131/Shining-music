@@ -1,13 +1,14 @@
 package org.L2.common.rpc;
 
 import org.L2.common.R;
+import org.L2.common.rpc.fallback.MusicClientFallbackFactory;
 import org.springframework.cloud.openfeign.FeignClient;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 
-@FeignClient(name = "music-service")
+@FeignClient(name = "music-service", fallbackFactory = MusicClientFallbackFactory.class)
 public interface MusicClient {
 
     /**
