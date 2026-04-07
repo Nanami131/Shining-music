@@ -222,6 +222,27 @@ public class CommunityAppService {
         return R.success("上传成功", Map.of("url", url));
     }
 
+    public R getRecentCommentsByUser(Long userId, int limit) {
+        if (userId == null) return R.error("用户ID不能为空");
+        if (limit <= 0 || limit > 50) limit = 10;
+        List<ForumComment> comments = forumCommentService.getRecentByUserId(userId, limit);
+        List<CommentDTO> dtos = new ArrayList<>();
+        for (ForumComment c : comments) {
+            CommentDTO dto = new CommentDTO()
+                    .setId(c.getId())
+                    .setPostId(c.getPostId())
+                    .setParentId(c.getParentId())
+                    .setUserId(c.getUserId())
+                    .setReplyToUserId(c.getReplyToUserId())
+                    .setContent(c.getContent())
+                    .setFloorNo(c.getFloorNo())
+                    .setReplyCount(c.getReplyCount())
+                    .setCreatedAt(c.getCreatedAt());
+            dtos.add(dto);
+        }
+        return R.success("查询成功", dtos);
+    }
+
     private R checkPostAuthor(Long postId) {
         Long currentUserId = UserContext.getUserId();
         if (currentUserId == null) {

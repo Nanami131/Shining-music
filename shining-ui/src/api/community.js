@@ -64,6 +64,10 @@ export default {
         return api.get(`/community/post/${postId}/comments`);
     },
 
+    getRecentComments(userId, limit = 10) {
+        return api.get(`/community/user/${userId}/recent-comments`, { params: { limit } });
+    },
+
     /**
      * 上传社区附件（图片 / 文件）
      * @param {File} file 原生 File 对象

@@ -2,6 +2,7 @@ package org.L2.community.infrastructure.mapper;
 
 import org.L2.community.domain.model.ForumComment;
 import org.apache.ibatis.annotations.Mapper;
+import org.apache.ibatis.annotations.Param;
 
 import java.util.List;
 
@@ -26,4 +27,6 @@ public interface ForumCommentMapper {
     Integer getMaxFloorNo(Long postId);
 
     List<ForumComment> query(ForumComment condition);
+
+    List<ForumComment> selectRecentByUserId(@Param("userId") Long userId, @Param("limit") int limit);
 }

@@ -101,6 +101,10 @@ public class ForumCommentService {
         return forumCommentMapper.query(condition);
     }
 
+    public List<ForumComment> getRecentByUserId(Long userId, int limit) {
+        return forumCommentMapper.selectRecentByUserId(userId, limit);
+    }
+
     @Transactional(rollbackFor = Exception.class)
     public R deleteComment(Long id) {
         if (id == null) {

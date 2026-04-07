@@ -59,6 +59,13 @@ public class PostController {
         return communityAppService.listComments(postId);
     }
 
+    @GetMapping("/user/{userId}/recent-comments")
+    public R getRecentComments(
+            @PathVariable("userId") Long userId,
+            @RequestParam(value = "limit", defaultValue = "10") int limit) {
+        return communityAppService.getRecentCommentsByUser(userId, limit);
+    }
+
     // -------- 文件上传 --------
 
     @PostMapping("/upload")

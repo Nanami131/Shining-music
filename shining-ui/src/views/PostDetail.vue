@@ -1,112 +1,145 @@
 <template>
-  <div class="post-detail-container">
-    <div v-if="loading" class="loading">正在加载帖子详情...</div>
-    <div v-else-if="!post" class="empty">帖子不存在或已删除。</div>
-    <div v-else>
-      <h2 class="post-title">{{ post.title }}</h2>
-      <div class="post-meta">
-        <span class="user-link" @click="goUser(post.userId)">用户 {{ post.userId }}</span>
-        <span>{{ post.commentCount ?? 0 }} 评论</span>
-        <span>{{ formatDate(post.createdAt) }}</span>
-        <span v-if="post.lastCommentAt">最后评论：{{ formatDate(post.lastCommentAt) }}</span>
-      </div>
-      <div class="post-content" v-html="sanitizedContent"></div>
+  <div class="post-detail-shell">
+    <div v-if="loading" class="state-msg">
+      <div class="spinner"></div>
+      <span>加载中...</span>
+    </div>
+    <div v-else-if="!post" class="state-msg">帖子不存在或已删除。</div>
+    <template v-else>
+      <!-- Back -->
+      <nav class="breadcrumb">
+        <span class="back-link" @click="$router.back()">← 返回</span>
+        <span class="sep">/</span>
+        <span class="crumb" @click="$router.push('/forum')">社区</span>
+      </nav>
 
+      <!-- Post Card -->
+      <article class="post-card">
+        <h1 class="post-title">{{ post.title }}</h1>
+        <div class="post-meta">
+          <span class="author-link" @click="goUser(post.userId)">
+            <span class="author-avatar">{{ displayName(post.userId).charAt(0) }}</span>
+            {{ displayName(post.userId) }}
+          </span>
+          <span class="meta-dot">·</span>
+          <span>{{ formatDate(post.createdAt) }}</span>
+          <span v-if="post.commentCount" class="meta-dot">·</span>
+          <span v-if="post.commentCount">{{ post.commentCount }} 条评论</span>
+        </div>
+        <div class="post-body" v-html="sanitizedContent"></div>
+        <div v-if="post.lastCommentAt" class="post-last-comment">
+          最后评论于 {{ formatDate(post.lastCommentAt) }}
+        </div>
+      </article>
+
+      <!-- Comment Section -->
       <section class="comment-section">
-        <h3>评论</h3>
+        <h2 class="section-title">
+          <span class="title-icon">💬</span>
+          评论 <span class="comment-count" v-if="comments.length">({{ comments.length }})</span>
+        </h2>
 
-        <div v-if="!userId" class="comment-tip">
-          请先登录后再发表评论。
+        <!-- Comment Input -->
+        <div v-if="!userId" class="login-tip">
+          <span>请先登录后再发表评论。</span>
         </div>
-
-        <div v-else class="comment-create">
+        <div v-else class="comment-editor">
           <textarea
-              v-model="newComment"
-              class="textarea"
-              placeholder="说点什么..."
+            v-model="newComment"
+            class="editor-textarea"
+            placeholder="写下你的想法..."
+            rows="3"
           ></textarea>
-          <button
-              class="btn"
-              :disabled="commenting"
+          <div class="editor-footer">
+            <p v-if="errorMessage" class="error-msg">{{ errorMessage }}</p>
+            <button
+              class="submit-btn"
+              :disabled="commenting || !newComment.trim()"
               @click="handleCreateRootComment"
-          >
-            {{ commenting ? '发表中...' : '发表评论' }}
-          </button>
-          <p v-if="errorMessage" class="error">{{ errorMessage }}</p>
+            >
+              <span v-if="commenting" class="btn-spinner"></span>
+              {{ commenting ? '发表中...' : '发表评论' }}
+            </button>
+          </div>
         </div>
 
+        <!-- Comment List -->
         <div class="comment-list">
-          <div v-if="comments.length === 0" class="empty-comment">
-            还没有评论，来抢沙发吧~
+          <div v-if="comments.length === 0" class="empty-state">
+            <span class="empty-icon">🫧</span>
+            <p>还没有评论，来抢沙发吧~</p>
           </div>
+
           <div
-              v-else
-              v-for="c in comments"
-              :key="c.id"
-              class="comment-item"
+            v-for="(c, idx) in comments"
+            :key="c.id"
+            class="comment-card"
           >
-            <div class="comment-main">
-              <div class="comment-header">
-                <span class="user user-link" @click.stop="goUser(c.userId)">用户 {{ c.userId ?? '未知' }}</span>
-                <span class="time">{{ formatDate(c.createdAt) }}</span>
+            <div class="comment-floor">#{{ c.floorNo || idx + 1 }}</div>
+            <div class="comment-body">
+              <div class="comment-head">
+                <span class="commenter-link" @click.stop="goUser(c.userId)">
+                  <span class="commenter-chip">{{ displayName(c.userId).charAt(0) }}</span>
+                  {{ displayName(c.userId) }}
+                </span>
+                <span class="comment-time">{{ formatDate(c.createdAt) }}</span>
               </div>
-              <div class="comment-content">{{ c.content }}</div>
-            </div>
+              <div class="comment-text">{{ c.content }}</div>
+              <div class="comment-actions" v-if="userId">
+                <button class="action-btn" @click="toggleReplyInput(c.id)">
+                  {{ showReplyFor === c.id ? '取消' : '回复' }}
+                </button>
+              </div>
 
-            <div class="comment-actions" v-if="userId">
-              <button class="link-btn" @click="toggleReplyInput(c.id)">
-                {{ showReplyFor === c.id ? '取消回复' : '回复' }}
-              </button>
-            </div>
-
-            <div
-                v-if="showReplyFor === c.id"
-                class="reply-input"
-            >
-              <textarea
+              <!-- Reply Input -->
+              <div v-if="showReplyFor === c.id" class="reply-editor">
+                <textarea
                   v-model="replyText"
-                  class="textarea small"
+                  class="editor-textarea small"
                   placeholder="回复一下..."
-              ></textarea>
-              <button
-                  class="btn small"
-                  :disabled="commenting"
+                  rows="2"
+                ></textarea>
+                <button
+                  class="submit-btn small"
+                  :disabled="commenting || !replyText.trim()"
                   @click="handleCreateReply(c)"
-              >
-                {{ commenting ? '发送中...' : '发送回复' }}
-              </button>
-            </div>
+                >
+                  {{ commenting ? '发送中...' : '发送' }}
+                </button>
+              </div>
 
-            <div
-                v-if="c.replies && c.replies.length > 0"
-                class="reply-list"
-            >
-              <div
+              <!-- Replies -->
+              <div v-if="c.replies && c.replies.length > 0" class="reply-thread">
+                <div
                   v-for="r in c.replies"
                   :key="r.id"
-                  class="reply-item"
-              >
-                <div class="comment-header">
-                  <span class="user">
-                    <span class="user-link" @click.stop="goUser(r.userId)">用户 {{ r.userId ?? '未知' }}</span>
+                  class="reply-card"
+                >
+                  <div class="comment-head">
+                    <span class="commenter-link" @click.stop="goUser(r.userId)">
+                      <span class="commenter-chip reply-chip">{{ displayName(r.userId).charAt(0) }}</span>
+                      {{ displayName(r.userId) }}
+                    </span>
                     <template v-if="r.replyToUserId">
-                      &nbsp;回复 <span class="user-link" @click.stop="goUser(r.replyToUserId)">@{{ r.replyToUserId }}</span>
+                      <span class="reply-arrow">→</span>
+                      <span class="commenter-link" @click.stop="goUser(r.replyToUserId)">@{{ displayName(r.replyToUserId) }}</span>
                     </template>
-                  </span>
-                  <span class="time">{{ formatDate(r.createdAt) }}</span>
+                    <span class="comment-time">{{ formatDate(r.createdAt) }}</span>
+                  </div>
+                  <div class="comment-text reply-text">{{ r.content }}</div>
                 </div>
-                <div class="comment-content">{{ r.content }}</div>
               </div>
             </div>
           </div>
         </div>
       </section>
-    </div>
+    </template>
   </div>
 </template>
 
 <script>
 import communityApi from '@/api/community';
+import userApi from '@/api/user';
 import DOMPurify from 'dompurify';
 
 export default {
@@ -123,6 +156,7 @@ export default {
       errorMessage: '',
       showReplyFor: null,
       replyText: '',
+      nickNameMap: {},
     };
   },
   created() {
@@ -170,6 +204,7 @@ export default {
             createdAt: data.createdAt,
           };
           this.comments = data.comments || [];
+          await this.resolveNickNames();
         } else {
           const msg = res && res.data ? res.data.message : '未知错误';
           alert('获取帖子详情失败：' + msg);
@@ -179,6 +214,34 @@ export default {
       } finally {
         this.loading = false;
       }
+    },
+    async resolveNickNames() {
+      const ids = new Set();
+      if (this.post?.userId) ids.add(this.post.userId);
+      const collect = (list) => {
+        for (const c of list || []) {
+          if (c.userId) ids.add(c.userId);
+          if (c.replyToUserId) ids.add(c.replyToUserId);
+          if (c.replies) collect(c.replies);
+        }
+      };
+      collect(this.comments);
+      const toFetch = [...ids].filter(id => !this.nickNameMap[id]);
+      await Promise.all(toFetch.map(async id => {
+        try {
+          const res = await userApi.getUserBaseInfo(id);
+          if (res.data?.passed && res.data.data) {
+            this.nickNameMap[id] = res.data.data.nickName || res.data.data.username || `用户${id}`;
+          } else {
+            this.nickNameMap[id] = `用户${id}`;
+          }
+        } catch {
+          this.nickNameMap[id] = `用户${id}`;
+        }
+      }));
+    },
+    displayName(uid) {
+      return this.nickNameMap[uid] || `用户${uid}`;
     },
     formatDate(val) {
       if (!val) return '';
@@ -287,228 +350,439 @@ export default {
 </script>
 
 <style scoped>
-.post-detail-container {
-  max-width: 900px;
+/* ======== Shell ======== */
+.post-detail-shell {
+  min-height: calc(100vh - 60px);
+  background:
+    radial-gradient(circle at 20% 10%, rgba(56, 189, 248, 0.35), transparent 50%),
+    radial-gradient(circle at 75% 25%, rgba(168, 85, 247, 0.3), transparent 50%),
+    linear-gradient(150deg, #020617, #0f0a2a 50%, #1a0e3a);
+  color: #e4ebff;
+  padding: 0 clamp(16px, 4vw, 48px) 80px;
+  max-width: 860px;
   margin: 0 auto;
-  padding: 24px 16px;
 }
 
-.loading,
-.empty {
-  margin-top: 40px;
+.state-msg {
   text-align: center;
-  opacity: 0.8;
+  padding: 100px 20px;
+  font-size: 15px;
+  color: rgba(228, 235, 255, 0.6);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+}
+.spinner {
+  width: 28px; height: 28px;
+  border: 3px solid rgba(168, 85, 247, 0.2);
+  border-top-color: #a855f7;
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ======== Breadcrumb ======== */
+.breadcrumb {
+  padding: clamp(20px, 3vw, 36px) 0 16px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: rgba(228, 235, 255, 0.5);
+}
+.back-link, .crumb {
+  cursor: pointer;
+  transition: color 0.15s;
+}
+.back-link:hover, .crumb:hover { color: #93c5fd; }
+.sep { opacity: 0.3; }
+
+/* ======== Post Card ======== */
+.post-card {
+  padding: clamp(24px, 4vw, 40px);
+  border-radius: 24px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  backdrop-filter: blur(12px);
+  margin-bottom: 32px;
 }
 
 .post-title {
-  font-size: 24px;
-  margin-bottom: 8px;
+  font-size: clamp(22px, 3.5vw, 32px);
+  font-weight: 700;
+  margin: 0 0 16px;
+  line-height: 1.35;
+  background: linear-gradient(135deg, #f2f5ff 60%, #a5b4fc);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
 }
 
 .post-meta {
-  font-size: 12px;
-  opacity: 0.8;
   display: flex;
-  gap: 12px;
-  margin-bottom: 16px;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: rgba(228, 235, 255, 0.55);
+  margin-bottom: 24px;
+  flex-wrap: wrap;
+}
+.meta-dot { opacity: 0.3; }
+
+.author-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  color: #93c5fd;
+  font-weight: 600;
+  transition: color 0.15s;
+}
+.author-link:hover { color: #60a5fa; }
+
+.author-avatar {
+  width: 26px; height: 26px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #38bdf8, #a855f7);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: 700;
+  color: #fff;
+  flex-shrink: 0;
 }
 
-.post-content {
-  padding: 16px;
-  border-radius: 12px;
-  background: rgba(255, 255, 255, 0.04);
-  margin-bottom: 24px;
-  line-height: 1.8;
+/* ======== Post Body (rich content) ======== */
+.post-body {
+  line-height: 1.85;
   word-break: break-word;
   font-size: 15px;
+  color: rgba(228, 235, 255, 0.88);
 }
-.post-content :deep(img) {
+.post-body :deep(img) {
   max-width: 100%;
-  border-radius: 8px;
-  margin: 8px 0;
+  border-radius: 12px;
+  margin: 12px 0;
 }
-.post-content :deep(a) {
+.post-body :deep(a) {
   color: #93c5fd;
   text-decoration: underline;
+  text-underline-offset: 3px;
 }
-.post-content :deep(h1),
-.post-content :deep(h2),
-.post-content :deep(h3) {
-  margin: 16px 0 8px;
+.post-body :deep(h1),
+.post-body :deep(h2),
+.post-body :deep(h3) {
+  margin: 20px 0 10px;
   line-height: 1.4;
+  color: #f2f5ff;
 }
-.post-content :deep(blockquote) {
+.post-body :deep(blockquote) {
   border-left: 3px solid rgba(168, 85, 247, 0.6);
-  margin: 12px 0;
-  padding: 8px 16px;
-  color: rgba(255, 255, 255, 0.7);
+  margin: 16px 0;
+  padding: 10px 20px;
+  color: rgba(228, 235, 255, 0.7);
   background: rgba(255, 255, 255, 0.03);
-  border-radius: 0 8px 8px 0;
+  border-radius: 0 12px 12px 0;
 }
-.post-content :deep(pre) {
-  background: rgba(0, 0, 0, 0.4);
-  border-radius: 8px;
-  padding: 12px 16px;
+.post-body :deep(pre) {
+  background: rgba(0, 0, 0, 0.5);
+  border-radius: 12px;
+  padding: 16px 20px;
   overflow-x: auto;
-  margin: 12px 0;
+  margin: 16px 0;
+  border: 1px solid rgba(255, 255, 255, 0.06);
 }
-.post-content :deep(code) {
+.post-body :deep(code) {
   background: rgba(255, 255, 255, 0.08);
   color: #fbbf24;
-  border-radius: 4px;
-  padding: 1px 4px;
+  border-radius: 5px;
+  padding: 2px 6px;
   font-size: 0.9em;
 }
-.post-content :deep(pre code) {
+.post-body :deep(pre code) {
   background: transparent;
   color: inherit;
   padding: 0;
 }
-.post-content :deep(ul),
-.post-content :deep(ol) {
+.post-body :deep(ul),
+.post-body :deep(ol) {
   padding-left: 24px;
-  margin: 8px 0;
+  margin: 10px 0;
 }
-.post-content :deep(li) {
-  margin: 4px 0;
-}
-.post-content :deep(table) {
+.post-body :deep(li) { margin: 5px 0; }
+.post-body :deep(table) {
   border-collapse: collapse;
   width: 100%;
-  margin: 12px 0;
+  margin: 16px 0;
 }
-.post-content :deep(th),
-.post-content :deep(td) {
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  padding: 8px 12px;
+.post-body :deep(th),
+.post-body :deep(td) {
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  padding: 10px 14px;
   text-align: left;
 }
-.post-content :deep(th) {
+.post-body :deep(th) {
   background: rgba(255, 255, 255, 0.06);
+  font-weight: 600;
+}
+.post-body :deep(p) { margin: 10px 0; }
+
+.post-last-comment {
+  margin-top: 20px;
+  padding-top: 16px;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  font-size: 12px;
+  color: rgba(228, 235, 255, 0.4);
 }
 
-.user-link {
-  cursor: pointer;
-  color: #93c5fd;
-  transition: color 0.15s;
-}
-.user-link:hover {
-  color: #60a5fa;
-  text-decoration: underline;
-}
-
-.comment-section h3 {
-  margin-bottom: 12px;
+/* ======== Comment Section ======== */
+.comment-section {
+  padding: clamp(24px, 3vw, 36px);
+  border-radius: 24px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  backdrop-filter: blur(8px);
 }
 
-.comment-tip {
-  padding: 8px 10px;
-  margin-bottom: 12px;
-  border-radius: 8px;
-  background: rgba(255, 255, 255, 0.06);
+.section-title {
+  font-size: 18px;
+  font-weight: 700;
+  margin: 0 0 20px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.title-icon { font-size: 20px; }
+.comment-count {
+  font-size: 14px;
+  font-weight: 400;
+  color: rgba(228, 235, 255, 0.5);
 }
 
-.comment-create {
-  margin-bottom: 16px;
+/* -- Login Tip -- */
+.login-tip {
+  padding: 14px 18px;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  font-size: 14px;
+  color: rgba(228, 235, 255, 0.6);
+  margin-bottom: 20px;
 }
 
-.textarea {
+/* -- Editor -- */
+.comment-editor, .reply-editor {
+  margin-bottom: 24px;
+}
+
+.editor-textarea {
   width: 100%;
   box-sizing: border-box;
-  border-radius: 8px;
-  border: 1px solid rgba(255, 255, 255, 0.15);
-  background: rgba(0, 0, 0, 0.2);
-  color: #fff;
-  padding: 8px 10px;
-  margin-bottom: 8px;
+  border-radius: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(0, 0, 0, 0.3);
+  color: #e4ebff;
+  padding: 14px 16px;
+  font-size: 14px;
+  line-height: 1.6;
   resize: vertical;
+  transition: border-color 0.2s, box-shadow 0.2s;
+  font-family: inherit;
 }
-
-.textarea.small {
+.editor-textarea:focus {
+  outline: none;
+  border-color: rgba(168, 85, 247, 0.5);
+  box-shadow: 0 0 0 3px rgba(168, 85, 247, 0.12);
+}
+.editor-textarea.small {
   min-height: 60px;
+  padding: 10px 14px;
+  border-radius: 12px;
+}
+.editor-textarea::placeholder {
+  color: rgba(228, 235, 255, 0.3);
 }
 
-.btn {
-  padding: 6px 12px;
-  border-radius: 8px;
-  border: none;
-  cursor: pointer;
-  background: linear-gradient(135deg, #a18cd1, #fbc2eb);
-}
-
-.btn.small {
-  padding: 4px 10px;
-  font-size: 12px;
-}
-
-.btn:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-}
-
-.error {
-  margin-top: 4px;
-  color: #ff6b6b;
-  font-size: 12px;
-}
-
-.comment-list {
-  margin-top: 8px;
-}
-
-.comment-item {
-  padding: 10px 12px;
-  margin-bottom: 10px;
-  border-radius: 10px;
-  background: rgba(255, 255, 255, 0.04);
-}
-
-.comment-main {
-  margin-bottom: 4px;
-}
-
-.comment-header {
+.editor-footer {
   display: flex;
   justify-content: space-between;
-  font-size: 12px;
-  opacity: 0.85;
-  margin-bottom: 4px;
+  align-items: center;
+  margin-top: 10px;
 }
 
-.comment-content {
+.submit-btn {
+  padding: 10px 24px;
+  border-radius: 999px;
+  border: none;
+  cursor: pointer;
   font-size: 14px;
+  font-weight: 600;
+  color: #fff;
+  background: linear-gradient(135deg, #a855f7, #ec4899);
+  transition: transform 0.15s, box-shadow 0.15s, opacity 0.15s;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: auto;
 }
+.submit-btn:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 20px rgba(168, 85, 247, 0.35);
+}
+.submit-btn:disabled { opacity: 0.45; cursor: not-allowed; }
+.submit-btn.small {
+  padding: 6px 16px;
+  font-size: 13px;
+  margin-top: 8px;
+}
+
+.btn-spinner {
+  width: 14px; height: 14px;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: spin 0.6s linear infinite;
+}
+
+.error-msg {
+  margin: 0;
+  color: #fb7185;
+  font-size: 13px;
+}
+
+/* -- Empty State -- */
+.empty-state {
+  text-align: center;
+  padding: 40px 20px;
+  color: rgba(228, 235, 255, 0.5);
+}
+.empty-icon { font-size: 36px; display: block; margin-bottom: 8px; }
+.empty-state p { margin: 0; font-size: 14px; }
+
+/* -- Comment Card -- */
+.comment-card {
+  display: flex;
+  gap: 14px;
+  padding: 18px;
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.035);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  margin-bottom: 14px;
+  transition: border-color 0.2s;
+}
+.comment-card:hover { border-color: rgba(168, 85, 247, 0.2); }
+
+.comment-floor {
+  font-size: 12px;
+  font-weight: 700;
+  color: rgba(168, 85, 247, 0.6);
+  padding-top: 2px;
+  flex-shrink: 0;
+  min-width: 28px;
+}
+
+.comment-body { flex: 1; min-width: 0; }
+
+.comment-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+  flex-wrap: wrap;
+}
+
+.commenter-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  color: #93c5fd;
+  font-size: 13px;
+  font-weight: 600;
+  transition: color 0.15s;
+}
+.commenter-link:hover { color: #60a5fa; }
+
+.commenter-chip {
+  width: 22px; height: 22px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #38bdf8, #a855f7);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  font-weight: 700;
+  color: #fff;
+  flex-shrink: 0;
+}
+.reply-chip {
+  background: linear-gradient(135deg, #ec4899, #a855f7);
+  width: 18px; height: 18px;
+  font-size: 9px;
+}
+
+.reply-arrow {
+  color: rgba(228, 235, 255, 0.35);
+  font-size: 12px;
+}
+
+.comment-time {
+  font-size: 12px;
+  color: rgba(228, 235, 255, 0.35);
+  margin-left: auto;
+}
+
+.comment-text {
+  font-size: 14px;
+  line-height: 1.7;
+  color: rgba(228, 235, 255, 0.85);
+  word-break: break-word;
+}
+.reply-text { font-size: 13px; }
 
 .comment-actions {
-  margin-top: 4px;
+  margin-top: 8px;
 }
 
-.link-btn {
+.action-btn {
   border: none;
   background: transparent;
-  color: #ffd6e0;
+  color: rgba(228, 235, 255, 0.45);
   cursor: pointer;
   font-size: 12px;
-  padding: 0;
+  padding: 4px 10px;
+  border-radius: 8px;
+  transition: background 0.15s, color 0.15s;
+}
+.action-btn:hover {
+  background: rgba(168, 85, 247, 0.15);
+  color: #c4b5fd;
 }
 
-.reply-input {
-  margin-top: 6px;
+/* -- Reply Thread -- */
+.reply-thread {
+  margin-top: 14px;
+  padding-left: 16px;
+  border-left: 2px solid rgba(168, 85, 247, 0.2);
 }
 
-.reply-list {
-  margin-top: 6px;
-  padding-left: 12px;
-  border-left: 1px solid rgba(255, 255, 255, 0.08);
+.reply-card {
+  padding: 12px 14px;
+  margin-bottom: 8px;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.025);
+  border: 1px solid rgba(255, 255, 255, 0.04);
+}
+.reply-card:last-child { margin-bottom: 0; }
+
+.reply-editor {
+  margin-top: 10px;
 }
 
-.reply-item {
-  margin-top: 6px;
-}
-
-.empty-comment {
-  margin-top: 8px;
-  font-size: 13px;
-  opacity: 0.8;
+/* -- Comment List -- */
+.comment-list {
+  margin-top: 0;
 }
 </style>

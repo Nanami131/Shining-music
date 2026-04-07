@@ -88,6 +88,7 @@
             </div>
             <p class="excerpt">{{ makeExcerpt(post.content) }}</p>
             <div class="post-meta">
+              <span class="author-link" @click.stop="goUser(post.userId)">{{ authorName(post.userId) }}</span>
               <span>{{ formatDate(post.createdAt) }}</span>
               <button class="mini-btn" @click="goDetail(post.id)">查看详情</button>
             </div>
@@ -102,6 +103,7 @@
 import communityApi from '@/api/community';
 import statisticsApi from '@/api/statistics';
 import musicApi from '@/api/music';
+import userApi from '@/api/user';
 
 export default {
   name: 'Forum',
@@ -112,6 +114,7 @@ export default {
       loading: false,
       focusSongs: [],
       totalPlays: '--',
+      nickNameMap: {},
     };
   },
   computed: {
@@ -144,6 +147,7 @@ export default {
         const res = await communityApi.listPosts();
         if (res && res.data && res.data.passed) {
           this.posts = res.data.data || [];
+          await this.resolvePostAuthors();
         } else {
           const msg = res && res.data ? res.data.message : '未知错误';
           alert('获取帖子列表失败：' + msg);
@@ -153,6 +157,25 @@ export default {
       } finally {
         this.loading = false;
       }
+    },
+    async resolvePostAuthors() {
+      const ids = [...new Set(this.posts.map(p => p.userId).filter(Boolean))];
+      const toFetch = ids.filter(id => !this.nickNameMap[id]);
+      await Promise.all(toFetch.map(async id => {
+        try {
+          const res = await userApi.getUserBaseInfo(id);
+          if (res.data?.passed && res.data.data) {
+            this.nickNameMap[id] = res.data.data.nickName || res.data.data.username || `用户${id}`;
+          } else {
+            this.nickNameMap[id] = `用户${id}`;
+          }
+        } catch {
+          this.nickNameMap[id] = `用户${id}`;
+        }
+      }));
+    },
+    authorName(uid) {
+      return this.nickNameMap[uid] || `用户${uid}`;
     },
     async loadFocusSongs() {
       if (!this.userId) return;
@@ -198,6 +221,9 @@ export default {
     },
     goDetail(id) {
       this.$router.push({ name: 'post-detail', params: { id } });
+    },
+    goUser(userId) {
+      if (userId != null) this.$router.push({ name: 'user-home', params: { id: userId } });
     },
     goCreatePage() {
       if (!this.userId) {
@@ -524,6 +550,15 @@ export default {
   color: rgba(255, 255, 255, 0.72);
 }
 
+.author-link {
+  color: #93c5fd;
+  cursor: pointer;
+  font-weight: 500;
+}
+.author-link:hover {
+  text-decoration: underline;
+  color: #60a5fa;
+}
 .mini-btn {
   padding: 6px 14px;
   border-radius: 999px;

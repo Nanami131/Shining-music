@@ -162,4 +162,13 @@
         </where>
         ORDER BY created_at ASC
     </select>
+
+    <select id="selectRecentByUserId" resultMap="ForumCommentResultMap">
+        SELECT
+        <include refid="Base_Column_List"/>
+        FROM post_comments
+        WHERE user_id = #{userId}
+        ORDER BY created_at DESC
+        LIMIT #{limit}
+    </select>
 </mapper>
