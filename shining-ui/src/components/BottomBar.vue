@@ -273,8 +273,8 @@ export default {
       return this.playlist.length > 0 && this.currentIndex > 0;
     },
     hasNext() {
-      if (this.playMode === 'shuffle') {
-        return this.playlist.length > 1;
+      if (this.playMode === 'shuffle' || this.playMode === 'sequential') {
+        return this.playlist.length > 0;
       }
       return (
           this.playlist.length > 0 &&
@@ -587,6 +587,10 @@ export default {
           this.shuffleHistoryIndex = this.shuffleHistory.length - 1;
           if (nextId != null) this.playSong(nextId);
         }
+      } else if (this.playMode === 'sequential' && this.currentIndex >= this.playlist.length - 1) {
+        this.currentIndex = 0;
+        const firstId = this.playlist[0];
+        if (firstId != null) this.playSong(firstId);
       } else {
         this.currentIndex += 1;
         const nextId = this.playlist[this.currentIndex];
@@ -596,27 +600,14 @@ export default {
     handleEnded() {
       this.reportPlayEnd('ended');
       this.playSource = 'auto';
-      const mode = (this._playlistSetByEvent && this.playMode === 'stop')
-          ? 'sequential' : this.playMode;
+      const mode = this.playMode;
       if (mode === 'single') {
         if (this.currentSong && this.currentSong.id) {
           this.playSong(this.currentSong.id);
         }
       } else if (mode === 'sequential') {
-        if (this.hasNext) {
+        if (this.playlist.length > 0) {
           this.playNext();
-        } else if (this.playlist.length > 0) {
-          if (this._playlistSetByEvent) {
-            this._playlistSetByEvent = false;
-            this.isPlaying = false;
-            this.currentTime = 0;
-          } else {
-            this.currentIndex = 0;
-            const firstId = this.playlist[0];
-            if (firstId != null) {
-              this.playSong(firstId);
-            }
-          }
         } else {
           this.isPlaying = false;
           this.currentTime = 0;
@@ -643,8 +634,15 @@ export default {
           this.currentTime = 0;
         }
       } else {
-        this.isPlaying = false;
-        this.currentTime = 0;
+        if (this._playlistSetByEvent && this.currentIndex < this.playlist.length - 1) {
+          this.currentIndex += 1;
+          const nextId = this.playlist[this.currentIndex];
+          if (nextId != null) this.playSong(nextId);
+        } else {
+          this._playlistSetByEvent = false;
+          this.isPlaying = false;
+          this.currentTime = 0;
+        }
       }
     },
     cyclePlayMode() {
