@@ -294,6 +294,14 @@ public class MusicAppService {
         return playlistService.clearUserCurrentPlaylist(userId);
     }
 
+    public R clearPlaylistSongs(Long playlistId) {
+        Long userId = UserContext.getUserId();
+        if (userId == null) {
+            return R.error("未登录");
+        }
+        return playlistService.clearPlaylistSongs(playlistId, userId);
+    }
+
     /**
      * 发现更多歌单（用于“更多歌单”板块）
      *

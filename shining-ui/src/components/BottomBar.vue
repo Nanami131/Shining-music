@@ -457,13 +457,17 @@ export default {
         this.playlist = playlist;
         this.currentIndex =
             typeof index === 'number' ? index : playlist.findIndex(id => id === songId);
+        if (this.userId && playlist.length > 1) {
+          this.batchLoadEventPlaylist(playlist);
+        }
       } else if (this.userId && this.currentPlaylistSongs.length) {
+        this._playlistSetByEvent = false;
         this.playlist = this.currentPlaylistSongs.map(song => song.id);
         this.currentIndex = this.playlist.indexOf(songId);
       } else {
+        this._playlistSetByEvent = false;
         this.playlist = [songId];
         this.currentIndex = 0;
-        this._playlistSetByEvent = true;
       }
       if (this.playMode === 'shuffle') {
         this.shuffleHistory = [songId];
@@ -473,7 +477,6 @@ export default {
       if (this.currentIndex < 0) {
         this.currentIndex = this.playlist.indexOf(songId);
       }
-      this._playlistSetByEvent = false;
     },
     async playSong(songId) {
       const playId = ++this._playSeq;
@@ -584,24 +587,32 @@ export default {
     handleEnded() {
       this.reportPlayEnd('ended');
       this.playSource = 'auto';
-      if (this.playMode === 'single') {
+      const mode = (this._playlistSetByEvent && this.playMode === 'stop')
+          ? 'sequential' : this.playMode;
+      if (mode === 'single') {
         if (this.currentSong && this.currentSong.id) {
           this.playSong(this.currentSong.id);
         }
-      } else if (this.playMode === 'sequential') {
+      } else if (mode === 'sequential') {
         if (this.hasNext) {
           this.playNext();
         } else if (this.playlist.length > 0) {
-          this.currentIndex = 0;
-          const firstId = this.playlist[0];
-          if (firstId != null) {
-            this.playSong(firstId);
+          if (this._playlistSetByEvent) {
+            this._playlistSetByEvent = false;
+            this.isPlaying = false;
+            this.currentTime = 0;
+          } else {
+            this.currentIndex = 0;
+            const firstId = this.playlist[0];
+            if (firstId != null) {
+              this.playSong(firstId);
+            }
           }
         } else {
           this.isPlaying = false;
           this.currentTime = 0;
         }
-      } else if (this.playMode === 'shuffle') {
+      } else if (mode === 'shuffle') {
         if (this.playlist.length > 0) {
           let nextIndex;
           if (this.playlist.length === 1) {
@@ -779,12 +790,50 @@ export default {
         await this.loadCurrentPlaylist();
       }
     },
+    async batchLoadEventPlaylist(songIds) {
+      const existingIds = new Set(this.currentPlaylistSongs.map(s => s.id));
+      const toLoad = songIds.filter(id => !existingIds.has(id));
+      if (!toLoad.length) return;
+      const results = await Promise.all(
+          toLoad.map(id =>
+              musicApi.getSongBaseInfo(id, this.userId).catch(() => null)
+          )
+      );
+      const newSongs = [];
+      for (const res of results) {
+        const song = res?.data?.passed ? res.data.data : null;
+        if (song && !this.currentPlaylistSongs.some(s => s.id === song.id)) {
+          this.currentPlaylistSongs.push({
+            id: song.id,
+            title: song.title,
+            artistId: song.artistId,
+            coverUrl: song.coverUrl,
+            favorite: song.favorite,
+          });
+          newSongs.push(song);
+        }
+      }
+      if (newSongs.length) {
+        await this.ensureArtistNames(newSongs);
+        if (this.currentPlaylistId) {
+          for (const song of newSongs) {
+            musicApi.managePlaylistSong({
+              playlistId: this.currentPlaylistId,
+              songId: song.id,
+              action: 'add',
+            }).catch(() => {});
+          }
+        }
+      }
+    },
     playFromCurrentList(index) {
       const song = this.currentPlaylistSongs[index];
       if (!song) {
         return;
       }
       this.playSource = 'currentList';
+      this._playlistSetByEvent = false;
+      this.playlist = this.currentPlaylistSongs.map(s => s.id);
       this.currentIndex = index;
       this.playSong(song.id);
     },

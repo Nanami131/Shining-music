@@ -106,4 +106,14 @@ public class UserPlayStatisticsController {
     public R getGlobalTopSongs(@RequestParam(value = "limit", defaultValue = "20") int limit) {
         return userPlayStatisticsService.getGlobalTopSongs(limit);
     }
+
+    @GetMapping("/interactions/all")
+    public R getAllUserSongPlayCounts() {
+        return userPlayStatisticsService.getAllUserSongPlayCounts();
+    }
+
+    @GetMapping("/{userId}/plays/song-counts")
+    public R getUserSongPlayCounts(@PathVariable("userId") Long userId) {
+        return userPlayStatisticsService.getUserSongPlayCounts(userId);
+    }
 }

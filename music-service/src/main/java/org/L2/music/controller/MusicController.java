@@ -231,6 +231,12 @@ public class MusicController {
         }
         return musicAppService.clearUserCurrentPlaylist(userId);
     }
+
+    @PostMapping("/playlist/clear-songs")
+    public R clearPlaylistSongs(@RequestParam("playlistId") Long playlistId) {
+        return musicAppService.clearPlaylistSongs(playlistId);
+    }
+
     /**
      * 向歌单添加或移除歌曲
      * @param playlistSongRequest 歌单歌曲请求

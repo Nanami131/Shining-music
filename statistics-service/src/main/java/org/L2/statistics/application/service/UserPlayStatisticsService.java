@@ -181,4 +181,17 @@ public class UserPlayStatisticsService {
         var songIds = userPlayRecordDomainService.distinctSongIdsByUser(userId);
         return R.success("获取已播放歌曲ID成功", songIds);
     }
+
+    public R getAllUserSongPlayCounts() {
+        var data = userPlayRecordDomainService.allUserSongPlayCounts();
+        return R.success("获取成功", data);
+    }
+
+    public R getUserSongPlayCounts(Long userId) {
+        if (userId == null) {
+            return R.error("用户ID不能为空");
+        }
+        var counts = userPlayRecordDomainService.songPlayCountsByUser(userId);
+        return R.success("获取成功", counts);
+    }
 }

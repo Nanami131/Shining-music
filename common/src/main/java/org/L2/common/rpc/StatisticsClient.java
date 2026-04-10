@@ -15,4 +15,13 @@ public interface StatisticsClient {
 
     @GetMapping("/statistics/user/{userId}/plays/song-ids")
     R getPlayedSongIds(@PathVariable("userId") Long userId);
+
+    @GetMapping("/statistics/user/ranking/top-songs")
+    R getGlobalTopSongs(@RequestParam(value = "limit", defaultValue = "20") int limit);
+
+    @GetMapping("/statistics/user/interactions/all")
+    R getAllUserSongPlayCounts();
+
+    @GetMapping("/statistics/user/{userId}/plays/song-counts")
+    R getUserSongPlayCounts(@PathVariable("userId") Long userId);
 }

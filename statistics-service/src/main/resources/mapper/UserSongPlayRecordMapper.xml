@@ -192,4 +192,19 @@
         LIMIT 1
     </update>
 
+    <select id="allUserSongPlayCounts" resultType="java.util.HashMap">
+        SELECT user_id AS userId, song_id AS songId, COUNT(*) AS playCount
+        FROM user_song_play_record
+        GROUP BY user_id, song_id
+    </select>
+
+    <select id="songPlayCountsByUser" resultType="java.util.HashMap">
+        SELECT song_id AS songId, COUNT(*) AS playCount
+        FROM user_song_play_record
+        WHERE user_id = #{userId}
+        GROUP BY song_id
+        ORDER BY playCount DESC
+    </select>
+
+
 </mapper>

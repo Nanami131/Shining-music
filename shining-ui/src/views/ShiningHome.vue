@@ -40,7 +40,10 @@
           <h2>每日推荐 · 基于你的听歌画像</h2>
           <p>由 Ribecky (2021) 多维相似度算法驱动，语种分流 + 五维加权匹配。</p>
         </div>
-        <button class="ghost" @click="refreshRecommendations">刷新推荐</button>
+        <div class="panel-head-actions">
+          <button class="ghost" @click="playAllRecommendations" v-if="dailyRecommendations.length">一键播放全部</button>
+          <button class="ghost" @click="refreshRecommendations">刷新推荐</button>
+        </div>
       </div>
       <div class="recommend-grid">
         <article
@@ -64,10 +67,15 @@
             </div>
           </div>
           <button
+            class="rec-play-btn"
+            title="播放"
+            @click.stop="playRecSong(rec, idx)"
+          >▶</button>
+          <button
             class="rec-add-btn"
             :class="{ added: rec._added }"
             :title="rec._added ? '已加入歌单' : '加入当前歌单'"
-            @click.stop="addRecToPlaylist(rec)"
+            @click.stop="addRecToCurrentPlaylist(rec)"
           >{{ rec._added ? '✓' : '+' }}</button>
         </article>
       </div>
@@ -79,6 +87,46 @@
           <h2>每日推荐 · 基于你的听歌画像</h2>
           <p>多听几首歌，推荐引擎就能认识你的口味了。</p>
         </div>
+      </div>
+    </section>
+
+    <section v-if="cfRecommendations.length" class="recommend-panel cf-panel">
+      <div class="panel-head">
+        <div>
+          <h2>协同发现 · 和你口味相近的人也在听</h2>
+          <p>Item-based Collaborative Filtering — 基于用户群体的共同偏好挖掘相似歌曲。</p>
+        </div>
+        <div class="panel-head-actions">
+          <button class="ghost" @click="playAllCF" v-if="cfRecommendations.length">一键播放全部</button>
+        </div>
+      </div>
+      <div class="recommend-grid">
+        <article
+          v-for="(rec, idx) in cfRecommendations"
+          :key="'cf-' + rec.songId"
+          class="recommend-card"
+          @click="goTo(`/song/${rec.songId}`)"
+        >
+          <div class="rec-rank cf-rank">{{ idx + 1 }}</div>
+          <div class="rec-cover" :style="{ backgroundImage: rec.coverUrl ? `url(${rec.coverUrl})` : '' }">
+            <span v-if="!rec.coverUrl" class="rec-icon">♪</span>
+          </div>
+          <div class="rec-info">
+            <h4>{{ rec.title || `歌曲 #${rec.songId}` }}</h4>
+            <p class="rec-artist">{{ rec.singerName || '未知歌手' }}</p>
+            <div class="rec-match">
+              <div class="match-bar cf-bar">
+                <div class="match-fill cf-fill" :style="{ width: (rec.similarity * 100) + '%' }"></div>
+              </div>
+              <span class="match-pct cf-pct">{{ (rec.similarity * 100).toFixed(1) }}%</span>
+            </div>
+          </div>
+          <button
+            class="rec-play-btn"
+            title="播放"
+            @click.stop="playCFSong(rec, idx)"
+          >▶</button>
+        </article>
       </div>
     </section>
 
@@ -234,6 +282,7 @@ export default {
     return {
       allSongs: [],
       dailyRecommendations: [],
+      cfRecommendations: [],
       isLoggedIn: false,
       heroStats: [
         { value: '--', label: '累计播放' },
@@ -263,6 +312,7 @@ export default {
     this.loadFeaturedVideos();
     if (this.isLoggedIn) {
       this.loadRecommendations(userBase.id);
+      this.loadCFRecommendations(userBase.id);
     }
   },
   computed: {
@@ -393,6 +443,64 @@ export default {
         }
       } catch (e) { /* silent */ }
     },
+    async loadCFRecommendations(userId) {
+      try {
+        const res = await recommendApi.getItemCFRecommendations(userId, 10);
+        if (res?.data?.passed && Array.isArray(res.data.data)) {
+          const recs = res.data.data;
+          const songMap = {};
+          this.allSongs.forEach(s => { songMap[s.id] = s; });
+
+          const enriched = [];
+          for (const rec of recs) {
+            const song = songMap[rec.songId];
+            if (song) {
+              enriched.push({
+                songId: rec.songId,
+                similarity: rec.similarity,
+                title: song.title,
+                singerName: song.singerName || song.singer || '',
+                coverUrl: song.coverUrl || song.pic || '',
+              });
+            } else {
+              try {
+                const infoRes = await musicApi.getSongBaseInfo(rec.songId);
+                const info = infoRes?.data?.passed ? infoRes.data.data : null;
+                enriched.push({
+                  songId: rec.songId,
+                  similarity: rec.similarity,
+                  title: info?.title || `歌曲 #${rec.songId}`,
+                  singerName: info?.singerName || '',
+                  coverUrl: info?.coverUrl || info?.pic || '',
+                });
+              } catch (e) {
+                enriched.push({ songId: rec.songId, similarity: rec.similarity, title: `歌曲 #${rec.songId}`, singerName: '', coverUrl: '' });
+              }
+            }
+          }
+          this.cfRecommendations = enriched;
+        }
+      } catch (e) { /* silent */ }
+    },
+    playCFSong(rec, idx) {
+      const songIds = this.cfRecommendations.map(r => r.songId);
+      this.$bus.emit('playSong', {
+        songId: rec.songId,
+        playlist: songIds,
+        index: idx,
+        source: 'recommend-cf',
+      });
+    },
+    playAllCF() {
+      if (!this.cfRecommendations.length) return;
+      const songIds = this.cfRecommendations.map(r => r.songId);
+      this.$bus.emit('playSong', {
+        songId: songIds[0],
+        playlist: songIds,
+        index: 0,
+        source: 'recommend-cf',
+      });
+    },
     async refreshRecommendations() {
       let userBase = {};
       try { userBase = JSON.parse(localStorage.getItem('userBase') || '{}'); } catch (e) { /* ignore */ }
@@ -401,15 +509,45 @@ export default {
         await this.loadRecommendations(userBase.id);
       }
     },
-    addRecToPlaylist(rec) {
-      if (rec._added) return;
+    playRecSong(rec, idx) {
+      const songIds = this.dailyRecommendations.map(r => r.songId);
       this.$bus.emit('playSong', {
-        id: rec.songId,
-        title: rec.title,
-        artistId: rec.singerId,
-        coverUrl: rec.coverUrl,
+        songId: rec.songId,
+        playlist: songIds,
+        index: idx,
+        source: 'recommend',
       });
-      rec._added = true;
+    },
+    playAllRecommendations() {
+      if (!this.dailyRecommendations.length) return;
+      const songIds = this.dailyRecommendations.map(r => r.songId);
+      this.$bus.emit('playSong', {
+        songId: songIds[0],
+        playlist: songIds,
+        index: 0,
+        source: 'recommend',
+      });
+    },
+    async addRecToCurrentPlaylist(rec) {
+      if (rec._added) return;
+      let userBase = {};
+      try { userBase = JSON.parse(localStorage.getItem('userBase') || '{}'); } catch (e) { /* ignore */ }
+      const userId = userBase.id;
+      if (!userId) return;
+      try {
+        const currentRes = await musicApi.getCurrentPlaylist(userId);
+        const currentPlaylistId = currentRes.data?.data?.id;
+        if (!currentPlaylistId) return;
+        const resp = await musicApi.managePlaylistSong({
+          playlistId: currentPlaylistId,
+          songId: rec.songId,
+          action: 'add',
+        });
+        if (resp.data?.passed) {
+          rec._added = true;
+          this.$bus.emit('refreshCurrentPlaylist');
+        }
+      } catch (e) { /* silent */ }
     },
     goTo(path) {
       this.$router.push(path);
@@ -858,6 +996,35 @@ export default {
   position: relative;
 }
 
+.panel-head-actions {
+  display: flex;
+  gap: 10px;
+  flex-shrink: 0;
+}
+
+.rec-play-btn {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: 1px solid rgba(56, 189, 248, 0.4);
+  background: rgba(56, 189, 248, 0.15);
+  color: #38bdf8;
+  font-size: 14px;
+  line-height: 1;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.rec-play-btn:hover {
+  background: rgba(56, 189, 248, 0.35);
+  border-color: #38bdf8;
+  transform: scale(1.1);
+}
+
 .rec-add-btn {
   width: 32px;
   height: 32px;
@@ -969,6 +1136,23 @@ export default {
   color: rgba(168, 85, 247, 0.9);
   font-family: 'JetBrains Mono', monospace;
   white-space: nowrap;
+}
+
+.cf-panel {
+  background: linear-gradient(135deg, rgba(34, 197, 94, 0.1), rgba(56, 189, 248, 0.08));
+  border-color: rgba(34, 197, 94, 0.2);
+}
+
+.cf-rank {
+  background: linear-gradient(135deg, #22c55e, #06b6d4);
+}
+
+.cf-fill {
+  background: linear-gradient(90deg, #22c55e, #06b6d4);
+}
+
+.cf-pct {
+  color: rgba(34, 197, 94, 0.9);
 }
 
 @media (max-width: 768px) {

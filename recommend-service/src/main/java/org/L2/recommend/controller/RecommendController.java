@@ -106,6 +106,23 @@ public class RecommendController {
         return recommendationService.recommend(userId, limit);
     }
 
+    @GetMapping("/daily/content-based")
+    public R getContentBasedRecommendation(@RequestParam("userId") Long userId,
+                                           @RequestParam(value = "limit", defaultValue = "20") int limit) {
+        return recommendationService.recommendContentBased(userId, limit);
+    }
+
+    @GetMapping("/daily/item-cf")
+    public R getItemCFRecommendation(@RequestParam("userId") Long userId,
+                                     @RequestParam(value = "limit", defaultValue = "20") int limit) {
+        return recommendationService.recommendItemCF(userId, limit);
+    }
+
+    @PostMapping("/itemcf/rebuild")
+    public R rebuildItemCFMatrix() {
+        return recommendationService.rebuildItemCFMatrix();
+    }
+
     @GetMapping("/preference")
     public R getUserPreference(@RequestParam("userId") Long userId) {
         float[] vector = userPreferenceService.getPreferenceVector(userId);

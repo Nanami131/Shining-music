@@ -57,4 +57,9 @@ public interface UserSongPlayRecordMapper {
                              @Param("totalDuration") Integer totalDuration,
                              @Param("completed") Boolean completed,
                              @Param("source") String source);
+
+    List<Map<String, Object>> allUserSongPlayCounts();
+
+    List<Map<String, Object>> songPlayCountsByUser(@Param("userId") Long userId);
+
 }

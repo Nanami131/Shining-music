@@ -47,6 +47,9 @@
           <button class="btn primary" :disabled="songOperating || !playlistSongs.length" @click="playAllSongs">
             播放全部
           </button>
+          <button v-if="isOwner" class="btn danger" :disabled="songOperating || !playlistSongs.length" @click="clearAllSongs">
+            清空歌单
+          </button>
         </div>
         <div class="songs-list">
           <div v-for="song in playlistSongs" :key="song.id" class="song-card">
@@ -320,6 +323,28 @@ export default {
         await this.loadPlaylistDetails();
       } catch (error) {
         alert('添加异常：' + error.message);
+      } finally {
+        this.songOperating = false;
+      }
+    },
+    async clearAllSongs() {
+      if (!this.isOwner) {
+        alert('只有歌单创建者可以操作');
+        return;
+      }
+      if (!window.confirm('确定清空歌单中的所有歌曲吗？')) {
+        return;
+      }
+      this.songOperating = true;
+      try {
+        const response = await musicApi.clearPlaylistSongs(this.playlist.id);
+        if (!response.data?.passed) {
+          alert('清空失败：' + (response.data?.message || '未知错误'));
+          return;
+        }
+        await this.loadPlaylistDetails();
+      } catch (error) {
+        alert('清空异常：' + error.message);
       } finally {
         this.songOperating = false;
       }

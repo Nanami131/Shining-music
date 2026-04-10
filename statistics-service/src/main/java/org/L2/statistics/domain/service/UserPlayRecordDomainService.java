@@ -98,4 +98,13 @@ public class UserPlayRecordDomainService {
     public List<Long> distinctSongIdsByUser(Long userId) {
         return userSongPlayRecordMapper.distinctSongIdsByUser(userId);
     }
+
+    public List<Map<String, Object>> allUserSongPlayCounts() {
+        return userSongPlayRecordMapper.allUserSongPlayCounts();
+    }
+
+    public List<Map<String, Object>> songPlayCountsByUser(Long userId) {
+        return userSongPlayRecordMapper.songPlayCountsByUser(userId);
+    }
+
 }

@@ -116,6 +116,11 @@ export default {
             params: { userId },
         });
     },
+    clearPlaylistSongs(playlistId) {
+        return api.post('/music/playlist/clear-songs', null, {
+            params: { playlistId },
+        });
+    },
     createSinger(data) {
         return api.post('/music/singer', data);
     },

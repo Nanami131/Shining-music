@@ -23,6 +23,21 @@ public class StatisticsClientFallbackFactory implements FallbackFactory<Statisti
             public R getPlayedSongIds(Long userId) {
                 return R.error("统计服务暂时不可用");
             }
+
+            @Override
+            public R getGlobalTopSongs(int limit) {
+                return R.error("统计服务暂时不可用");
+            }
+
+            @Override
+            public R getAllUserSongPlayCounts() {
+                return R.error("统计服务暂时不可用");
+            }
+
+            @Override
+            public R getUserSongPlayCounts(Long userId) {
+                return R.error("统计服务暂时不可用");
+            }
         };
     }
 }

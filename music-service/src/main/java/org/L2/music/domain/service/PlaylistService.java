@@ -361,6 +361,22 @@ public class PlaylistService {
         }
     }
 
+    public R clearPlaylistSongs(Long playlistId, Long userId) {
+        try {
+            Playlist playlist = playlistMapper.selectById(playlistId);
+            if (playlist == null) {
+                return R.error("歌单不存在");
+            }
+            if (!playlist.getUserId().equals(userId)) {
+                return R.error("无权操作该歌单");
+            }
+            stringRedisTemplate.delete("playlist:" + playlistId);
+            return R.success("歌曲已全部清除");
+        } catch (Exception e) {
+            return R.error("清除失败：" + e.getMessage());
+        }
+    }
+
     /**
      * 发现更多歌单：只返回普通歌单与专辑，排除其他用户的私人歌单。
      *

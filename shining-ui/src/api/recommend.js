@@ -10,6 +10,9 @@ export default {
     getDailyRecommendations(userId, limit = 20) {
         return api.get('/recommend/daily', { params: { userId, limit } });
     },
+    getItemCFRecommendations(userId, limit = 20) {
+        return api.get('/recommend/daily/item-cf', { params: { userId, limit } });
+    },
     getUserPreference(userId) {
         return api.get('/recommend/preference', { params: { userId } });
     },
