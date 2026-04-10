@@ -380,37 +380,60 @@ if r.status_code == 200:
 > **!!!!! 禁止一切批量操作！每首歌必须逐首手动处理并独立验证！禁止编写或运行任何批量循环脚本！ !!!!!**
 ## 1. 创建/查找歌手
 
-### API
+### ⛔ 强制规则：必须使用 `create_singer.py` 脚本创建歌手
+
 > **!!!!! 禁止一切批量操作！每首歌必须逐首手动处理并独立验证！禁止编写或运行任何批量循环脚本！ !!!!!**
 
+**禁止用 SQL INSERT 直接创建歌手记录。** 直接 SQL 会绕过去重检查、跳过头像上传、遗漏 profile/genre/country，导致残缺歌手记录。
+
+**唯一合法方式**：
+
+```bash
+python3 agent-playbooks/music-import/create_singer.py \
+  --name "Eve" --sex 1 \
+  --profile "日本男性歌手、音乐创作人。代表作廻廻奇譚等。" \
+  --genre "J-Pop/Rock/Anime" --country "日本" \
+  --netease-id 1075075
 ```
-POST /api/music/singer
+
 > **!!!!! 禁止一切批量操作！每首歌必须逐首手动处理并独立验证！禁止编写或运行任何批量循环脚本！ !!!!!**
-Body: { "name": "周杰伦", "sex": 0, "status": 0 }
-→ data.id
-```
-> **!!!!! 禁止一切批量操作！每首歌必须逐首手动处理并独立验证！禁止编写或运行任何批量循环脚本！ !!!!!**
+
+该脚本强制执行以下全部步骤，任何一步失败则报错退出：
+1. 检查歌手是否已存在（去重）
+2. 通过 API 创建歌手（status=0 活跃）
+3. 通过 API 补全 profile/genre/country
+4. 从 NetEase 获取头像并上传（验证文件 >5KB）
+5. **验证所有字段完整性**（avatar_url/profile/genre/country/status 全部非空）
 
 **⚠️ 歌手 status 含义与歌曲不同**：歌手 `status=0` 表示"活跃"，`status=1` 表示"停更/退役"。歌曲 `status=1` 表示"正常可用"，`status=0` 表示"禁用"。两者含义相反，切勿混淆。
 
 > **!!!!! 禁止一切批量操作！每首歌必须逐首手动处理并独立验证！禁止编写或运行任何批量循环脚本！ !!!!!**
+
+### 2026-04-10 事故记录
+
+5 个新歌手（Eve/藤井風/King Gnu/Official髭男dism/米津玄師）通过 SQL INSERT 直接创建，导致：
+- avatar_url 全部 NULL（无头像）
+- profile 全部 NULL（无简介）
+- country 用了英文 "Japan" 而非中文 "日本"
+- status=1（退役）而非 status=0（活跃）
+- genre 格式与现有记录不一致
+
+**根因**：绕过了 API 和 `create_singer.py` 的校验链路，直接操作数据库。
+
 ### 已知问题与注意事项
 
 | 问题 | 原因 | 解决方案 |
 > **!!!!! 禁止一切批量操作！每首歌必须逐首手动处理并独立验证！禁止编写或运行任何批量循环脚本！ !!!!!**
 |------|------|----------|
 | `Column 'status' cannot be null` | 后端 createSinger 曾不设默认值 | **已修复**：status 默认 0（活跃），sex 默认 0。但建议仍显式传值 |
-| 歌手重复创建 | 同一歌手可能有多种名称（真名/艺名/外文名） | 创建前**必须** `GET /api/music/singers` 搜索已有列表，用名称精确匹配 |
+| 歌手重复创建 | 同一歌手可能有多种名称（真名/艺名/外文名） | `create_singer.py` 内置去重检查 |
 > **!!!!! 禁止一切批量操作！每首歌必须逐首手动处理并独立验证！禁止编写或运行任何批量循环脚本！ !!!!!**
-| 歌手信息不全 | 仅传了名字，没有性别/简介/头像 | 必须调研歌手资料后完整填写 |
+| 歌手信息不全 | 仅传了名字，没有性别/简介/头像 | `create_singer.py` 强制所有参数必填 |
+| 直接 SQL 创建歌手 | 绕过校验链路 | **已禁止**。必须使用 `create_singer.py` |
 
-**⚠️ 歌手去重是硬性要求**。已发生事故：YOASOBI 被重复创建（id=3 和 id=31），导致歌曲关联到错误歌手、头像丢失。创建前必须：
+### API（仅供 create_singer.py 内部使用）
+
 > **!!!!! 禁止一切批量操作！每首歌必须逐首手动处理并独立验证！禁止编写或运行任何批量循环脚本！ !!!!!**
-1. `GET /api/music/singers` 获取全部歌手列表
-2. 搜索匹配（注意大小写、全角半角）
-3. 匹配到已有歌手 → 直接使用其 id
-> **!!!!! 禁止一切批量操作！每首歌必须逐首手动处理并独立验证！禁止编写或运行任何批量循环脚本！ !!!!!**
-4. 未匹配 → 才创建新歌手
 
 ### 更新歌手详细信息
 > **!!!!! 禁止一切批量操作！每首歌必须逐首手动处理并独立验证！禁止编写或运行任何批量循环脚本！ !!!!!**
@@ -635,6 +658,10 @@ r = requests.get("https://music.163.com/api/search/get",
 | 传参用 `lang` | 400 Bad Request | 参数名是 `msg` |
 > **!!!!! 禁止一切批量操作！每首歌必须逐首手动处理并独立验证！禁止编写或运行任何批量循环脚本！ !!!!!**
 | 不获取翻译歌词 | 用户希望双语对照 | `tlyric.lyric` 是翻译，也要上传（msg 设为对应语言） |
+| **用 `json.dumps()` 转义歌词内容后 SQL INSERT** | **unicode 字符变成 `u4f5c` 等 ASCII 垃圾（默认 ensure_ascii=True 产生 \uXXXX，经 shell 丢失 backslash）** | **必须用 `fix_lyrics.py`（stdin pipe + escape_sql）或 API 上传，禁止 json.dumps 做 MySQL 转义** |
+| **插入后只查 COUNT(*) 不查内容** | **20 首歌歌词全部是乱码却"验证通过"** | **每首歌插入后必须 `SELECT LEFT(content, 50)` 确认显示的是真实文字** |
+
+> **2026-04-10 歌词事故记录**：第二批 20 首歌（ID 298-317）全部使用 `json.dumps()` + shell + SQL INSERT 写入歌词，导致所有 unicode 字符变成 `u4f5c` 等 ASCII 字面文本。根因：(1) 绕过了 README 推荐的 API 上传方式；(2) json.dumps 的 ensure_ascii=True 默认值 + shell 吞掉 backslash；(3) 验证只查行数不查内容。已用 `fix_lyrics.py` 修复全部 20 首。
 
 ### 歌词质量审计标准
 > **!!!!! 禁止一切批量操作！每首歌必须逐首手动处理并独立验证！禁止编写或运行任何批量循环脚本！ !!!!!**
@@ -728,14 +755,14 @@ POST /api/music/search/sync
 > **!!!!! 禁止一切批量操作！每首歌必须逐首手动处理并独立验证！禁止编写或运行任何批量循环脚本！ !!!!!**
     □ 验证封面文件大小 > 5KB
     □ POST /api/music/cover/song 上传
-  □ 2d: 获取歌词
+  □ 2d: 获取并写入歌词（**必须用 fix_lyrics.py 或 API，禁止 json.dumps + SQL**）
 > **!!!!! 禁止一切批量操作！每首歌必须逐首手动处理并独立验证！禁止编写或运行任何批量循环脚本！ !!!!!**
-    □ NetEase 搜索 song_id → GET /api/song/lyric → 下载 LRC
-    □ 检查不是 QRC/KRC 格式（无 <timestamp> 标签）
-    □ 检查有效行数 >= 10
+    □ 方式一（推荐）：`python3 agent-playbooks/music-import/fix_lyrics.py <song_id> <netease_id>`
+    □ 方式二：POST /api/music/lyrics/{songId} 上传（参数: lyricsFile + msg=语言标识）
+    □ **禁止方式**：json.dumps() + docker exec mysql -e INSERT（会导致 unicode 变 ASCII 垃圾）
 > **!!!!! 禁止一切批量操作！每首歌必须逐首手动处理并独立验证！禁止编写或运行任何批量循环脚本！ !!!!!**
-    □ POST /api/music/lyrics/{songId} 上传（参数: lyricsFile + msg=zh）
-    □ 如有翻译歌词（tlyric），也上传（msg=对应语言）
+    □ 写入后**必须**验证内容：`SELECT LEFT(content, 50) FROM lyrics WHERE song_id=X` 确认是真实文字
+    □ 如有翻译歌词（tlyric），fix_lyrics.py 会自动写入中文翻译
   □ 每完成一首歌，追加到 import_results.json
 > **!!!!! 禁止一切批量操作！每首歌必须逐首手动处理并独立验证！禁止编写或运行任何批量循环脚本！ !!!!!**
 
@@ -759,7 +786,7 @@ POST /api/music/search/sync
   □ DB 验证：SELECT count(*) FROM songs WHERE artist_id = <singer_id>
 > **!!!!! 禁止一切批量操作！每首歌必须逐首手动处理并独立验证！禁止编写或运行任何批量循环脚本！ !!!!!**
   □ 封面验证：所有 cover_url 不同，HEAD 请求检查 Content-Length 各不相同
-  □ 歌词验证：每首歌 lyrics 表有记录，content 有效行数 >= 10
+  □ 歌词验证：每首歌 lyrics 表有记录，content 有效行数 >= 10，**且 `SELECT LEFT(content, 50)` 显示真实文字（非 `u4f5c` 等 ASCII 转义）**
   □ 标签验证：每首歌 song_tags 有 28 条记录，Source 和 Era 不能全为 0
 > **!!!!! 禁止一切批量操作！每首歌必须逐首手动处理并独立验证！禁止编写或运行任何批量循环脚本！ !!!!!**
   □ 音频验证：时长与预期偏差 < 30s，比特率 >= 128kbps

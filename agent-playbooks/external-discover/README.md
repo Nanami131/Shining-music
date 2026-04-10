@@ -363,8 +363,11 @@ python3 external_discover.py --user-id 27 --artists "Aimer" --threshold 0.7 --fi
 ```
 > **!!!!! 禁止一切批量操作！每首歌必须逐首手动处理并独立验证！禁止编写或运行任何批量循环脚本！ !!!!!**
 对每首通过粗略筛选的歌曲：
-  1. 查找/创建歌手（⚠️ 必须先搜索已有歌手，防止重复创建）
-  2. 补全歌手信息：POST /api/music/update-profile（profile, genre, country）+ 上传头像
+  1. 查找/创建歌手（⚠️ 必须使用 create_singer.py，禁止 SQL INSERT）
+     python3 agent-playbooks/music-import/create_singer.py \
+       --name "歌手名" --sex 1 --profile "简介" \
+       --genre "风格" --country "日本" --netease-id <NE_ID>
+  2. 脚本自动完成：去重 → 创建 → profile → 头像 → 验证
 > **!!!!! 禁止一切批量操作！每首歌必须逐首手动处理并独立验证！禁止编写或运行任何批量循环脚本！ !!!!!**
   3. 创建歌曲记录
   4. 下载音频（Bilibili yt-dlp + ffmpeg）
@@ -632,14 +635,14 @@ curl -s "http://localhost:8085/recommend/daily?userId=27&limit=20"
 > **!!!!! 禁止一切批量操作！每首歌必须逐首手动处理并独立验证！禁止编写或运行任何批量循环脚本！ !!!!!**
 | 元数据缺失 | genre/release_year/duration 全部 NULL | 导入后立即补全 |
 | ES 未同步 | 10 首歌搜不到 | 导入后必须调用 sync 接口 |
-| 歌手无头像 | 6 个新歌手没有头像 | 创建歌手后立即上传头像 |
+| 歌手无头像 | 6 个新歌手没有头像 | **必须使用 create_singer.py**（内置头像上传+验证） |
 > **!!!!! 禁止一切批量操作！每首歌必须逐首手动处理并独立验证！禁止编写或运行任何批量循环脚本！ !!!!!**
-| 歌手只创建不补全 | profile/genre/country 全为 NULL | 创建后立即调用 update-profile 补全简介、风格、国籍 |
+| 歌手只创建不补全 | profile/genre/country 全为 NULL | **必须使用 create_singer.py**（profile/genre/country 全部必填参数） |
 | 只验证推荐分数 | 分数正常但音频/标签/元数据全是错的 | 必须逐首逐字段验证 |
 | EXCLUDE_RE `AI` 误杀 Aimer | case-insensitive `AI` 匹配 "Aimer" 中的 "Ai"，所有 Aimer 视频被排除 | 使用 `\bAI\b` 加 word boundary |
 > **!!!!! 禁止一切批量操作！每首歌必须逐首手动处理并独立验证！禁止编写或运行任何批量循环脚本！ !!!!!**
 | Bilibili 搜索匹配错歌 | 搜 "SPARK-AGAIN" 却下载了 "Sign"；搜 "Black Bird" 匹配到 Billie Eilish | score_video 要求 song_title 或 artist 出现在视频标题；限定音乐分区 tids=3 |
-| 歌手 status 反设 | 歌手 status=0=活跃, status=1=停更，与歌曲(1=正常, 0=禁用)含义相反。创建歌手误传 status=1 导致全标为"退役" | 创建歌手必须传 status=0 |
+| 歌手 status 反设 | 歌手 status=0=活跃, status=1=停更，与歌曲(1=正常, 0=禁用)含义相反。创建歌手误传 status=1 导致全标为"退役" | **必须使用 create_singer.py**（硬编码 status=0，验证步骤会检查） |
 | 通用英文歌名匹配错歌手 | 搜 "everything" 匹配到 MISIA 版本而非 3L 版本；搜 "aurora" 匹配到高达 AGE OP | 通用英文歌名（everything/aurora/love 等）必须同时匹配歌名+歌手名才算命中（`COMMON_ENGLISH_TITLES` 集合） |
 > **!!!!! 禁止一切批量操作！每首歌必须逐首手动处理并独立验证！禁止编写或运行任何批量循环脚本！ !!!!!**
 | 下载后不验证时长 | 下载了 2730s 的专辑评论当作单曲 | **下载后**用 mutagen 读取实际时长，与 NetEase 预期时长对比，偏差 > 60s 直接丢弃 |
