@@ -12,6 +12,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -37,8 +38,16 @@ public class UserPreferenceService {
     private StatisticsClient statisticsClient;
 
     /**
+     * 历史有效 playCount 上限。超过此值后，新播放的歌曲仍能贡献至少
+     * weight / (EFFECTIVE_PLAY_COUNT_CAP + weight) ≈ 2% 的向量偏移，
+     * 防止偏好被历史数据"焊死"。
+     */
+    private static final double EFFECTIVE_PLAY_COUNT_CAP = 50.0;
+
+    /**
      * 增量更新用户偏好向量。
      * 每次播放结束后调用：将歌曲向量以加权方式合入用户偏好。
+     * 使用受限加权平均（capped weighted average），保证最近播放始终有影响力。
      *
      * @param weight 播放权重（完整播放=1.0，未完成=0.3）
      */
@@ -54,14 +63,16 @@ public class UserPreferenceService {
 
         UserPrefData current = loadFromRedis(key, dims);
 
-        double newCount = current.playCount + weight;
+        double effectiveOldCount = Math.min(current.playCount, EFFECTIVE_PLAY_COUNT_CAP);
+        double blendDenom = effectiveOldCount + weight;
         float[] newVector = new float[dims];
         for (int i = 0; i < dims; i++) {
-            newVector[i] = (float) ((current.vector[i] * current.playCount + songVector[i] * weight) / newCount);
+            newVector[i] = (float) ((current.vector[i] * effectiveOldCount + songVector[i] * weight) / blendDenom);
         }
 
-        saveToRedis(key, newVector, newCount);
-        log.debug("Updated preference for userId={}, playCount={}", userId, newCount);
+        saveToRedis(key, newVector, current.playCount + weight);
+        log.debug("Updated preference for userId={}, playCount={}, effectiveCap={}",
+                userId, current.playCount + weight, effectiveOldCount);
     }
 
     /**
@@ -73,7 +84,10 @@ public class UserPreferenceService {
         if (json != null) {
             try {
                 UserPrefData data = objectMapper.readValue(json, UserPrefData.class);
-                return data.vector;
+                if (data.playCount > 0 || hasNonZero(data.vector)) {
+                    return data.vector;
+                }
+                log.info("Redis preference for userId={} is zero-vector, falling through to MySQL", userId);
             } catch (JsonProcessingException e) {
                 log.error("Failed to parse preference from Redis for userId={}", userId, e);
             }
@@ -93,6 +107,14 @@ public class UserPreferenceService {
         return null;
     }
 
+    private boolean hasNonZero(float[] v) {
+        if (v == null) return false;
+        for (float f : v) {
+            if (f != 0.0f) return true;
+        }
+        return false;
+    }
+
     /**
      * 持久化当前 Redis 中的偏好向量到 MySQL（懒加载时调用）。
      */
@@ -108,7 +130,7 @@ public class UserPreferenceService {
             UserPreference pref = new UserPreference();
             pref.setUserId(userId);
             pref.setVectorJson(objectMapper.writeValueAsString(data.vector));
-            pref.setPlayCount((int) data.playCount);
+            pref.setPlayCount(data.playCount);
             userPreferenceMapper.insertOrUpdate(pref);
             return true;
         } catch (JsonProcessingException e) {
@@ -140,7 +162,8 @@ public class UserPreferenceService {
 
     /**
      * 从历史播放记录重建用户偏好向量。
-     * 清除 Redis 中旧数据后，逐条应用新权重算法。
+     * 清除 Redis 中旧数据后，逐条应用权重算法。
+     * 与 PlayEventConsumer 一致，对同一首歌的重复播放应用对数衰减 1/(1+ln(n))。
      */
     @SuppressWarnings("unchecked")
     public int rebuildFromHistory(Long userId) {
@@ -163,6 +186,7 @@ public class UserPreferenceService {
             return 0;
         }
 
+        Map<Long, Integer> songPlayCounts = new HashMap<>();
         int count = 0;
         for (Object item : list) {
             if (!(item instanceof Map<?, ?> map)) continue;
@@ -174,14 +198,19 @@ public class UserPreferenceService {
             Integer totalDuration = map.get("totalDuration") instanceof Number n ? n.intValue() : null;
             Boolean completed = map.get("completed") instanceof Boolean b ? b : null;
 
-            double weight = calculateWeight(durationSec, totalDuration, completed);
-            if (weight <= 0) continue;
+            double baseWeight = calculateWeight(durationSec, totalDuration, completed);
+            if (baseWeight <= 0) continue;
 
-            incrementalUpdate(userId, songId, weight);
+            int playNum = songPlayCounts.merge(songId, 1, Integer::sum);
+            double decayMultiplier = 1.0 / (1.0 + Math.log(playNum));
+            double effectiveWeight = baseWeight * decayMultiplier;
+
+            incrementalUpdate(userId, songId, effectiveWeight);
             count++;
         }
 
-        log.info("Rebuilt preference for userId={} from {} play records", userId, count);
+        log.info("Rebuilt preference for userId={} from {} play records ({} unique songs)",
+                userId, count, songPlayCounts.size());
         return count;
     }
 

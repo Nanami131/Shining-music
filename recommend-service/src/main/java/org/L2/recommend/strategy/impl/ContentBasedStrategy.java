@@ -42,23 +42,34 @@ public class ContentBasedStrategy implements RecommendationStrategy {
 
         List<Long> allSongIds = songTagMapper.selectAllDistinctSongIds();
 
+        float[] weights = tagVectorService.getDimensionWeights();
+        int[] nonLangDims = tagVectorService.getNonLanguageDimIndices();
+
+        List<float[]> allVectors = new ArrayList<>();
+        List<Long> vectorSongIds = new ArrayList<>();
+        for (Long songId : allSongIds) {
+            float[] sv = tagVectorService.getVector(songId);
+            if (sv != null) {
+                allVectors.add(sv);
+                vectorSongIds.add(songId);
+            }
+        }
+
+        float[] globalMean = computeGlobalMean(allVectors, userVector.length);
+
         Map<Integer, List<ScoredSong>> langBuckets = new HashMap<>();
         for (int langDim : langDims) {
             langBuckets.put(langDim, new ArrayList<>());
         }
         langBuckets.put(-1, new ArrayList<>());
 
-        float[] weights = tagVectorService.getDimensionWeights();
-        int[] nonLangDims = tagVectorService.getNonLanguageDimIndices();
-
-        for (Long songId : allSongIds) {
+        for (int idx = 0; idx < vectorSongIds.size(); idx++) {
+            Long songId = vectorSongIds.get(idx);
             if (playedSongIds.contains(songId)) continue;
 
-            float[] songVector = tagVectorService.getVector(songId);
-            if (songVector == null) continue;
-
+            float[] songVector = allVectors.get(idx);
             int langDim = tagVectorService.getPrimaryLanguageDim(songVector);
-            double similarity = weightedCosineSimilarity(userVector, songVector, weights, nonLangDims);
+            double similarity = adjustedWeightedCosine(userVector, songVector, globalMean, weights, nonLangDims);
 
             langBuckets.computeIfAbsent(langDim, k -> new ArrayList<>())
                     .add(new ScoredSong(songId, similarity));
@@ -155,17 +166,40 @@ public class ContentBasedStrategy implements RecommendationStrategy {
         return result;
     }
 
-    private double weightedCosineSimilarity(float[] a, float[] b, float[] weights, int[] dimIndices) {
+    private float[] computeGlobalMean(List<float[]> vectors, int dims) {
+        float[] mean = new float[dims];
+        if (vectors.isEmpty()) return mean;
+        for (float[] v : vectors) {
+            for (int i = 0; i < Math.min(v.length, dims); i++) {
+                mean[i] += v[i];
+            }
+        }
+        for (int i = 0; i < dims; i++) {
+            mean[i] /= vectors.size();
+        }
+        return mean;
+    }
+
+    /**
+     * Adjusted (mean-centered) weighted cosine similarity.
+     * Subtracting the global mean removes shared biases (e.g. all songs having
+     * similar Mood or Vocal values), focusing on dimensions where songs actually
+     * deviate from the library average.
+     */
+    private double adjustedWeightedCosine(float[] a, float[] b, float[] mean,
+                                          float[] weights, int[] dimIndices) {
         double dot = 0, normA = 0, normB = 0;
         for (int i : dimIndices) {
             if (i >= a.length || i >= b.length) continue;
             double w = weights[i];
-            dot   += w * a[i] * b[i];
-            normA += w * a[i] * a[i];
-            normB += w * b[i] * b[i];
+            double ai = a[i] - mean[i];
+            double bi = b[i] - mean[i];
+            dot   += w * ai * bi;
+            normA += w * ai * ai;
+            normB += w * bi * bi;
         }
         if (normA == 0 || normB == 0) return 0;
-        return dot / (Math.sqrt(normA) * Math.sqrt(normB));
+        return Math.max(0, dot / (Math.sqrt(normA) * Math.sqrt(normB)));
     }
 
     private static class ScoredSong {

@@ -112,10 +112,19 @@
         <div class="playlist-panel">
           <div class="playlist-header">
             <div class="title">当前播放列表</div>
-            <div class="subtitle" v-if="userId">
-              共 {{ currentPlaylistSongs.length }} 首
+            <div class="playlist-header-right">
+              <div class="subtitle" v-if="userId">
+                共 {{ currentPlaylistSongs.length }} 首
+              </div>
+              <div class="subtitle" v-else>登录后自动保存播放记录</div>
+              <button
+                  v-if="userId && currentPlaylistSongs.length > 0"
+                  class="clear-playlist-btn"
+                  @click="clearPlaylist"
+              >
+                清空列表
+              </button>
             </div>
-            <div class="subtitle" v-else>登录后自动保存播放记录</div>
           </div>
           <div v-if="userId && currentPlaylistSongs.length" class="playlist-list">
             <div
@@ -790,6 +799,36 @@ export default {
         await this.loadCurrentPlaylist();
       }
     },
+    async clearPlaylist() {
+      if (!this.userId || !this.currentPlaylistId || !this.currentPlaylistSongs.length) {
+        return;
+      }
+      if (!confirm('确定要清空当前播放列表吗？')) {
+        return;
+      }
+      this.reportPlayEnd('clear');
+      this.audio.pause();
+      this.audio.src = '';
+      this.isPlaying = false;
+      this.currentTime = 0;
+      this.duration = 0;
+      this.currentSong = {};
+      this.currentPlaylistSongs = [];
+      this.playlist = [];
+      this.currentIndex = -1;
+      this.shuffleHistory = [];
+      this.shuffleHistoryIndex = -1;
+      this._playlistSetByEvent = false;
+      try {
+        const response = await musicApi.clearCurrentPlaylist(this.userId);
+        if (!response.data || !response.data.passed) {
+          throw new Error(response.data ? response.data.message : '未知错误');
+        }
+      } catch (error) {
+        this.showApiError(error.message, '清空播放列表失败：');
+        await this.loadCurrentPlaylist();
+      }
+    },
     async batchLoadEventPlaylist(songIds) {
       const existingIds = new Set(this.currentPlaylistSongs.map(s => s.id));
       const toLoad = songIds.filter(id => !existingIds.has(id));
@@ -1406,9 +1445,28 @@ export default {
   font-weight: 600;
   color: #1e293b;
 }
+.playlist-header-right {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+}
 .playlist-header .subtitle {
   font-size: 12px;
   color: #94a3b8;
+}
+.clear-playlist-btn {
+  border: none;
+  background: transparent;
+  color: #94a3b8;
+  font-size: 12px;
+  cursor: pointer;
+  padding: 2px 8px;
+  border-radius: 4px;
+  transition: all 0.2s ease;
+}
+.clear-playlist-btn:hover {
+  color: #ef4444;
+  background: rgba(239, 68, 68, 0.08);
 }
 .playlist-list {
   flex: 1;

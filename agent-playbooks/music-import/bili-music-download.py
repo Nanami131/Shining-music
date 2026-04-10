@@ -2,9 +2,31 @@
 """
 Bilibili music extractor — smart search + download + extract audio.
 
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!! 硬性限制：一次只能下载一首歌。--count 参数已被移除。              !!
+!!                                                                !!
+!! 原因：2026-04 批量导入 83 首歌导致：                              !!
+!!   - 3 首完全错歌（搜索匹配到无关视频）                           !!
+!!   - 5 首时长异常（TV Size / 翻唱 / 音游截取版）                  !!
+!!   - 21 首语言误标                                                !!
+!!   - 7 维标签缺失                                                 !!
+!!                                                                !!
+!! 正确流程（每首歌必须完整走完以下步骤）：                           !!
+!!   1. 下载一首歌                                                  !!
+!!   2. Agent 自主验证：                                            !!
+!!      a. 用 mutagen 检查 MP3 时长，与预期值对比（偏差 >30s 报警） !!
+!!      b. 用 ffprobe 确认音频流完整（无截断/无静音尾巴）            !!
+!!      c. 比对 Bilibili 视频标题是否包含正确歌手名+歌曲名          !!
+!!      d. 检查文件大小是否合理（128kbps×duration ≈ filesize）       !!
+!!   3. 验证全部通过 → 上传 → 更新 DB duration → 下一首             !!
+!!   4. 任何一项验证失败 → 停止，换搜索关键词重新下载               !!
+!!                                                                !!
+!! Agent 禁止跳过验证步骤。"下载成功"≠"音频正确"。                   !!
+!! 如需批量导入，请使用 external_discover.py (MAX_BATCH=1)。        !!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
 Usage:
-    python3 bili-music-download.py "周杰伦"
-    python3 bili-music-download.py "五月天" --count 10
+    python3 bili-music-download.py "周杰伦" --song "晴天"
 """
 
 import os
@@ -180,30 +202,26 @@ def safe_name(name, max_len=140):
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Bilibili music extractor")
-    parser.add_argument("artist", nargs="?", default="周杰伦", help="歌手名")
-    parser.add_argument("--count", type=int, default=20, help="目标下载数量 (default: 20)")
+    parser = argparse.ArgumentParser(description="Bilibili music extractor (单首模式)")
+    parser.add_argument("artist", help="歌手名")
+    parser.add_argument("--song", required=True, help="歌曲名（必填，一次只能指定一首）")
     parser.add_argument("--out", default=None, help="输出目录")
-    parser.add_argument("--songs", default=None, help="自定义歌曲列表文件（每行一首）")
+    parser.add_argument("--expected-duration", type=int, default=0,
+                        help="预期时长（秒），用于验证下载结果")
     args = parser.parse_args()
 
     base_dir = os.path.dirname(os.path.abspath(__file__))
     out_dir = args.out or os.path.join(base_dir, "download", safe_name(args.artist) + "_bili")
     os.makedirs(out_dir, exist_ok=True)
 
-    if args.songs:
-        with open(args.songs, "r", encoding="utf-8") as f:
-            song_list = [line.strip() for line in f if line.strip()]
-    elif args.artist == "周杰伦":
-        song_list = JAY_CHOU_SONGS
-    else:
-        print(f"No built-in song list for '{args.artist}'. Using Kuwo search to discover songs...")
-        song_list = discover_songs_kuwo(args.artist, max_songs=args.count * 2)
+    song_list = [args.song]
 
     print(f"Artist: {args.artist}")
-    print(f"Song candidates: {len(song_list)}")
-    print(f"Target: {args.count} songs")
-    print(f"Output: {out_dir}\n")
+    print(f"Song: {args.song}")
+    print(f"Output: {out_dir}")
+    if args.expected_duration:
+        print(f"Expected duration: ~{args.expected_duration}s")
+    print()
 
     downloaded = 0
     skipped = 0
@@ -211,9 +229,6 @@ def main():
     results = []
 
     for song in song_list:
-        if downloaded >= args.count:
-            break
-
         fname = f"{safe_name(args.artist)} - {safe_name(song)}.mp3"
         out_path_template = os.path.join(out_dir, f"{safe_name(args.artist)} - {safe_name(song)}.%(ext)s")
         out_path_final = os.path.join(out_dir, fname)
@@ -248,6 +263,15 @@ def main():
             br = audio.info.bitrate // 1000
             fsize = os.path.getsize(out_path_final)
             print(f"    -> OK: {fsize // 1024}KB, {dur:.0f}s, {br}kbps")
+
+            if args.expected_duration > 0:
+                diff = abs(dur - args.expected_duration)
+                if diff > 30:
+                    print(f"    !! 时长偏差 {diff:.0f}s（预期 ~{args.expected_duration}s，实际 {dur:.0f}s）")
+                    print(f"    !! 可能下载了错误版本（TV Size / 翻唱 / 音游截取），请人工确认")
+                else:
+                    print(f"    ✓ 时长验证通过（偏差 {diff:.0f}s）")
+
             downloaded += 1
             results.append({
                 "song": song, "status": "OK", "bvid": bvid,

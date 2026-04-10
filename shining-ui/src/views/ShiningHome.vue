@@ -404,42 +404,51 @@ export default {
         this.featuredVideos = [];
       }
     },
+    async enrichRecommendations(recs) {
+      const songMap = {};
+      this.allSongs.forEach(s => { songMap[s.id] = s; });
+
+      const songs = await Promise.all(recs.map(async (rec) => {
+        let song = songMap[rec.songId];
+        if (!song) {
+          try {
+            const infoRes = await musicApi.getSongBaseInfo(rec.songId);
+            song = infoRes?.data?.passed ? infoRes.data.data : null;
+          } catch (e) { /* ignore */ }
+        }
+        return { rec, song };
+      }));
+
+      const singerCache = {};
+      const enriched = [];
+      for (const { rec, song } of songs) {
+        let singerName = song?.singerName || song?.singer || '';
+        if (!singerName && song?.artistId) {
+          const aid = song.artistId;
+          if (singerCache[aid] === undefined) {
+            try {
+              const singerRes = await musicApi.getSingerBaseInfo(aid);
+              singerCache[aid] = singerRes?.data?.passed ? singerRes.data.data?.name || '' : '';
+            } catch (e) { singerCache[aid] = ''; }
+          }
+          singerName = singerCache[aid];
+        }
+
+        enriched.push({
+          songId: rec.songId,
+          similarity: rec.similarity,
+          title: song?.title || `歌曲 #${rec.songId}`,
+          singerName,
+          coverUrl: song?.coverUrl || song?.pic || '',
+        });
+      }
+      return enriched;
+    },
     async loadRecommendations(userId) {
       try {
         const res = await recommendApi.getDailyRecommendations(userId, 10);
         if (res?.data?.passed && Array.isArray(res.data.data)) {
-          const recs = res.data.data;
-          const songMap = {};
-          this.allSongs.forEach(s => { songMap[s.id] = s; });
-
-          const enriched = [];
-          for (const rec of recs) {
-            const song = songMap[rec.songId];
-            if (song) {
-              enriched.push({
-                songId: rec.songId,
-                similarity: rec.similarity,
-                title: song.title,
-                singerName: song.singerName || song.singer || '',
-                coverUrl: song.coverUrl || song.pic || '',
-              });
-            } else {
-              try {
-                const infoRes = await musicApi.getSongBaseInfo(rec.songId);
-                const info = infoRes?.data?.passed ? infoRes.data.data : null;
-                enriched.push({
-                  songId: rec.songId,
-                  similarity: rec.similarity,
-                  title: info?.title || `歌曲 #${rec.songId}`,
-                  singerName: info?.singerName || '',
-                  coverUrl: info?.coverUrl || info?.pic || '',
-                });
-              } catch (e) {
-                enriched.push({ songId: rec.songId, similarity: rec.similarity, title: `歌曲 #${rec.songId}`, singerName: '', coverUrl: '' });
-              }
-            }
-          }
-          this.dailyRecommendations = enriched;
+          this.dailyRecommendations = await this.enrichRecommendations(res.data.data);
         }
       } catch (e) { /* silent */ }
     },
@@ -447,38 +456,7 @@ export default {
       try {
         const res = await recommendApi.getItemCFRecommendations(userId, 10);
         if (res?.data?.passed && Array.isArray(res.data.data)) {
-          const recs = res.data.data;
-          const songMap = {};
-          this.allSongs.forEach(s => { songMap[s.id] = s; });
-
-          const enriched = [];
-          for (const rec of recs) {
-            const song = songMap[rec.songId];
-            if (song) {
-              enriched.push({
-                songId: rec.songId,
-                similarity: rec.similarity,
-                title: song.title,
-                singerName: song.singerName || song.singer || '',
-                coverUrl: song.coverUrl || song.pic || '',
-              });
-            } else {
-              try {
-                const infoRes = await musicApi.getSongBaseInfo(rec.songId);
-                const info = infoRes?.data?.passed ? infoRes.data.data : null;
-                enriched.push({
-                  songId: rec.songId,
-                  similarity: rec.similarity,
-                  title: info?.title || `歌曲 #${rec.songId}`,
-                  singerName: info?.singerName || '',
-                  coverUrl: info?.coverUrl || info?.pic || '',
-                });
-              } catch (e) {
-                enriched.push({ songId: rec.songId, similarity: rec.similarity, title: `歌曲 #${rec.songId}`, singerName: '', coverUrl: '' });
-              }
-            }
-          }
-          this.cfRecommendations = enriched;
+          this.cfRecommendations = await this.enrichRecommendations(res.data.data);
         }
       } catch (e) { /* silent */ }
     },

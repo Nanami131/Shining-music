@@ -2,11 +2,18 @@
 """
 Music downloader — Kuwo source.
 
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!! Agent 使用须知：                                              !!
+!!   - 仅适用于中文歌曲，日文歌曲不可用（酷我日文库覆盖率极低）  !!
+!!   - 下载后 Agent 必须自主验证：                               !!
+!!     1. mutagen 检查时长，与预期对比（偏差 >30s 必须换源）     !!
+!!     2. 确认不是 30s 试听片段（付费限制）                      !!
+!!     3. 确认文件 bitrate ≥ 128kbps                            !!
+!!   - 验证不通过不许上传到系统                                   !!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
 Usage:
-    python3 music-download.py                          # 默认搜索"周杰伦"
-    python3 music-download.py "五月天"                  # 自定义关键词
-    python3 music-download.py "YOASOBI" --pages 5 --workers 6
-    python3 music-download.py "周杰伦" --studio-only    # 仅录音室版本（过滤 Live/合唱/伴奏等）
+    python3 music-download.py "周杰伦" --studio-only
 """
 
 import os

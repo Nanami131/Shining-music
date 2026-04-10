@@ -4,7 +4,14 @@
 
 <mapper namespace="org.L2.recommend.infrastructure.UserPreferenceMapper">
 
-    <select id="selectByUserId" resultType="org.L2.recommend.domain.model.UserPreference">
+    <resultMap id="userPreferenceResult" type="org.L2.recommend.domain.model.UserPreference">
+        <result column="user_id" property="userId"/>
+        <result column="vector_json" property="vectorJson"/>
+        <result column="play_count" property="playCount" javaType="java.lang.Double"/>
+        <result column="snapshot_at" property="snapshotAt"/>
+    </resultMap>
+
+    <select id="selectByUserId" resultMap="userPreferenceResult">
         SELECT user_id, vector_json, play_count, snapshot_at
         FROM user_preferences
         WHERE user_id = #{userId}

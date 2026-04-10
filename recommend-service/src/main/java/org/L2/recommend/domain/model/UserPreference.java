@@ -8,6 +8,6 @@ import java.time.LocalDateTime;
 public class UserPreference {
     private Long userId;
     private String vectorJson;
-    private Integer playCount;
+    private Double playCount;
     private LocalDateTime snapshotAt;
 }

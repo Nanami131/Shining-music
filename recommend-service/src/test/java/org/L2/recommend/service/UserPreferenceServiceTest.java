@@ -152,7 +152,7 @@ class UserPreferenceServiceTest {
             UserPreference snapshot = new UserPreference();
             snapshot.setUserId(1L);
             snapshot.setVectorJson("[0.3,0.7]");
-            snapshot.setPlayCount(5);
+            snapshot.setPlayCount(5.0);
             when(userPreferenceMapper.selectByUserId(1L)).thenReturn(snapshot);
 
             float[] result = userPreferenceService.getPreferenceVector(1L);

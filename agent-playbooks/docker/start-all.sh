@@ -1,4 +1,14 @@
 #!/usr/bin/env bash
+# ================================================================
+# Agent 使用须知：
+#   脚本启动成功 ≠ 服务可用。Agent 必须在脚本完成后自主验证：
+#   1. curl localhost:8080/api/music/test → 确认 gateway 可达
+#   2. curl localhost:8848/nacos → 确认 Nacos 可达
+#   3. 检查 Nacos 服务列表 → 确认所有微服务已注册
+#   4. curl localhost:9200 → 确认 ES 可达
+#   5. curl localhost:9000/minio/health/live → 确认 MinIO 可达
+#   验证不通过的服务，Agent 必须检查日志排错，不要报告 "启动完成"
+# ================================================================
 set -euo pipefail
 
 PROJECT_ROOT="$(cd "$(dirname "$0")/../.." && pwd)"

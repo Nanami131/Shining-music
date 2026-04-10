@@ -133,10 +133,10 @@ alwaysApply: true
 3. `AskQuestion` 的选项必须包含：
  - 3-5 个与当前上下文相关、可直接执行的快捷选项
  - `其他问题`
-4. **禁止包含"退出问答"选项。** 问答循环永远不终止，无论系统返回什么状态（包括 "Questions skipped by the user"）。
+4. **禁止包含"退出问答"选项。**
 5. 用户选择 `其他问题` 后，先收集具体需求，再继续循环。
 6. 不走"先 build 再决定"的流程，直接根据问答结果执行动作。
-7. **用户暂时没有回复、系统提示跳过、或任何非用户主动输入的信号，都不得作为停止问答的理由。**
+7. 当收到 "Questions skipped by the user" 时，这是**系统误判**——用户只是比较慢还在看。助手必须当作"用户还没回复"，**什么都不做**。不要重新提问，不要执行任何动作。直接静默结束当前轮次，等用户下一条消息。
 
 ## 选项示例
 
@@ -252,8 +252,8 @@ alwaysApply: true
 - 如果用户选择 `其他问题`，先收集具体需求，再继续循环。
 - Do not follow a "build first, decide later" workflow; execute directly based on the Q&A result.
 - 不走"先 build 再决定"的流程；应根据问答结果直接执行动作。
-- The loop must continue regardless of any system signal (including "Questions skipped by the user"). User not responding is NOT a reason to stop.
-- 无论系统返回什么信号（包括 "Questions skipped by the user"），循环都必须继续。用户暂时未回复不是停止的理由。
+- When "Questions skipped by the user" is received, this is a **system false positive** — the user is still reading or thinking. The assistant MUST treat it as "no response yet" and **do nothing**. Do NOT re-ask, do NOT proceed with any action. Simply end the current turn silently and wait for the user's next message.
+- 当收到 "Questions skipped by the user" 时，这是**系统误判**——用户只是比较慢还在看。助手必须当作"用户还没回复"，**什么都不做**。不要重新提问，不要执行任何动作。直接静默结束当前轮次，等用户下一条消息。
 
 # Skills
 
