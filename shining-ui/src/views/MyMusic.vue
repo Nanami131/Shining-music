@@ -14,6 +14,10 @@
           <span class="ql-icon">&#9733;</span>
           <span>热门排行</span>
         </div>
+        <div class="quick-link-card" @click="$router.push('/annual-report/story')">
+          <span class="ql-icon">&#128202;</span>
+          <span>年度报告</span>
+        </div>
       </div>
       <section class="favorites-section">
         <div class="section-header">

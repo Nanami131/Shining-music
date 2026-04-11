@@ -62,4 +62,44 @@ public interface UserSongPlayRecordMapper {
 
     List<Map<String, Object>> songPlayCountsByUser(@Param("userId") Long userId);
 
+    Long annualTotalDuration(@Param("userId") Long userId,
+                             @Param("start") LocalDateTime start,
+                             @Param("end") LocalDateTime end);
+
+    Long annualSongCount(@Param("userId") Long userId,
+                         @Param("start") LocalDateTime start,
+                         @Param("end") LocalDateTime end);
+
+    List<Map<String, Object>> annualTopSongs(@Param("userId") Long userId,
+                                              @Param("start") LocalDateTime start,
+                                              @Param("end") LocalDateTime end,
+                                              @Param("limit") int limit);
+
+    List<Map<String, Object>> annualTopSingers(@Param("userId") Long userId,
+                                                @Param("start") LocalDateTime start,
+                                                @Param("end") LocalDateTime end,
+                                                @Param("limit") int limit);
+
+    List<String> annualPlayDates(@Param("userId") Long userId,
+                                 @Param("start") LocalDateTime start,
+                                 @Param("end") LocalDateTime end);
+
+    List<Map<String, Object>> annualHourlyDistribution(@Param("userId") Long userId,
+                                                        @Param("start") LocalDateTime start,
+                                                        @Param("end") LocalDateTime end);
+
+    List<Map<String, Object>> annualMonthlyTrend(@Param("userId") Long userId,
+                                                  @Param("start") LocalDateTime start,
+                                                  @Param("end") LocalDateTime end);
+
+    List<Map<String, Object>> annualLanguageDistribution(@Param("userId") Long userId,
+                                                          @Param("start") LocalDateTime start,
+                                                          @Param("end") LocalDateTime end);
+
+    Double annualAvgCompletion(@Param("userId") Long userId,
+                               @Param("start") LocalDateTime start,
+                               @Param("end") LocalDateTime end);
+
+    String annualPreferenceVector(@Param("userId") Long userId);
+
 }

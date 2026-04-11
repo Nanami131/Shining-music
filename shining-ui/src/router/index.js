@@ -18,6 +18,8 @@ import Songs from '../views/Songs.vue';
 import Playlists from '../views/Playlists.vue';
 import PlayHistory from '../views/PlayHistory.vue';
 import Ranking from '../views/Ranking.vue';
+const AnnualReport = () => import('../views/AnnualReport.vue');
+const AnnualReportStory = () => import('../views/AnnualReportStory.vue');
 
 import SingerManage from '../views/dev/SingerManage.vue';
 import SongManage from '../views/dev/SongManage.vue';
@@ -98,6 +100,16 @@ const routes = [
         path: '/ranking',
         name: 'ranking',
         component: Ranking,
+    },
+    {
+        path: '/annual-report',
+        name: 'annual-report',
+        component: AnnualReport,
+    },
+    {
+        path: '/annual-report/story',
+        name: 'annual-report-story',
+        component: AnnualReportStory,
     },
     {
         path: '/singer/:id',

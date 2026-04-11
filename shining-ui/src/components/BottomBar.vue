@@ -1396,7 +1396,7 @@ export default {
   flex-direction: column;
 }
 .lyrics-resize-handle {
-  height: 10px;
+  height: 28px;
   flex-shrink: 0;
   cursor: row-resize;
   position: relative;
@@ -1405,12 +1405,12 @@ export default {
   content: '';
   position: absolute;
   left: 50%;
-  top: 2px;
+  top: 50%;
   width: 40px;
   height: 4px;
   border-radius: 999px;
   background: #cbd5e1;
-  transform: translateX(-50%);
+  transform: translate(-50%, -50%);
 }
 
 /* 顶部区域内部布局 */

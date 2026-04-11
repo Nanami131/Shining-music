@@ -41,4 +41,9 @@ export default {
   getGlobalTopSongs(limit = 20) {
     return api.get('/statistics/user/ranking/top-songs', { params: { limit } });
   },
+
+  getAnnualReport(userId, year) {
+    const params = year ? { year } : {};
+    return api.get(`/statistics/user/${userId}/annual-report`, { params });
+  },
 };

@@ -1,12 +1,14 @@
 package org.L2.statistics.controller;
 
 import org.L2.common.R;
+import org.L2.statistics.application.service.AnnualReportService;
 import org.L2.statistics.application.service.UserPlayStatisticsService;
 import org.L2.statistics.application.service.UserProfileService;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDateTime;
+import java.time.Year;
 
 @RestController
 @RequestMapping("/statistics/user")
@@ -14,11 +16,14 @@ public class UserPlayStatisticsController {
 
     private final UserPlayStatisticsService userPlayStatisticsService;
     private final UserProfileService userProfileService;
+    private final AnnualReportService annualReportService;
 
     public UserPlayStatisticsController(UserPlayStatisticsService userPlayStatisticsService,
-                                         UserProfileService userProfileService) {
+                                         UserProfileService userProfileService,
+                                         AnnualReportService annualReportService) {
         this.userPlayStatisticsService = userPlayStatisticsService;
         this.userProfileService = userProfileService;
+        this.annualReportService = annualReportService;
     }
 
     /**
@@ -115,5 +120,12 @@ public class UserPlayStatisticsController {
     @GetMapping("/{userId}/plays/song-counts")
     public R getUserSongPlayCounts(@PathVariable("userId") Long userId) {
         return userPlayStatisticsService.getUserSongPlayCounts(userId);
+    }
+
+    @GetMapping("/{userId}/annual-report")
+    public R getAnnualReport(@PathVariable("userId") Long userId,
+                             @RequestParam(value = "year", required = false) Integer year) {
+        int reportYear = (year != null) ? year : Year.now().getValue();
+        return annualReportService.generateAnnualReport(userId, reportYear);
     }
 }

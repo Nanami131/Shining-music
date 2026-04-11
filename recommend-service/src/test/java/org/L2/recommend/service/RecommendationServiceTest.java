@@ -1,8 +1,11 @@
 package org.L2.recommend.service;
 
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.L2.common.R;
 import org.L2.common.rpc.StatisticsClient;
-import org.L2.recommend.infrastructure.SongTagMapper;
+import org.L2.recommend.strategy.impl.ContentBasedStrategy;
+import org.L2.recommend.strategy.impl.ItemCFStrategy;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -10,16 +13,16 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
+import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.redis.core.StringRedisTemplate;
+import org.springframework.data.redis.core.ValueOperations;
 
-import java.lang.reflect.Method;
 import java.util.*;
 
 import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
-import static org.mockito.Mockito.lenient;
 
 @ExtendWith(MockitoExtension.class)
 @DisplayName("RecommendationService 单元测试")
@@ -29,229 +32,166 @@ class RecommendationServiceTest {
     private RecommendationService recommendationService;
 
     @Mock
+    private ContentBasedStrategy contentBasedStrategy;
+
+    @Mock
+    private ItemCFStrategy itemCFStrategy;
+
+    @Mock
     private UserPreferenceService userPreferenceService;
-
-    @Mock
-    private TagVectorService tagVectorService;
-
-    @Mock
-    private SongTagMapper songTagMapper;
-
-    @Mock
-    private StringRedisTemplate stringRedisTemplate;
 
     @Mock
     private StatisticsClient statisticsClient;
 
+    @Mock
+    private StringRedisTemplate stringRedisTemplate;
+
+    @Spy
+    private ObjectMapper objectMapper = new ObjectMapper();
+
+    @Mock
+    private ValueOperations<String, String> valueOperations;
+
+    @BeforeEach
+    void wireRedis() {
+        lenient().when(stringRedisTemplate.opsForValue()).thenReturn(valueOperations);
+    }
+
     @Nested
-    @DisplayName("weightedCosineSimilarity() — 通过反射测试私有方法")
-    class CosineSimilarityTests {
+    @DisplayName("recommendContentBased()")
+    class ContentBasedTests {
 
-        private Method cosineMethod;
+        @Test
+        @DisplayName("缓存命中 — 直接返回缓存数据")
+        void cacheHit() throws Exception {
+            List<Map<String, Object>> cached = List.of(Map.of("songId", 1L, "similarity", 0.9));
+            String json = objectMapper.writeValueAsString(cached);
+            when(valueOperations.get(startsWith("recommend:daily:cb:"))).thenReturn(json);
 
-        @BeforeEach
-        void setUp() throws Exception {
-            cosineMethod = RecommendationService.class.getDeclaredMethod(
-                    "weightedCosineSimilarity", float[].class, float[].class, float[].class, int[].class);
-            cosineMethod.setAccessible(true);
+            R result = recommendationService.recommendContentBased(1L, 10);
+            assertTrue(result.getPassed());
+            assertTrue(result.getMessage().contains("今日缓存"));
+            verify(contentBasedStrategy, never()).recommend(anyLong(), anyInt(), anySet());
         }
 
         @Test
-        @DisplayName("相同向量 — 相似度为1.0")
-        void identicalVectors() throws Exception {
-            float[] a = {0, 0.8f, 0.6f, 0.3f};
-            float[] weights = {0, 0.5f, 0.5f, 0.5f};
-            int[] dims = {1, 2, 3};
+        @DisplayName("无缓存且策略可用 — 调用策略并写缓存")
+        void noCacheStrategyAvailable() {
+            when(valueOperations.get(anyString())).thenReturn(null);
+            when(contentBasedStrategy.isAvailable(1L)).thenReturn(true);
+            when(userPreferenceService.persistSnapshot(1L)).thenReturn(true);
+            when(statisticsClient.getPlayedSongIds(1L)).thenReturn(R.success("ok", Collections.emptyList()));
+            when(contentBasedStrategy.recommend(eq(1L), eq(10), anySet()))
+                    .thenReturn(List.of(Map.of("songId", 42L, "similarity", 0.8)));
 
-            double result = (double) cosineMethod.invoke(recommendationService, a, a, weights, dims);
-            assertEquals(1.0, result, 1e-6);
+            R result = recommendationService.recommendContentBased(1L, 10);
+            assertTrue(result.getPassed());
+            assertTrue(result.getMessage().contains("内容推荐"));
+            verify(valueOperations).set(anyString(), anyString(), any());
         }
 
         @Test
-        @DisplayName("正交向量 — 相似度为0")
-        void orthogonalVectors() throws Exception {
-            float[] a = {0, 1.0f, 0, 0};
-            float[] b = {0, 0, 1.0f, 0};
-            float[] weights = {0, 0.5f, 0.5f, 0.5f};
-            int[] dims = {1, 2, 3};
+        @DisplayName("策略不可用 — 降级到热门歌曲")
+        void strategyUnavailableFallback() {
+            when(valueOperations.get(anyString())).thenReturn(null);
+            when(contentBasedStrategy.isAvailable(1L)).thenReturn(false);
+            when(statisticsClient.getGlobalTopSongs(10)).thenReturn(
+                    R.success("ok", List.of(Map.of("songId", 11, "playCount", 100))));
 
-            double result = (double) cosineMethod.invoke(recommendationService, a, b, weights, dims);
-            assertEquals(0.0, result, 1e-6);
-        }
-
-        @Test
-        @DisplayName("零向量 — 相似度为0（避免除零）")
-        void zeroVector() throws Exception {
-            float[] a = {0, 0, 0};
-            float[] b = {0, 1.0f, 0.5f};
-            float[] weights = {0.5f, 0.5f, 0.5f};
-            int[] dims = {0, 1, 2};
-
-            double result = (double) cosineMethod.invoke(recommendationService, a, b, weights, dims);
-            assertEquals(0.0, result, 1e-6);
-        }
-
-        @Test
-        @DisplayName("权重为零的维度不参与计算")
-        void zeroWeightDimension() throws Exception {
-            float[] a = {1.0f, 0.8f};
-            float[] b = {0.0f, 0.8f};
-            float[] weights = {0.0f, 1.0f};
-            int[] dims = {0, 1};
-
-            double result = (double) cosineMethod.invoke(recommendationService, a, b, weights, dims);
-            assertEquals(1.0, result, 1e-6);
-        }
-
-        @Test
-        @DisplayName("不同权重 — 正确加权")
-        void differentWeights() throws Exception {
-            float[] a = {0.5f, 1.0f};
-            float[] b = {1.0f, 0.5f};
-            float[] weights = {1.0f, 1.0f};
-            int[] dims = {0, 1};
-
-            double result = (double) cosineMethod.invoke(recommendationService, a, b, weights, dims);
-            assertTrue(result > 0.0 && result < 1.0);
+            R result = recommendationService.recommendContentBased(1L, 10);
+            assertTrue(result.getPassed());
+            assertTrue(result.getMessage().contains("热门歌曲"));
         }
     }
 
     @Nested
-    @DisplayName("extractLanguageDistribution() — 通过反射测试")
-    class LanguageDistributionTests {
+    @DisplayName("recommendItemCF()")
+    class ItemCFTests {
 
-        private Method extractMethod;
+        @Test
+        @DisplayName("缓存命中 — 直接返回")
+        void cacheHit() throws Exception {
+            List<Map<String, Object>> cached = List.of(Map.of("songId", 5L, "similarity", 0.7));
+            String json = objectMapper.writeValueAsString(cached);
+            when(valueOperations.get(startsWith("recommend:daily:cf:"))).thenReturn(json);
 
-        @BeforeEach
-        void setUp() throws Exception {
-            extractMethod = RecommendationService.class.getDeclaredMethod(
-                    "extractLanguageDistribution", float[].class, int[].class);
-            extractMethod.setAccessible(true);
+            R result = recommendationService.recommendItemCF(1L, 10);
+            assertTrue(result.getPassed());
+            assertTrue(result.getMessage().contains("今日缓存"));
         }
 
         @Test
-        @DisplayName("有偏好 — 归一化到sum=1")
-        @SuppressWarnings("unchecked")
-        void normalDistribution() throws Exception {
-            float[] userVector = {0.6f, 0.3f, 0.1f, 0, 0, 0};
-            int[] langDims = {0, 1, 2};
+        @DisplayName("矩阵不可用 — 返回错误提示")
+        void matrixUnavailable() {
+            when(valueOperations.get(anyString())).thenReturn(null);
+            when(itemCFStrategy.isAvailable(1L)).thenReturn(false);
 
-            Map<Integer, Double> dist = (Map<Integer, Double>)
-                    extractMethod.invoke(recommendationService, userVector, langDims);
-
-            double sum = dist.values().stream().mapToDouble(Double::doubleValue).sum();
-            assertEquals(1.0, sum, 1e-6);
-            assertTrue(dist.get(0) > dist.get(1));
-            assertTrue(dist.get(1) > dist.get(2));
+            R result = recommendationService.recommendItemCF(1L, 10);
+            assertFalse(result.getPassed());
+            assertTrue(result.getMessage().contains("矩阵"));
         }
 
         @Test
-        @DisplayName("全零偏好 — 均匀分配")
-        @SuppressWarnings("unchecked")
-        void zeroPreference() throws Exception {
-            float[] userVector = {0, 0, 0, 0.5f, 0.5f};
-            int[] langDims = {0, 1, 2};
+        @DisplayName("矩阵可用但推荐为空 — 降级到热门")
+        void emptyResultsFallback() {
+            when(valueOperations.get(anyString())).thenReturn(null);
+            when(itemCFStrategy.isAvailable(1L)).thenReturn(true);
+            when(statisticsClient.getPlayedSongIds(1L)).thenReturn(R.success("ok", Collections.emptyList()));
+            when(itemCFStrategy.recommend(eq(1L), eq(10), anySet())).thenReturn(Collections.emptyList());
+            when(statisticsClient.getGlobalTopSongs(10)).thenReturn(
+                    R.success("ok", List.of(Map.of("songId", 99, "playCount", 50))));
 
-            Map<Integer, Double> dist = (Map<Integer, Double>)
-                    extractMethod.invoke(recommendationService, userVector, langDims);
-
-            double expected = 1.0 / 3;
-            for (double v : dist.values()) {
-                assertEquals(expected, v, 1e-6);
-            }
+            R result = recommendationService.recommendItemCF(1L, 10);
+            assertTrue(result.getPassed());
+            assertTrue(result.getMessage().contains("热门歌曲"));
         }
 
         @Test
-        @DisplayName("负值被裁剪为0")
-        @SuppressWarnings("unchecked")
-        void negativeValuesClipped() throws Exception {
-            float[] userVector = {0.5f, -0.3f, 0};
-            int[] langDims = {0, 1, 2};
+        @DisplayName("矩阵可用且有推荐 — 正常返回")
+        void normalRecommendation() {
+            when(valueOperations.get(anyString())).thenReturn(null);
+            when(itemCFStrategy.isAvailable(1L)).thenReturn(true);
+            when(statisticsClient.getPlayedSongIds(1L)).thenReturn(R.success("ok", Collections.emptyList()));
+            when(itemCFStrategy.recommend(eq(1L), eq(10), anySet()))
+                    .thenReturn(List.of(Map.of("songId", 77L, "similarity", 0.6)));
 
-            Map<Integer, Double> dist = (Map<Integer, Double>)
-                    extractMethod.invoke(recommendationService, userVector, langDims);
-
-            assertEquals(0.0, dist.get(1), 1e-6);
-            assertEquals(1.0, dist.get(0), 1e-6);
+            R result = recommendationService.recommendItemCF(1L, 10);
+            assertTrue(result.getPassed());
+            assertTrue(result.getMessage().contains("协同过滤"));
         }
     }
 
     @Nested
-    @DisplayName("recommend() — 端到端推荐流程")
-    class RecommendTests {
+    @DisplayName("rebuildItemCFMatrix()")
+    class RebuildTests {
 
         @Test
-        @DisplayName("无偏好数据 — 返回空列表")
-        void noPreference() {
-            when(userPreferenceService.getPreferenceVector(1L)).thenReturn(null);
+        @DisplayName("委托 ItemCFStrategy 重建并返回结果")
+        @SuppressWarnings("unchecked")
+        void delegatesToStrategy() {
+            when(itemCFStrategy.rebuildSimilarityMatrix()).thenReturn(42);
+            R result = recommendationService.rebuildItemCFMatrix();
+            assertTrue(result.getPassed());
+            Map<String, Object> data = (Map<String, Object>) result.getData();
+            assertEquals(42, data.get("songsWithSimilarity"));
+        }
+    }
+
+    @Nested
+    @DisplayName("recommend() 入口方法")
+    class RecommendEntryTests {
+
+        @Test
+        @DisplayName("recommend() 委托给 recommendContentBased()")
+        void delegatesToContentBased() {
+            when(valueOperations.get(anyString())).thenReturn(null);
+            when(contentBasedStrategy.isAvailable(1L)).thenReturn(false);
+            when(statisticsClient.getGlobalTopSongs(10)).thenReturn(
+                    R.success("ok", Collections.emptyList()));
 
             R result = recommendationService.recommend(1L, 10);
             assertTrue(result.getPassed());
-            assertNotNull(result.getData());
-        }
-
-        @Test
-        @DisplayName("有偏好数据 — 返回推荐列表")
-        @SuppressWarnings("unchecked")
-        void withPreference() {
-            float[] userVec = {0.8f, 0.1f, 0.1f, 0.5f, 0.5f, 0.5f, 0.5f, 0.5f};
-            when(userPreferenceService.getPreferenceVector(1L)).thenReturn(userVec);
-            when(userPreferenceService.persistSnapshot(1L)).thenReturn(true);
-
-            when(tagVectorService.getLanguageDimIndices()).thenReturn(new int[]{0, 1, 2});
-            when(tagVectorService.getNonLanguageDimIndices()).thenReturn(new int[]{3, 4, 5, 6, 7});
-            when(tagVectorService.getDimensionWeights()).thenReturn(
-                    new float[]{0, 0, 0, 0.15f, 0.15f, 0.14f, 0.12f, 0.15f});
-
-            when(songTagMapper.selectAllDistinctSongIds()).thenReturn(List.of(10L, 20L, 30L));
-
-            float[] song10 = {0.9f, 0.05f, 0.05f, 0.6f, 0.4f, 0.5f, 0.5f, 0.5f};
-            float[] song20 = {0.1f, 0.8f, 0.1f, 0.3f, 0.7f, 0.5f, 0.2f, 0.8f};
-            float[] song30 = {0.8f, 0.1f, 0.1f, 0.4f, 0.6f, 0.3f, 0.6f, 0.4f};
-            when(tagVectorService.getVector(10L)).thenReturn(song10);
-            when(tagVectorService.getVector(20L)).thenReturn(song20);
-            when(tagVectorService.getVector(30L)).thenReturn(song30);
-            when(tagVectorService.getPrimaryLanguageDim(song10)).thenReturn(0);
-            when(tagVectorService.getPrimaryLanguageDim(song20)).thenReturn(1);
-            when(tagVectorService.getPrimaryLanguageDim(song30)).thenReturn(0);
-
-            R playedResult = R.success("ok", Collections.emptyList());
-            when(statisticsClient.getPlayedSongIds(1L)).thenReturn(playedResult);
-
-            R result = recommendationService.recommend(1L, 3);
-            assertTrue(result.getPassed());
-            List<Map<String, Object>> recs = (List<Map<String, Object>>) result.getData();
-            assertFalse(recs.isEmpty());
-            assertTrue(recs.size() <= 3);
-        }
-
-        @Test
-        @DisplayName("已播放歌曲被过滤")
-        @SuppressWarnings("unchecked")
-        void playedSongsFiltered() {
-            float[] userVec = {0.5f, 0.5f, 0, 0.5f};
-            when(userPreferenceService.getPreferenceVector(1L)).thenReturn(userVec);
-            when(userPreferenceService.persistSnapshot(1L)).thenReturn(true);
-
-            when(tagVectorService.getLanguageDimIndices()).thenReturn(new int[]{0, 1, 2});
-            when(tagVectorService.getNonLanguageDimIndices()).thenReturn(new int[]{3});
-            when(tagVectorService.getDimensionWeights()).thenReturn(new float[]{0, 0, 0, 1.0f});
-            when(songTagMapper.selectAllDistinctSongIds()).thenReturn(List.of(10L, 20L));
-
-            float[] songVec = {0.5f, 0.5f, 0, 0.5f};
-            lenient().when(tagVectorService.getVector(10L)).thenReturn(songVec);
-            when(tagVectorService.getVector(20L)).thenReturn(songVec);
-            lenient().when(tagVectorService.getPrimaryLanguageDim(songVec)).thenReturn(0);
-
-            R playedResult = R.success("ok", List.of(10));
-            when(statisticsClient.getPlayedSongIds(1L)).thenReturn(playedResult);
-
-            R result = recommendationService.recommend(1L, 10);
-            assertTrue(result.getPassed());
-            List<Map<String, Object>> recs = (List<Map<String, Object>>) result.getData();
-            for (Map<String, Object> rec : recs) {
-                assertNotEquals(10L, ((Number) rec.get("songId")).longValue());
-            }
+            verify(contentBasedStrategy).isAvailable(1L);
         }
     }
 }

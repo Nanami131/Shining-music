@@ -206,5 +206,128 @@
         ORDER BY playCount DESC
     </select>
 
+    <select id="annualTotalDuration" resultType="java.lang.Long">
+        SELECT COALESCE(SUM(duration_sec), 0)
+        FROM user_song_play_record
+        WHERE user_id = #{userId}
+          AND played_at &gt;= #{start}
+          AND played_at &lt; #{end}
+    </select>
+
+    <select id="annualSongCount" resultType="java.lang.Long">
+        SELECT COUNT(DISTINCT song_id)
+        FROM user_song_play_record
+        WHERE user_id = #{userId}
+          AND played_at &gt;= #{start}
+          AND played_at &lt; #{end}
+    </select>
+
+    <select id="annualTopSongs" resultType="java.util.HashMap">
+        SELECT
+            r.song_id      AS songId,
+            s.title         AS title,
+            si.name         AS singerName,
+            s.cover_url     AS coverUrl,
+            COUNT(*)        AS playCount,
+            COALESCE(SUM(r.duration_sec), 0) AS totalDuration
+        FROM user_song_play_record r
+        JOIN `shining-music`.songs s ON r.song_id = s.id
+        LEFT JOIN `shining-music`.singers si ON s.artist_id = si.id
+        WHERE r.user_id = #{userId}
+          AND r.played_at &gt;= #{start}
+          AND r.played_at &lt; #{end}
+        GROUP BY r.song_id, s.title, si.name, s.cover_url
+        ORDER BY playCount DESC
+        LIMIT #{limit}
+    </select>
+
+    <select id="annualTopSingers" resultType="java.util.HashMap">
+        SELECT
+            s.artist_id     AS singerId,
+            si.name         AS singerName,
+            si.avatar_url   AS avatarUrl,
+            COUNT(*)        AS playCount,
+            COALESCE(SUM(r.duration_sec), 0) AS totalDuration
+        FROM user_song_play_record r
+        JOIN `shining-music`.songs s ON r.song_id = s.id
+        LEFT JOIN `shining-music`.singers si ON s.artist_id = si.id
+        WHERE r.user_id = #{userId}
+          AND r.played_at &gt;= #{start}
+          AND r.played_at &lt; #{end}
+        GROUP BY s.artist_id, si.name, si.avatar_url
+        ORDER BY totalDuration DESC
+        LIMIT #{limit}
+    </select>
+
+    <select id="annualPlayDates" resultType="java.lang.String">
+        SELECT DISTINCT DATE(played_at) AS play_date
+        FROM user_song_play_record
+        WHERE user_id = #{userId}
+          AND played_at &gt;= #{start}
+          AND played_at &lt; #{end}
+        ORDER BY play_date
+    </select>
+
+    <select id="annualHourlyDistribution" resultType="java.util.HashMap">
+        SELECT
+            HOUR(played_at) AS hour,
+            COUNT(*)        AS cnt
+        FROM user_song_play_record
+        WHERE user_id = #{userId}
+          AND played_at &gt;= #{start}
+          AND played_at &lt; #{end}
+        GROUP BY HOUR(played_at)
+        ORDER BY hour
+    </select>
+
+    <select id="annualMonthlyTrend" resultType="java.util.HashMap">
+        SELECT
+            MONTH(played_at) AS month,
+            COUNT(*)         AS playCount
+        FROM user_song_play_record
+        WHERE user_id = #{userId}
+          AND played_at &gt;= #{start}
+          AND played_at &lt; #{end}
+        GROUP BY MONTH(played_at)
+        ORDER BY month
+    </select>
+
+    <select id="annualLanguageDistribution" resultType="java.util.HashMap">
+        SELECT
+            td.name         AS language,
+            COUNT(DISTINCT r.song_id) AS songCount
+        FROM user_song_play_record r
+        JOIN `shining-music`.song_tags st ON r.song_id = st.song_id
+        JOIN `shining-music`.tag_definitions td ON st.tag_id = td.id
+        WHERE r.user_id = #{userId}
+          AND r.played_at &gt;= #{start}
+          AND r.played_at &lt; #{end}
+          AND td.category = 'language'
+          AND st.value = 1
+        GROUP BY td.name
+        ORDER BY songCount DESC
+    </select>
+
+    <select id="annualAvgCompletion" resultType="java.lang.Double">
+        SELECT AVG(
+            CASE
+                WHEN completed = 1 THEN 100.0
+                WHEN total_duration > 0 AND duration_sec > 0
+                    THEN LEAST(duration_sec * 100.0 / total_duration, 100.0)
+                ELSE NULL
+            END
+        )
+        FROM user_song_play_record
+        WHERE user_id = #{userId}
+          AND played_at &gt;= #{start}
+          AND played_at &lt; #{end}
+          AND (completed IS NOT NULL OR (duration_sec IS NOT NULL AND total_duration IS NOT NULL))
+    </select>
+
+    <select id="annualPreferenceVector" resultType="java.lang.String">
+        SELECT vector_json
+        FROM `shining-music`.user_preferences
+        WHERE user_id = #{userId}
+    </select>
 
 </mapper>
