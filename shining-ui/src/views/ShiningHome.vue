@@ -133,68 +133,32 @@
     <section class="featured-panel">
       <div class="panel-head">
         <div>
-          <h2>今日探索 · 依托真实曲目虚构的场景歌单</h2>
-          <p>内容灵感来自站内歌曲，例如 {{ songTitlesPreview }} 等。</p>
+          <h2>发现歌单 · 来自社区和官方的精选合集</h2>
+          <p>公开歌单与官方精选，点击即可收听。</p>
         </div>
-        <button class="ghost" @click="goTo('/songs')">查看更多歌曲</button>
+        <button class="ghost" @click="goTo('/playlists')">查看全部歌单</button>
       </div>
 
       <div class="featured-grid">
         <article
-          v-for="mix in featuredMixes"
-          :key="mix.title"
+          v-for="pl in discoverList"
+          :key="pl.id"
           class="featured-card"
-          :style="{ '--accent': mix.accent }"
+          :style="{ '--accent': pl.accent }"
+          @click="goTo(`/playlist/${pl.id}`)"
         >
           <header>
-            <p class="tag">{{ mix.tag }}</p>
-            <span class="track-id">#{{ mix.highlightSong.id }}</span>
+            <p class="tag">{{ pl.isOfficial ? '官方精选' : '社区歌单' }}</p>
+            <span class="track-id">#{{ pl.id }}</span>
           </header>
-          <h3>{{ mix.title }}</h3>
-          <p>{{ mix.desc }}</p>
-          <div class="badges">
-            <span v-for="badge in mix.badges" :key="badge">{{ badge }}</span>
+          <div class="playlist-cover-row" v-if="pl.coverUrl">
+            <img :src="pl.coverUrl" class="playlist-thumb" alt="" />
           </div>
+          <h3>{{ pl.name }}</h3>
+          <p>{{ pl.description || '暂无描述' }}</p>
           <div class="track-highlight">
-            <p>推荐曲 · {{ mix.highlightSong.title }}</p>
-            <button class="mini-btn" @click="goTo(mix.route)">立即播放</button>
-          </div>
-        </article>
-      </div>
-    </section>
-
-    <section class="mood-panel">
-      <div class="panel-head">
-        <div>
-          <h2>情绪光谱 · 把状态交给音乐</h2>
-          <p>每个情绪卡片都配了来源于真实曲库的推荐曲。</p>
-        </div>
-        <button class="ghost" @click="goTo('/playlists')">更多情绪歌单</button>
-      </div>
-      <div class="mood-grid">
-        <article
-          class="mood-card"
-          v-for="mood in moodSets"
-          :key="mood.title"
-        >
-          <div class="mood-top">
-            <span class="emoji">{{ mood.emoji }}</span>
-            <span class="tag">{{ mood.tag }}</span>
-          </div>
-          <h3>{{ mood.title }}</h3>
-          <p>{{ mood.desc }}</p>
-          <ul>
-            <li v-for="tip in mood.tips" :key="tip">{{ tip }}</li>
-          </ul>
-          <div class="recommend">
-            <p>推荐曲：</p>
-            <span
-              class="chip"
-              v-for="song in mood.songs"
-              :key="song.id"
-            >
-              {{ song.title }}
-            </span>
+            <p>by {{ pl.nickName || '未知' }}</p>
+            <button class="mini-btn" @click.stop="goTo(`/playlist/${pl.id}`)">进入歌单</button>
           </div>
         </article>
       </div>
@@ -236,45 +200,6 @@ import musicApi from '@/api/music';
 import statisticsApi from '@/api/statistics';
 import recommendApi from '@/api/recommend';
 
-const MIX_TEMPLATES = [
-  {
-    title: (s1, s2) => `${s1} · 霓虹电气篇`,
-    desc: (s1, s2) => `从《${s1}》到《${s2}》，把城市霓虹揉进节拍里。`,
-    badges: ['Synthwave', '都市夜色', '重低鼓'],
-    tag: 'LIVE NOW',
-    accent: '#f472b6',
-  },
-  {
-    title: (s1) => `${s1} · 透明呼吸`,
-    desc: (s1, s2) => `《${s1}》的空灵人声衔接《${s2}》，营造失重的水下质感。`,
-    badges: ['Dream Pop', '沉浸', '空灵人声'],
-    tag: '编辑推荐',
-    accent: '#38bdf8',
-  },
-  {
-    title: (s1) => `${s1} · 童话旋律`,
-    desc: (s1, s2) => `以《${s1}》和《${s2}》衍生的原声合集，适合写字和发呆。`,
-    badges: ['原声', '治愈', '木吉他'],
-    tag: '温柔上线',
-    accent: '#facc15',
-  },
-];
-
-const MOOD_TEMPLATES = [
-  { title: '凌晨写稿', desc: '屏幕泛蓝的凌晨，键盘声和鼓点同步。', tag: 'Night Shift', emoji: '🌃', tips: ['低饱和电子律动', '轻人声样本', '120 BPM 左右'] },
-  { title: '午后梦游', desc: '阳光柔焦到木质桌面，灵感慢慢酝酿。', tag: 'Lazy Noon', emoji: '🌤️', tips: ['Lo-fi hiphop', '口风琴点缀', '轻打击'] },
-  { title: '黄昏疾驰', desc: '地铁窗外闪过的灯带，与耳机里的合成器共鸣。', tag: 'City Rush', emoji: '🚇', tips: ['Future Bass', '切分节奏', '厚重贝斯'] },
-];
-
-function shuffle(arr) {
-  const a = [...arr];
-  for (let i = a.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [a[i], a[j]] = [a[j], a[i]];
-  }
-  return a;
-}
-
 export default {
   name: 'ShiningHome',
   data() {
@@ -288,8 +213,7 @@ export default {
         { value: '--', label: '曲库收录' },
         { value: '--', label: '平均完播率' },
       ],
-      featuredMixes: [],
-      moodSets: [],
+      discoverList: [],
       featuredVideos: [],
       sparkPoints: [
         { id: 1, top: '20%', left: '25%', delay: '0s' },
@@ -314,12 +238,7 @@ export default {
       this.loadCFRecommendations(userBase.id);
     }
   },
-  computed: {
-    songTitlesPreview() {
-      if (!this.allSongs.length) return '...';
-      return this.allSongs.slice(0, 4).map((s) => s.title).join('、');
-    },
-  },
+  computed: {},
   methods: {
     async loadDynamicContent() {
       try {
@@ -353,34 +272,21 @@ export default {
           { value: profile ? `${profile.avgCompletionRate}%` : '--', label: '我的完播率' },
         ];
 
-        this.buildFeaturedMixes(songs);
-        this.buildMoodSets(songs);
+        this.loadDiscoverPlaylists();
       } catch (e) { /* keep defaults */ }
     },
-    buildFeaturedMixes(songs) {
-      if (songs.length < 6) return;
-      const pool = shuffle(songs);
-      this.featuredMixes = MIX_TEMPLATES.map((tpl, i) => {
-        const s1 = pool[i * 2];
-        const s2 = pool[i * 2 + 1];
-        return {
-          title: tpl.title(s1.title, s2.title),
-          desc: tpl.desc(s1.title, s2.title),
-          badges: tpl.badges,
-          tag: tpl.tag,
-          accent: tpl.accent,
-          route: `/song/${s1.id}`,
-          highlightSong: { id: s1.id, title: s1.title },
-        };
-      });
-    },
-    buildMoodSets(songs) {
-      if (songs.length < 9) return;
-      const pool = shuffle(songs);
-      this.moodSets = MOOD_TEMPLATES.map((tpl, i) => ({
-        ...tpl,
-        songs: pool.slice(i * 3, i * 3 + 3).map(s => ({ id: s.id, title: s.title })),
-      }));
+    async loadDiscoverPlaylists() {
+      try {
+        const colorPool = ['#f472b6', '#38bdf8', '#facc15', '#34d399', '#a78bfa', '#fb7185'];
+        const res = await musicApi.discoverPlaylists();
+        if (res?.data?.passed) {
+          this.discoverList = (res.data.data || []).slice(0, 6).map((pl, i) => ({
+            ...pl,
+            isOfficial: pl.userId === -1,
+            accent: colorPool[i % colorPool.length],
+          }));
+        }
+      } catch (e) { /* silent */ }
     },
     async loadFeaturedVideos() {
       try {
@@ -771,6 +677,7 @@ export default {
   padding: 20px;
   border-radius: 24px;
   background: rgba(1, 3, 20, 0.8);
+  cursor: pointer;
   border: 1px solid rgba(255, 255, 255, 0.05);
   position: relative;
   overflow: hidden;
@@ -789,6 +696,17 @@ export default {
 
 .featured-card:hover::after {
   opacity: 0.45;
+}
+
+.playlist-cover-row {
+  margin: 8px 0;
+}
+
+.playlist-thumb {
+  width: 100%;
+  height: 120px;
+  object-fit: cover;
+  border-radius: 12px;
 }
 
 .featured-card header {
@@ -844,12 +762,6 @@ export default {
 
 .mini-btn:hover {
   background: rgba(255, 255, 255, 0.25);
-}
-
-.mood-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-  gap: 18px;
 }
 
 .video-grid {
@@ -923,45 +835,6 @@ export default {
 .video-sub {
   margin-top: 6px !important;
   color: rgba(236, 242, 255, 0.62) !important;
-}
-
-.mood-card {
-  padding: 18px;
-  border-radius: 22px;
-  background: linear-gradient(140deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.02));
-  border: 1px solid rgba(255, 255, 255, 0.05);
-}
-
-.mood-top {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 6px;
-}
-
-.emoji {
-  font-size: 28px;
-}
-
-.mood-card ul {
-  margin: 10px 0;
-  padding-left: 18px;
-  color: rgba(236, 242, 255, 0.85);
-}
-
-.recommend {
-  margin-top: 10px;
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  align-items: center;
-}
-
-.chip {
-  padding: 4px 12px;
-  border-radius: 999px;
-  background: rgba(255, 255, 255, 0.15);
-  font-size: 12px;
 }
 
 .recommend-panel {
