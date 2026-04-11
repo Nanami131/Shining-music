@@ -14,5 +14,7 @@ public interface VideoMapper {
     int update(Video video);
 
     List<Video> query(Video video);
+
+    int deleteById(Long id);
 }
 

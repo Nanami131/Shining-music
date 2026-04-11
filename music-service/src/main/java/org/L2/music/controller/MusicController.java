@@ -435,6 +435,11 @@ public class MusicController {
         return musicAppService.listVideos();
     }
 
+    @DeleteMapping("/video/{id}")
+    public R deleteVideo(@PathVariable("id") Long id) {
+        return musicAppService.deleteVideo(id);
+    }
+
     @GetMapping("/playback-state")
     public R getPlaybackState(@RequestParam(value = "userId", required = false) Long userId) {
         return musicAppService.getPlaybackState(userId);

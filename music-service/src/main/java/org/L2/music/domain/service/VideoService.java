@@ -113,5 +113,28 @@ public class VideoService {
         List<Video> list = videoMapper.query(new Video());
         return R.success("获取视频列表成功", list);
     }
+
+    public R deleteVideo(Long id) {
+        if (id == null) {
+            return R.error("视频ID不能为空");
+        }
+        Video video = videoMapper.selectById(id);
+        if (video == null) {
+            return R.error("视频不存在");
+        }
+        try {
+            if (video.getFileUrl() != null && !video.getFileUrl().isBlank()) {
+                String bucketPrefix = minioProperties.getEndpoint() + "/" + minioProperties.getBucketName();
+                if (video.getFileUrl().startsWith(bucketPrefix)) {
+                    String objectName = video.getFileUrl().substring(bucketPrefix.length());
+                    simpleMinioService.deleteFile(objectName);
+                }
+            }
+        } catch (Exception e) {
+            log.warn("删除 MinIO 视频文件失败 videoId={}", id, e);
+        }
+        videoMapper.deleteById(id);
+        return R.success("视频删除成功");
+    }
 }
 

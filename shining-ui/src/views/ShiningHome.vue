@@ -211,13 +211,12 @@
       <div class="video-grid">
         <article class="video-card" v-for="video in featuredVideos" :key="video.id" @click="goToVideo(video.id)">
           <div class="video-cover" :style="{ '--video-accent': video.accent }">
-            <span class="video-duration">{{ video.duration }}</span>
+            <img v-if="video.coverUrl" :src="video.coverUrl" class="video-cover-img" alt="" />
             <span class="video-play">▶</span>
           </div>
           <div class="video-meta">
             <h3>{{ video.title }}</h3>
             <p>{{ video.singer }}</p>
-            <p class="video-sub">{{ video.desc }}</p>
           </div>
         </article>
         <article v-if="!featuredVideos.length" class="video-card video-empty">
@@ -389,14 +388,27 @@ export default {
         if (response.data?.passed) {
           const colorPool = ['#f472b6', '#38bdf8', '#facc15', '#34d399', '#a78bfa', '#fb7185'];
           const list = response.data.data || [];
-          this.featuredVideos = list.slice(0, 8).map((item, index) => ({
+          const videos = list.slice(0, 8).map((item, index) => ({
             id: item.id,
             title: item.title || `视频${item.id}`,
+            singerId: item.singerId,
             singer: item.singerId ? `歌手 ${item.singerId}` : '未绑定歌手',
-            duration: '--:--',
-            desc: item.fileUrl ? '已上传视频，可点击进入播放页。' : '视频资源待就绪。',
+            coverUrl: item.coverUrl || null,
             accent: colorPool[index % colorPool.length],
           }));
+          this.featuredVideos = videos;
+          const singerIds = [...new Set(videos.map(v => v.singerId).filter(Boolean))];
+          for (const sid of singerIds) {
+            try {
+              const res = await musicApi.getSingerBaseInfo(sid);
+              if (res.data?.passed && res.data.data?.name) {
+                const name = res.data.data.name;
+                this.featuredVideos.forEach(v => {
+                  if (v.singerId === sid) v.singer = name;
+                });
+              }
+            } catch (_) { /* ignore */ }
+          }
         } else {
           this.featuredVideos = [];
         }
@@ -864,6 +876,15 @@ export default {
     radial-gradient(circle at 25% 25%, var(--video-accent), transparent 60%),
     linear-gradient(135deg, rgba(9, 12, 40, 0.9), rgba(24, 24, 72, 0.85));
   position: relative;
+  overflow: hidden;
+}
+
+.video-cover-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  position: absolute;
+  inset: 0;
 }
 
 .video-duration {

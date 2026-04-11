@@ -43,6 +43,26 @@
         <button type="submit" class="submit-btn">保存元信息</button>
       </form>
     </div>
+
+    <div class="section">
+      <h3>视频列表</h3>
+      <button class="submit-btn refresh-btn" @click="loadVideos" :disabled="videosLoading">
+        {{ videosLoading ? '加载中...' : '刷新列表' }}
+      </button>
+      <div v-if="videos.length === 0 && !videosLoading" class="empty-tip">暂无视频</div>
+      <div v-else class="video-list">
+        <div v-for="video in videos" :key="video.id" class="video-item">
+          <div class="video-item-info">
+            <strong>#{{ video.id }}</strong>
+            <span>{{ video.title }}</span>
+            <span class="video-item-meta">{{ video.singerId ? `歌手ID: ${video.singerId}` : '未绑定歌手' }}</span>
+          </div>
+          <button class="delete-btn" @click="handleDeleteVideo(video)" :disabled="deletingId === video.id">
+            {{ deletingId === video.id ? '删除中...' : '删除' }}
+          </button>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -66,7 +86,13 @@ export default {
         singerId: null,
         coverUrl: '',
       },
+      videos: [],
+      videosLoading: false,
+      deletingId: null,
     };
+  },
+  created() {
+    this.loadVideos();
   },
   methods: {
     handleVideoChange(event) {
@@ -119,11 +145,42 @@ export default {
         const response = await musicApi.updateVideoMeta(payload);
         if (response.data?.passed) {
           alert('更新成功');
+          this.loadVideos();
         } else {
           alert('更新失败：' + (response.data?.message || '未知错误'));
         }
       } catch (error) {
         alert('更新异常：' + error.message);
+      }
+    },
+    async loadVideos() {
+      this.videosLoading = true;
+      try {
+        const res = await musicApi.listVideos();
+        if (res.data?.passed) {
+          this.videos = res.data.data || [];
+        }
+      } catch (e) {
+        console.warn('加载视频列表失败', e);
+      } finally {
+        this.videosLoading = false;
+      }
+    },
+    async handleDeleteVideo(video) {
+      if (!confirm(`确认删除视频「${video.title}」(ID: ${video.id})？此操作不可撤销。`)) return;
+      this.deletingId = video.id;
+      try {
+        const res = await musicApi.deleteVideo(video.id);
+        if (res.data?.passed) {
+          alert('删除成功');
+          this.videos = this.videos.filter(v => v.id !== video.id);
+        } else {
+          alert('删除失败：' + (res.data?.message || '未知错误'));
+        }
+      } catch (e) {
+        alert('删除异常：' + e.message);
+      } finally {
+        this.deletingId = null;
       }
     },
   },
@@ -183,6 +240,71 @@ input {
 
 .submit-btn:hover {
   opacity: 0.9;
+}
+
+.refresh-btn {
+  margin-bottom: 15px;
+}
+
+.empty-tip {
+  text-align: center;
+  color: #999;
+  padding: 20px 0;
+}
+
+.video-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.video-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 12px;
+  background: #f9fafb;
+  border-radius: 6px;
+  border: 1px solid #e5e7eb;
+}
+
+.video-item-info {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: 1;
+  min-width: 0;
+}
+
+.video-item-info span {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.video-item-meta {
+  color: #9ca3af;
+  font-size: 13px;
+}
+
+.delete-btn {
+  padding: 6px 14px;
+  border: none;
+  border-radius: 4px;
+  background: #ef4444;
+  color: white;
+  cursor: pointer;
+  font-size: 13px;
+  flex-shrink: 0;
+}
+
+.delete-btn:hover {
+  background: #dc2626;
+}
+
+.delete-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
 }
 </style>
 

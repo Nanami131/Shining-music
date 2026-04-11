@@ -33,6 +33,10 @@
         WHERE id = #{id}
     </update>
 
+    <delete id="deleteById">
+        DELETE FROM videos WHERE id = #{id}
+    </delete>
+
     <select id="query" resultMap="VideoResultMap">
         SELECT * FROM videos
         <where>

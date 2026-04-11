@@ -367,6 +367,10 @@ public class MusicAppService {
         return videoService.listVideos();
     }
 
+    public R deleteVideo(Long id) {
+        return videoService.deleteVideo(id);
+    }
+
     /*
      * 歌手模块
      */
