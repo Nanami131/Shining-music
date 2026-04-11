@@ -92,17 +92,16 @@ public class ItemCFStrategy implements RecommendationStrategy {
 
         if (sorted.isEmpty()) return Collections.emptyList();
 
-        List<Long> rankedIds = sorted.stream().map(Map.Entry::getKey).toList();
-        double maxRawScore = rankedIds.stream()
-                .mapToDouble(id -> candidateScores.getOrDefault(id, 0.0))
+        double maxNormScore = sorted.stream()
+                .mapToDouble(Map.Entry::getValue)
                 .max().orElse(1.0);
 
-        return rankedIds.stream()
-                .map(id -> {
+        return sorted.stream()
+                .map(entry -> {
                     Map<String, Object> m = new HashMap<>();
-                    m.put("songId", id);
-                    double display = maxRawScore > 0
-                            ? Math.min(1.0, candidateScores.getOrDefault(id, 0.0) / maxRawScore)
+                    m.put("songId", entry.getKey());
+                    double display = maxNormScore > 0
+                            ? Math.min(1.0, entry.getValue() / maxNormScore)
                             : 0.0;
                     m.put("similarity", Math.round(display * 10000.0) / 10000.0);
                     return m;

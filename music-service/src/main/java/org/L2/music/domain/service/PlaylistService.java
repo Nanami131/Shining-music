@@ -272,8 +272,9 @@ public class PlaylistService {
             if (playlist == null) {
                 return R.error("歌单不存在");
             }
+            boolean isOfficial = playlist.getUserId() != null && playlist.getUserId() == -1L;
             boolean isPrivate = playlist.getVisibility() != null && playlist.getVisibility() == 1;
-            if (isPrivate) {
+            if (isPrivate && !isOfficial) {
                 Long currentUserId = UserContext.getUserId();
                 boolean isOwner = currentUserId != null && currentUserId.equals(playlist.getUserId());
                 if (!isOwner) {
@@ -398,9 +399,8 @@ public class PlaylistService {
                 Long ownerId = playlist.getUserId();
                 boolean isOfficial = ownerId != null && ownerId == -1L;
 
-                boolean isPrivate = visibility != null && Byte.valueOf((byte) 1).equals(visibility);
-                boolean isOwner = currentUserId != null && currentUserId.equals(ownerId);
-                if (isPrivate && !isOfficial && !isOwner) {
+                boolean isPublic = visibility != null && visibility == 0;
+                if (!isOfficial && !isPublic) {
                     continue;
                 }
                 result.add(playlist);

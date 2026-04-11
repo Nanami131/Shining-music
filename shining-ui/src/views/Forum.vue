@@ -80,20 +80,28 @@
         <div v-else-if="posts.length === 0" class="state-card">
           暂无帖子，成为第一个点亮讨论区的人吧。
         </div>
-        <div v-else class="post-grid">
-          <article class="post-card" v-for="post in posts" :key="post.id">
-            <div class="post-card-head">
-              <h3>{{ post.title }}</h3>
-              <div class="post-badges">
-                <span class="like-badge" v-if="post.likeCount">❤ {{ post.likeCount }}</span>
-                <span class="comment-count">💬 {{ post.commentCount ?? 0 }}</span>
+        <div v-else class="post-list">
+          <article class="post-card" v-for="post in posts" :key="post.id" @click="goDetail(post.id)">
+            <div class="post-card-left">
+              <div class="post-avatar" @click.stop="goUser(post.userId)">
+                <img v-if="avatarMap[post.userId]" :src="avatarMap[post.userId]" :alt="authorName(post.userId)" class="avatar-img" />
+                <span v-else>{{ (authorName(post.userId) || '?')[0] }}</span>
               </div>
             </div>
-            <p class="excerpt">{{ makeExcerpt(post.content) }}</p>
-            <div class="post-meta">
-              <span class="author-link" @click.stop="goUser(post.userId)">{{ authorName(post.userId) }}</span>
-              <span>{{ formatDate(post.createdAt) }}</span>
-              <button class="mini-btn" @click="goDetail(post.id)">查看详情</button>
+            <div class="post-card-body">
+              <div class="post-card-head">
+                <h3>{{ post.title }}</h3>
+              </div>
+              <p class="excerpt">{{ makeExcerpt(post.content) }}</p>
+              <div class="post-meta">
+                <span class="author-link" @click.stop="goUser(post.userId)">{{ authorName(post.userId) }}</span>
+                <span class="meta-dot">·</span>
+                <span class="meta-time">{{ formatDate(post.createdAt) }}</span>
+                <div class="post-badges">
+                  <span class="badge-item like-badge" v-if="post.likeCount"><span class="badge-icon">♥</span> {{ post.likeCount }}</span>
+                  <span class="badge-item comment-badge"><span class="badge-icon">💬</span> {{ post.commentCount ?? 0 }}</span>
+                </div>
+              </div>
             </div>
           </article>
         </div>
@@ -118,6 +126,7 @@ export default {
       focusSongs: [],
       totalPlays: '--',
       nickNameMap: {},
+      avatarMap: {},
     };
   },
   computed: {
@@ -169,6 +178,9 @@ export default {
           const res = await userApi.getUserBaseInfo(id);
           if (res.data?.passed && res.data.data) {
             this.nickNameMap[id] = res.data.data.nickName || res.data.data.username || `用户${id}`;
+            if (res.data.data.avatarUrl) {
+              this.avatarMap[id] = res.data.data.avatarUrl;
+            }
           } else {
             this.nickNameMap[id] = `用户${id}`;
           }
@@ -506,83 +518,141 @@ export default {
   color: rgba(228, 235, 255, 0.8);
 }
 
-.post-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-  gap: 20px;
+.post-list {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
   margin-top: 24px;
 }
 
 .post-card {
-  padding: 18px;
-  border-radius: 22px;
-  background: rgba(2, 5, 18, 0.85);
-  border: 1px solid rgba(255, 255, 255, 0.05);
   display: flex;
-  flex-direction: column;
-  gap: 12px;
-  transition: transform 0.2s ease, border-color 0.2s ease;
+  gap: 16px;
+  padding: 20px;
+  border-radius: 20px;
+  background: rgba(2, 5, 18, 0.7);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  cursor: pointer;
+  transition: transform 0.2s ease, border-color 0.25s ease, background 0.25s ease;
 }
 
 .post-card:hover {
-  transform: translateY(-4px);
-  border-color: rgba(56, 189, 248, 0.5);
+  transform: translateX(4px);
+  border-color: rgba(56, 189, 248, 0.4);
+  background: rgba(6, 12, 36, 0.85);
 }
 
-.post-card-head {
-  display: flex;
-  justify-content: space-between;
-  gap: 12px;
-}
-
-.post-badges {
-  display: flex;
-  gap: 10px;
-  align-items: center;
+.post-card-left {
   flex-shrink: 0;
 }
-.comment-count {
-  font-size: 12px;
-  color: rgba(236, 72, 153, 0.85);
+
+.post-avatar {
+  width: 44px;
+  height: 44px;
+  border-radius: 14px;
+  background: linear-gradient(135deg, rgba(56, 189, 248, 0.5), rgba(168, 85, 247, 0.5));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  font-weight: 700;
+  color: #fff;
+  cursor: pointer;
+  transition: transform 0.2s ease;
 }
-.like-badge {
-  font-size: 12px;
-  color: rgba(236, 72, 153, 0.85);
+
+.post-avatar:hover {
+  transform: scale(1.08);
+}
+
+.avatar-img {
+  width: 100%;
+  height: 100%;
+  border-radius: inherit;
+  object-fit: cover;
+}
+
+.post-card-body {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.post-card-head h3 {
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 1.4;
+  color: #f0f5ff;
 }
 
 .excerpt {
-  color: rgba(228, 235, 255, 0.85);
-  min-height: 50px;
+  color: rgba(228, 235, 255, 0.7);
+  font-size: 14px;
+  line-height: 1.6;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
 }
 
 .post-meta {
   display: flex;
-  justify-content: space-between;
   align-items: center;
+  gap: 6px;
   font-size: 13px;
-  color: rgba(255, 255, 255, 0.72);
+  color: rgba(255, 255, 255, 0.55);
+  flex-wrap: wrap;
+}
+
+.meta-dot {
+  color: rgba(255, 255, 255, 0.3);
+}
+
+.meta-time {
+  color: rgba(255, 255, 255, 0.45);
+}
+
+.post-badges {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  margin-left: auto;
+}
+
+.badge-item {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+  padding: 3px 10px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.like-badge {
+  color: rgba(244, 114, 182, 0.9);
+}
+
+.comment-badge {
+  color: rgba(129, 140, 248, 0.9);
+}
+
+.badge-icon {
+  font-size: 11px;
 }
 
 .author-link {
   color: #93c5fd;
   cursor: pointer;
   font-weight: 500;
-}
-.author-link:hover {
-  text-decoration: underline;
-  color: #60a5fa;
-}
-.mini-btn {
-  padding: 6px 14px;
-  border-radius: 999px;
-  border: none;
-  background: rgba(255, 255, 255, 0.15);
-  color: #fff;
-  cursor: pointer;
+  transition: color 0.15s ease;
 }
 
-.mini-btn:hover {
-  background: rgba(255, 255, 255, 0.25);
+.author-link:hover {
+  color: #60a5fa;
+  text-decoration: underline;
 }
 
 @media (max-width: 960px) {
