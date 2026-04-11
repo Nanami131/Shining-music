@@ -400,7 +400,8 @@ public class PlaylistService {
                 boolean isOfficial = ownerId != null && ownerId == -1L;
 
                 boolean isPublic = visibility != null && visibility == 0;
-                if (!isOfficial && !isPublic) {
+                boolean isOwnPlaylist = currentUserId != null && ownerId != null && ownerId.equals(currentUserId);
+                if (!isOfficial && !isPublic && !isOwnPlaylist) {
                     continue;
                 }
                 result.add(playlist);

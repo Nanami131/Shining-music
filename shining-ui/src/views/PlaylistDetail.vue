@@ -9,7 +9,12 @@
           <p><strong>简介：</strong>{{ playlist.description || '暂无简介' }}</p>
           <p v-if="playlist.nickName || playlist.userId"><strong>创建者：</strong>{{ creatorName }}</p>
           <p><strong>类型：</strong>{{ formatType(playlist.type) }}</p>
-          <p><strong>可见性：</strong>{{ formatVisibility(playlist.visibility) }}</p>
+          <p>
+            <strong>可见性：</strong>
+            <span class="visibility-badge" :class="playlist.visibility === 1 ? 'private' : 'public'">
+              {{ formatVisibility(playlist.visibility) }}
+            </span>
+          </p>
           <p><strong>创建时间：</strong>{{ playlist.createdAt || '未知' }}</p>
         </div>
       </div>
@@ -23,6 +28,15 @@
         <div class="editor-row">
           <label>简介</label>
           <textarea v-model="editForm.description" placeholder="歌单简介"></textarea>
+        </div>
+        <div class="editor-row visibility-row">
+          <label>可见性</label>
+          <div class="visibility-switch" :class="{ 'is-private': editForm.visibility === 1 }" @click="editForm.visibility = editForm.visibility === 0 ? 1 : 0">
+            <span class="switch-track">
+              <span class="switch-thumb"></span>
+            </span>
+            <span class="switch-label">{{ editForm.visibility === 1 ? '🔒 私密 — 仅自己可见' : '🌐 公开 — 所有人可见' }}</span>
+          </div>
         </div>
         <div class="editor-actions">
           <button class="btn primary" :disabled="updatingInfo" @click="updatePlaylistInfo">
@@ -147,6 +161,7 @@ export default {
       editForm: {
         name: '',
         description: '',
+        visibility: 0,
       },
       updatingInfo: false,
       uploadingCover: false,
@@ -211,6 +226,7 @@ export default {
       this.playlist = response.data.data;
       this.editForm.name = this.playlist.name || '';
       this.editForm.description = this.playlist.description || '';
+      this.editForm.visibility = this.playlist.visibility ?? 0;
     },
     async loadFavoriteSongs() {
       if (!this.userId) {
@@ -240,6 +256,7 @@ export default {
           userId: this.userId,
           name: this.editForm.name.trim(),
           description: this.editForm.description ?? '',
+          visibility: this.editForm.visibility,
         });
         if (!response.data?.passed) {
           alert('更新失败：' + (response.data?.message || '未知错误'));
@@ -528,6 +545,76 @@ h3 {
 .editor-row textarea {
   min-height: 90px;
   resize: vertical;
+}
+
+.visibility-badge {
+  display: inline-block;
+  padding: 2px 10px;
+  border-radius: 12px;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.visibility-badge.public {
+  background: rgba(52, 211, 153, 0.2);
+  color: #34d399;
+}
+
+.visibility-badge.private {
+  background: rgba(251, 113, 133, 0.2);
+  color: #fb7185;
+}
+
+.visibility-switch {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  cursor: pointer;
+  padding: 8px 16px;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.04);
+  transition: all 0.3s;
+  user-select: none;
+}
+
+.visibility-switch:hover {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.switch-track {
+  position: relative;
+  width: 44px;
+  height: 24px;
+  border-radius: 12px;
+  background: rgba(52, 211, 153, 0.5);
+  transition: background 0.3s;
+  flex-shrink: 0;
+}
+
+.is-private .switch-track {
+  background: rgba(251, 113, 133, 0.5);
+}
+
+.switch-thumb {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: #fff;
+  transition: transform 0.3s;
+}
+
+.is-private .switch-thumb {
+  transform: translateX(20px);
+}
+
+.switch-label {
+  font-size: 14px;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.9);
 }
 
 .editor-actions {

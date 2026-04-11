@@ -1,89 +1,80 @@
-# Shining Music 数据迁移包
+# Shining Music 数据迁移指南
 
-## 这是什么
+## 概述
 
-`shining-data-export.tar.gz` 是 Shining Music 项目**全部运行时数据**的打包。代码用 git 管理，这个包只包含数据。
+本项目的运行时数据分布在 5 个组件中。代码通过 git 管理，此文档只涉及数据迁移。
 
-解压后目录结构：
+迁移包 `shining-data-export.tar.gz` 解压后结构：
 
 ```
 shining-data-export/
 ├── mysql/
-│   └── all_databases.sql       # 5 个库的完整 dump
+│   └── all_databases.sql
 ├── redis/
-│   └── redis_db4.json          # 不可重建的 Redis 键
+│   └── redis_db4.json
 ├── minio/
-│   ├── song/                   # 音频文件 + 封面
-│   │   ├── *.mp3 / *.flac
-│   │   └── cover/
-│   ├── singer/avator/          # 歌手头像
-│   ├── playlist/cover/         # 歌单封面
-│   ├── user/avator/            # 用户头像
-│   ├── community/images/       # 社区图片
-│   └── video/
-│       ├── file/               # MV 视频
-│       └── cover/              # 视频封面
+│   ├── song/           # 音频 + 封面
+│   ├── singer/avator/  # 歌手头像
+│   ├── playlist/cover/
+│   ├── user/avator/
+│   ├── community/images/
+│   └── video/          # file/ + cover/
 └── es/
-    └── music_search.json       # ES 索引（可选恢复，也可从 MySQL 重建）
+    └── music_search.json
 ```
 
-## 数据清单
+## 数据组件说明
 
-### MySQL（`mysql/all_databases.sql`，~4 MB）
+### MySQL
 
-| 库 | 关键表 | 说明 |
-|----|--------|------|
-| `nacos` | `config_info` | **最关键**。所有微服务的配置：数据库连接、JWT secret、MinIO 凭据、网关路由。丢了等于白搭 |
-| `shining-user` | `users`, `password_history` | 用户账号和密码历史 |
-| `shining-music` | `songs`, `singers`, `lyrics`, `playlists`, `song_tags`, `tag_definitions`, `videos`, `user_preferences` | 歌曲库核心数据 |
-| `shining-community` | `posts`, `post_comments`, `post_likes`, `user_follows` | 社区数据 |
-| `shining-statistics` | `user_song_play_record`, `user_event_log`, `user_profile` | 播放记录和用户画像 |
+| 库 | 职责 |
+|----|------|
+| `nacos` | 微服务配置（数据库连接、JWT secret、MinIO 凭据、网关路由）|
+| `shining-user` | 用户账号 |
+| `shining-music` | 歌曲、歌手、歌词、歌单、标签、视频、用户偏好 |
+| `shining-community` | 社区帖子、评论、点赞、关注 |
+| `shining-statistics` | 播放记录、用户事件、用户画像 |
 
-### MinIO（`minio/` 目录，~2.7 GB）
+### MinIO
 
-788 个文件。恢复后必须放入名为 `shining` 的 bucket 中，保持原路径结构。
+`shining` bucket 内全部对象文件。恢复时必须保持原路径结构。
 
-### Redis（`redis/redis_db4.json`，~12 KB）
+### Redis（DB 4）
 
-| Key 模式 | 数量 | 说明 |
-|----------|------|------|
-| `user:preference:*` | 3 | 用户偏好向量，不可重建 |
-| `user:songplay:*` | 92 | 用户播放计数，不可重建 |
-| `playlist:*` | 5 | 歌单缓存 |
-| `user:playback_state:*` | 4 | 用户播放状态 |
+只导出不可重建的键：
 
-不在此文件中的 Redis 键（`song:vector:*`、`itemcf:*`、`jwt:*`、`cache:*`、`recommend:daily:*`）可通过 API 重建，不需要迁移。
+| 模式 | 说明 |
+|------|------|
+| `user:preference:*` | 用户偏好向量 |
+| `user:songplay:*` | 播放计数 |
+| `playlist:*` | 歌单缓存 |
+| `user:playback_state:*` | 播放状态 |
 
-### Elasticsearch（`es/music_search.json`，~1 MB，可选）
+以下键可通过 API 重建，不包含在导出中：`song:vector:*`、`itemcf:*`、`jwt:*`、`cache:*`、`recommend:daily:*`
 
-`music_search` 索引，包含 mapping 和全部文档。也可以跳过此文件，恢复 MySQL 后通过 `POST /api/music/search/sync` 从数据库重建。
+### Elasticsearch
 
-## 新设备恢复目标
+`music_search` 索引。可选恢复——也可以恢复 MySQL 后通过 API 从数据库重建。
 
-在 Windows 机器上恢复后，应达到以下效果：
+## 恢复步骤
 
-1. **前端可正常访问**，登录后能看到所有歌曲、歌手、歌单
-2. **音乐可播放**，封面图片正常显示
-3. **MV 视频可播放**
-4. **社区帖子可浏览**
-5. **推荐功能可用**（需恢复后执行向量重建 API）
-6. **年度报告页面可用**（依赖播放记录数据）
+### 前提：中间件安装
 
-## 恢复步骤（给 Agent 的操作指引）
+需要的组件及默认端口：
 
-### 前提
+| 组件 | 默认端口 |
+|------|----------|
+| MySQL 8 | 3306 |
+| Redis 7 | 6379 |
+| RabbitMQ | 5672 / 15672(管理) |
+| MinIO | 9000(API) / 9090(控制台) |
+| Nacos 2 | 8848 |
+| Elasticsearch 8 + IK + kuromoji | 9200 |
+| JDK 17+ | - |
+| Node.js 18+ | - |
+| Maven | - |
 
-新设备需要安装：MySQL 8、Redis 7、Elasticsearch 8（带 IK 分词插件）、MinIO、RabbitMQ、Nacos 2、JDK 17、Node.js 18+、Maven。安装方式不限（Docker / 原生 / 其他），只要端口能通。
-
-### 默认端口
-
-| MySQL | Redis | RabbitMQ | MinIO API | MinIO Console | Nacos | ES | Gateway | Frontend |
-|-------|-------|----------|-----------|---------------|-------|----|---------|----------|
-| 3306 | 6379 | 5672 | 9000 | 9090 | 8848 | 9200 | 8080 | 5173 |
-
-### 默认凭据
-
-MySQL `root/password`，MinIO `minioadmin/minioadmin`，RabbitMQ `guest/guest`，Redis 无密码。
+安装方式不限（Docker / 原生），端口可自定义但需同步修改 Nacos 配置。
 
 ### 1. 恢复 MySQL
 
@@ -91,51 +82,53 @@ MySQL `root/password`，MinIO `minioadmin/minioadmin`，RabbitMQ `guest/guest`�
 mysql -u root -p < mysql/all_databases.sql
 ```
 
-恢复后验证：
+验证（数字以实际为准）：
 
 ```sql
 SELECT 'nacos' db, COUNT(*) FROM nacos.config_info
 UNION ALL SELECT 'songs', COUNT(*) FROM `shining-music`.songs
-UNION ALL SELECT 'users', COUNT(*) FROM `shining-user`.users;
+UNION ALL SELECT 'users', COUNT(*) FROM `shining-user`.users
+UNION ALL SELECT 'play_records', COUNT(*) FROM `shining-statistics`.user_song_play_record;
 ```
 
-### 2. 修改 Nacos 配置中的地址
+### 2. 修改 Nacos 配置
 
-启动 Nacos 后，登录 `http://localhost:8848/nacos`（nacos/nacos），进入 namespace=Shining, group=Shining。
+启动 Nacos → 登录控制台 → namespace=`Shining`, group=`Shining` → 编辑 `common.yaml`：
 
-必须修改 `common.yaml` 中的以下地址，改为新设备的实际地址：
-- `spring.datasource.url` 中的 MySQL 主机
+需要改的地址项（改为目标机实际地址）：
+- `spring.datasource.url`
 - `spring.redis.host`
 - `spring.rabbitmq.host`
 - `minio.endpoint`
 
-如果 MinIO endpoint 变了（比如从 `http://旧IP:9000` 变成 `http://localhost:9000`），还需要批量替换数据库中所有文件 URL：
+如果 MinIO endpoint 变了，还需批量替换数据库中存储的文件 URL：
 
 ```sql
-UPDATE `shining-music`.songs SET file_url = REPLACE(file_url, '旧地址', '新地址'), cover_url = REPLACE(cover_url, '旧地址', '新地址');
-UPDATE `shining-music`.singers SET avatar_url = REPLACE(avatar_url, '旧地址', '新地址');
-UPDATE `shining-music`.lyrics SET file_url = REPLACE(file_url, '旧地址', '新地址');
-UPDATE `shining-music`.videos SET file_url = REPLACE(file_url, '旧地址', '新地址'), cover_url = REPLACE(cover_url, '旧地址', '新地址');
-UPDATE `shining-music`.playlists SET cover_url = REPLACE(cover_url, '旧地址', '新地址');
-UPDATE `shining-user`.users SET avatar_url = REPLACE(avatar_url, '旧地址', '新地址');
-UPDATE `shining-community`.posts SET image_urls = REPLACE(image_urls, '旧地址', '新地址');
+-- 将 OLD_ENDPOINT 替换为实际旧地址，NEW_ENDPOINT 替换为新地址
+SET @OLD = 'OLD_ENDPOINT';
+SET @NEW = 'NEW_ENDPOINT';
+
+UPDATE `shining-music`.songs SET file_url = REPLACE(file_url, @OLD, @NEW), cover_url = REPLACE(cover_url, @OLD, @NEW);
+UPDATE `shining-music`.singers SET avatar_url = REPLACE(avatar_url, @OLD, @NEW);
+UPDATE `shining-music`.lyrics SET file_url = REPLACE(file_url, @OLD, @NEW);
+UPDATE `shining-music`.videos SET file_url = REPLACE(file_url, @OLD, @NEW), cover_url = REPLACE(cover_url, @OLD, @NEW);
+UPDATE `shining-music`.playlists SET cover_url = REPLACE(cover_url, @OLD, @NEW);
+UPDATE `shining-user`.users SET avatar_url = REPLACE(avatar_url, @OLD, @NEW);
+UPDATE `shining-community`.posts SET image_urls = REPLACE(image_urls, @OLD, @NEW);
 ```
 
 ### 3. 恢复 MinIO
 
-创建 `shining` bucket，然后把 `minio/` 目录下所有文件上传进去，保持路径结构。
-
-可以用 `mc` 命令行工具：
+创建 bucket 并上传，保持路径结构：
 
 ```bash
+# mc 命令行方式
 mc alias set local http://localhost:9000 minioadmin minioadmin
 mc mb local/shining --ignore-existing
 mc cp --recursive minio/ local/shining/
 ```
 
-也可以用 Python boto3 脚本遍历目录上传，方式不限。
-
-恢复后验证：确认 `mc ls local/shining/song/` 能看到文件。
+验证：`mc ls --recursive local/shining/ | wc -l` 应与导出时文件数一致。
 
 ### 4. 恢复 Redis
 
@@ -163,38 +156,36 @@ for key, info in data.items():
 print(f'Restored {len(data)} keys')
 ```
 
-验证：`redis-cli -n 4 DBSIZE` 应返回 >= 104。
+验证：`redis-cli -n 4 DBSIZE` 应 >= 导出的键数。
 
 ### 5. 恢复 Elasticsearch（可选）
 
-可以从导出的 JSON 恢复：先创建索引（用 `music_search.json` 中的 mapping 和 settings），再 bulk 导入文档。
+方式 A：从 JSON 恢复（先用文件中的 mapping 创建索引，再 bulk 导入）。
 
-也可以跳过，等后端服务全部启动后执行：
+方式 B：跳过，等后端启动后调 API 从 MySQL 重建：
 
 ```
 POST http://localhost:8080/api/music/search/sync
 ```
 
-从 MySQL 自动重建索引。
-
-### 6. 构建并启动后端服务
+### 6. 构建并启动后端
 
 ```bash
 cd common && mvn install -DskipTests
-cd ../gateway && mvn package -DskipTests && java -jar target/*.jar &
-cd ../user-service && mvn package -DskipTests && java -jar target/*.jar &
-cd ../music-service && mvn package -DskipTests && java -jar target/*.jar &
-cd ../community-service && mvn package -DskipTests && java -jar target/*.jar &
-cd ../statistics-service && mvn package -DskipTests && java -jar target/*.jar &
-cd ../recommend-service && mvn package -DskipTests && java -jar target/*.jar &
 ```
 
-### 7. 重建可重建的数据
+然后依次启动各服务（顺序建议：gateway → user-service → music-service → community-service → statistics-service → recommend-service）：
+
+```bash
+cd <service-dir> && mvn package -DskipTests && java -jar target/*.jar
+```
+
+### 7. 重建可重建数据
 
 ```
 POST http://localhost:8080/api/recommend/tags/rebuild-vectors
 POST http://localhost:8080/api/recommend/item-cf/rebuild
-POST http://localhost:8080/api/music/search/sync  (如果第 5 步跳过了)
+POST http://localhost:8080/api/music/search/sync   # 如果第 5 步跳过
 ```
 
 ### 8. 启动前端
@@ -205,9 +196,33 @@ cd shining-ui && npm install && npm run dev
 
 ### 9. 端到端验证
 
-- 浏览器访问 `http://localhost:5173`，登录
-- 播放任意一首歌，确认音频正常
-- 查看歌手页面，确认头像显示
-- 播放一个 MV，确认视频正常
-- 查看推荐页面，确认有推荐结果
-- 查看年度报告，确认有数据
+- 浏览器登录 → 查看歌曲列表
+- 播放歌曲 → 确认音频正常
+- 歌手页面 → 确认头像显示
+- MV 播放 → 确认视频正常
+- 推荐页面 → 确认有推荐结果
+- 年度报告 → 确认有播放数据
+
+## 重新导出
+
+如果需要更新迁移包，在源机器上执行：
+
+```bash
+# MySQL
+docker exec <mysql-container> mysqldump -u root -p<password> \
+  --databases nacos shining-user shining-music shining-community shining-statistics \
+  --add-drop-database --routines --triggers --single-transaction \
+  > shining-data-export/mysql/all_databases.sql
+
+# MinIO
+docker exec <minio-container> mc cp --recursive local/shining/ /tmp/export/
+docker cp <minio-container>:/tmp/export/ shining-data-export/minio/
+
+# Redis（参考上面的 Python 脚本反向操作：遍历 DB4 中需要保留的键模式并序列化为 JSON）
+
+# ES
+curl -s 'localhost:9200/music_search/_search?size=10000' > shining-data-export/es/music_search.json
+
+# 打包
+tar cf - shining-data-export/ | gzip -1 > shining-data-export.tar.gz
+```

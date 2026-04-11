@@ -10,4 +10,5 @@ public class PlaylistUpdateRequest {
     private Long userId;
     private String name;
     private String description;
+    private Byte visibility;
 }

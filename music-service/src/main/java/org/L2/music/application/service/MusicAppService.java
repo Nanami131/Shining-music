@@ -227,6 +227,9 @@ public class MusicAppService {
         playlist.setId(playlistUpdateRequest.getId());
         playlist.setName(playlistUpdateRequest.getName());
         playlist.setDescription(playlistUpdateRequest.getDescription());
+        if (playlistUpdateRequest.getVisibility() != null) {
+            playlist.setVisibility(playlistUpdateRequest.getVisibility());
+        }
         return playlistService.updatePlaylist(playlist, playlistUpdateRequest.getUserId());
     }
 
