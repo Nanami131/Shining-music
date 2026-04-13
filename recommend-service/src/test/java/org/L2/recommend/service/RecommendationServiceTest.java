@@ -75,6 +75,21 @@ class RecommendationServiceTest {
         }
 
         @Test
+        @DisplayName("缓存为空 — 忽略缓存并降级到热门歌曲")
+        void emptyCacheFallback() throws Exception {
+            when(valueOperations.get(startsWith("recommend:daily:cb:"))).thenReturn("[]");
+            when(contentBasedStrategy.isAvailable(1L)).thenReturn(false);
+            when(statisticsClient.getGlobalTopSongs(10)).thenReturn(
+                    R.success("ok", List.of(Map.of("songId", 11, "playCount", 100))));
+
+            R result = recommendationService.recommendContentBased(1L, 10);
+
+            assertTrue(result.getPassed());
+            assertTrue(result.getMessage().contains("热门歌曲"));
+            verify(stringRedisTemplate).delete("recommend:daily:cb:1");
+        }
+
+        @Test
         @DisplayName("无缓存且策略可用 — 调用策略并写缓存")
         void noCacheStrategyAvailable() {
             when(valueOperations.get(anyString())).thenReturn(null);
@@ -101,6 +116,24 @@ class RecommendationServiceTest {
             R result = recommendationService.recommendContentBased(1L, 10);
             assertTrue(result.getPassed());
             assertTrue(result.getMessage().contains("热门歌曲"));
+        }
+
+        @Test
+        @DisplayName("策略可用但推荐为空 — 降级到热门歌曲")
+        void emptyResultsFallback() {
+            when(valueOperations.get(anyString())).thenReturn(null);
+            when(contentBasedStrategy.isAvailable(1L)).thenReturn(true);
+            when(userPreferenceService.persistSnapshot(1L)).thenReturn(true);
+            when(statisticsClient.getPlayedSongIds(1L)).thenReturn(R.success("ok", Collections.emptyList()));
+            when(contentBasedStrategy.recommend(eq(1L), eq(10), anySet())).thenReturn(Collections.emptyList());
+            when(statisticsClient.getGlobalTopSongs(10)).thenReturn(
+                    R.success("ok", List.of(Map.of("songId", 11, "playCount", 100))));
+
+            R result = recommendationService.recommendContentBased(1L, 10);
+
+            assertTrue(result.getPassed());
+            assertTrue(result.getMessage().contains("热门歌曲"));
+            verify(valueOperations, never()).set(anyString(), eq("[]"), any());
         }
     }
 

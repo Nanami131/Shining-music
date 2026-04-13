@@ -18,7 +18,7 @@
         <h1 class="post-title">{{ post.title }}</h1>
         <div class="post-meta">
           <span class="author-link" @click="goUser(post.userId)">
-            <span class="author-avatar">{{ displayName(post.userId).charAt(0) }}</span>
+            <img class="author-avatar" :src="avatarUrl(post.userId)" :alt="displayName(post.userId)" @error="handleAvatarError" />
             {{ displayName(post.userId) }}
           </span>
           <span class="meta-dot">·</span>
@@ -85,24 +85,28 @@
             <div class="comment-body">
               <div class="comment-head">
                 <span class="commenter-link" @click.stop="goUser(c.userId)">
-                  <span class="commenter-chip">{{ displayName(c.userId).charAt(0) }}</span>
+                  <img class="commenter-chip" :src="avatarUrl(c.userId)" :alt="displayName(c.userId)" @error="handleAvatarError" />
                   {{ displayName(c.userId) }}
                 </span>
                 <span class="comment-time">{{ formatDate(c.createdAt) }}</span>
               </div>
               <div class="comment-text">{{ c.content }}</div>
               <div class="comment-actions" v-if="userId">
-                <button class="action-btn" @click="toggleReplyInput(c.id)">
+                <button class="action-btn" @click="toggleReplyInput(c.id, c)">
                   {{ showReplyFor === c.id ? '取消' : '回复' }}
                 </button>
               </div>
 
               <!-- Reply Input -->
               <div v-if="showReplyFor === c.id" class="reply-editor">
+                <div v-if="replyTarget" class="reply-target-preview">
+                  <span>正在回复 {{ displayName(replyTarget.userId) }}</span>
+                  <p>{{ quoteText(replyTarget.content) }}</p>
+                </div>
                 <textarea
                   v-model="replyText"
                   class="editor-textarea small"
-                  placeholder="回复一下..."
+                  :placeholder="replyPlaceholder"
                   rows="2"
                 ></textarea>
                 <button
@@ -123,7 +127,7 @@
                 >
                   <div class="comment-head">
                     <span class="commenter-link" @click.stop="goUser(r.userId)">
-                      <span class="commenter-chip reply-chip">{{ displayName(r.userId).charAt(0) }}</span>
+                      <img class="commenter-chip reply-chip" :src="avatarUrl(r.userId)" :alt="displayName(r.userId)" @error="handleAvatarError" />
                       {{ displayName(r.userId) }}
                     </span>
                     <template v-if="r.replyToUserId">
@@ -132,7 +136,35 @@
                     </template>
                     <span class="comment-time">{{ formatDate(r.createdAt) }}</span>
                   </div>
+                  <div v-if="quotedComment(r)" class="reply-quote">
+                    <span>引用 {{ displayName(quotedComment(r).userId) }}</span>
+                    <p>{{ quoteText(quotedComment(r).content) }}</p>
+                  </div>
                   <div class="comment-text reply-text">{{ r.content }}</div>
+                  <div class="comment-actions" v-if="userId">
+                    <button class="action-btn" @click="toggleReplyInput(r.id, r)">
+                      {{ showReplyFor === r.id ? '取消' : '回复' }}
+                    </button>
+                  </div>
+                  <div v-if="showReplyFor === r.id" class="reply-editor">
+                    <div v-if="replyTarget" class="reply-target-preview">
+                      <span>正在回复 {{ displayName(replyTarget.userId) }}</span>
+                      <p>{{ quoteText(replyTarget.content) }}</p>
+                    </div>
+                    <textarea
+                      v-model="replyText"
+                      class="editor-textarea small"
+                      :placeholder="replyPlaceholder"
+                      rows="2"
+                    ></textarea>
+                    <button
+                      class="submit-btn small"
+                      :disabled="commenting || !replyText.trim()"
+                      @click="handleCreateReply(r)"
+                    >
+                      {{ commenting ? '发送中...' : '发送' }}
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>
@@ -147,6 +179,7 @@
 import communityApi from '@/api/community';
 import userApi from '@/api/user';
 import DOMPurify from 'dompurify';
+import defaultAvatar from '@/assets/default-avatar.png';
 
 export default {
   name: 'PostDetail',
@@ -162,7 +195,10 @@ export default {
       errorMessage: '',
       showReplyFor: null,
       replyText: '',
+      replyTarget: null,
       nickNameMap: {},
+      avatarMap: {},
+      commentMap: {},
       isLiked: false,
     };
   },
@@ -182,6 +218,10 @@ export default {
     sanitizedContent() {
       if (!this.post || !this.post.content) return '';
       return DOMPurify.sanitize(this.post.content);
+    },
+    replyPlaceholder() {
+      if (!this.replyTarget?.userId) return '回复一下...';
+      return `回复 @${this.displayName(this.replyTarget.userId)}...`;
     },
   },
   methods: {
@@ -212,7 +252,7 @@ export default {
             lastCommentAt: data.lastCommentAt,
             createdAt: data.createdAt,
           };
-          this.comments = data.comments || [];
+          this.comments = this.normalizeComments(data.comments || []);
           await this.resolveNickNames();
         } else {
           const msg = res && res.data ? res.data.message : '未知错误';
@@ -235,22 +275,31 @@ export default {
         }
       };
       collect(this.comments);
-      const toFetch = [...ids].filter(id => !this.nickNameMap[id]);
+      const toFetch = [...ids].filter(id => !(id in this.nickNameMap) || !(id in this.avatarMap));
       await Promise.all(toFetch.map(async id => {
         try {
           const res = await userApi.getUserBaseInfo(id);
           if (res.data?.passed && res.data.data) {
             this.nickNameMap[id] = res.data.data.nickName || res.data.data.username || `用户${id}`;
+            this.avatarMap[id] = res.data.data.avatarUrl || '';
           } else {
             this.nickNameMap[id] = `用户${id}`;
+            this.avatarMap[id] = '';
           }
         } catch {
           this.nickNameMap[id] = `用户${id}`;
+          this.avatarMap[id] = '';
         }
       }));
     },
     displayName(uid) {
       return this.nickNameMap[uid] || `用户${uid}`;
+    },
+    avatarUrl(uid) {
+      return this.avatarMap[uid] || defaultAvatar;
+    },
+    handleAvatarError(event) {
+      event.target.src = defaultAvatar;
     },
     formatDate(val) {
       if (!val) return '';
@@ -260,12 +309,60 @@ export default {
         return String(val);
       }
     },
+    normalizeComments(comments) {
+      const commentMap = {};
+      const record = (comment) => {
+        if (!comment) return;
+        commentMap[comment.id] = comment;
+        for (const reply of comment.replies || []) {
+          record(reply);
+        }
+      };
+      for (const comment of comments || []) {
+        record(comment);
+      }
+      this.commentMap = commentMap;
+
+      const flattenReplies = (replies) => {
+        const result = [];
+        const visit = (reply) => {
+          if (!reply) return;
+          result.push({ ...reply, replies: [] });
+          for (const child of reply.replies || []) {
+            visit(child);
+          }
+        };
+        for (const reply of replies || []) {
+          visit(reply);
+        }
+        return result.sort((a, b) => {
+          const aTime = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+          const bTime = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+          return aTime - bTime;
+        });
+      };
+
+      return (comments || []).map(comment => ({
+        ...comment,
+        replies: flattenReplies(comment.replies),
+      }));
+    },
+    quotedComment(comment) {
+      if (!comment?.parentId) return null;
+      const quoted = this.commentMap[comment.parentId];
+      if (!quoted || quoted.id === comment.id) return null;
+      return quoted;
+    },
+    quoteText(content) {
+      const text = String(content || '').replace(/\s+/g, ' ').trim();
+      return text.length > 80 ? `${text.slice(0, 80)}...` : text;
+    },
     async refreshComments() {
       if (!this.postId) return;
       try {
         const res = await communityApi.listComments(this.postId);
         if (res && res.data && res.data.passed) {
-          this.comments = res.data.data || [];
+          this.comments = this.normalizeComments(res.data.data || []);
         }
       } catch {
         // 忽略异常
@@ -293,6 +390,7 @@ export default {
           this.newComment = '';
           this.showReplyFor = null;
           this.replyText = '';
+          this.replyTarget = null;
           await this.refreshComments();
           await this.loadDetails();
         } else {
@@ -305,13 +403,15 @@ export default {
         this.commenting = false;
       }
     },
-    toggleReplyInput(id) {
+    toggleReplyInput(id, target) {
       if (this.showReplyFor === id) {
         this.showReplyFor = null;
         this.replyText = '';
+        this.replyTarget = null;
       } else {
         this.showReplyFor = id;
         this.replyText = '';
+        this.replyTarget = target || null;
       }
     },
     async loadLikeStatus() {
@@ -339,7 +439,7 @@ export default {
         this.$router.push({ name: 'user-home', params: { id: userId } });
       }
     },
-    async handleCreateReply(parent) {
+    async handleCreateReply(target) {
       this.errorMessage = '';
       if (!this.userId) {
         this.errorMessage = '请先登录';
@@ -353,15 +453,16 @@ export default {
       try {
         const payload = {
           postId: this.postId,
-          parentId: parent.id,
+          parentId: target.id,
           userId: this.userId,
-          replyToUserId: parent.userId,
+          replyToUserId: target.userId,
           content: this.replyText.trim(),
         };
         const res = await communityApi.createComment(payload);
         if (res && res.data && res.data.passed) {
           this.showReplyFor = null;
           this.replyText = '';
+          this.replyTarget = null;
           await this.refreshComments();
           await this.loadDetails();
         } else {
@@ -474,12 +575,8 @@ export default {
   width: 26px; height: 26px;
   border-radius: 50%;
   background: linear-gradient(135deg, #38bdf8, #a855f7);
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 12px;
-  font-weight: 700;
-  color: #fff;
+  display: block;
+  object-fit: cover;
   flex-shrink: 0;
 }
 
@@ -764,18 +861,13 @@ export default {
   width: 22px; height: 22px;
   border-radius: 50%;
   background: linear-gradient(135deg, #38bdf8, #a855f7);
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 10px;
-  font-weight: 700;
-  color: #fff;
+  display: block;
+  object-fit: cover;
   flex-shrink: 0;
 }
 .reply-chip {
   background: linear-gradient(135deg, #ec4899, #a855f7);
   width: 18px; height: 18px;
-  font-size: 9px;
 }
 
 .reply-arrow {
@@ -796,6 +888,32 @@ export default {
   word-break: break-word;
 }
 .reply-text { font-size: 13px; }
+
+.reply-quote,
+.reply-target-preview {
+  margin: 8px 0;
+  padding: 8px 10px;
+  border-left: 2px solid rgba(147, 197, 253, 0.45);
+  border-radius: 8px;
+  background: rgba(147, 197, 253, 0.08);
+  color: rgba(228, 235, 255, 0.62);
+}
+
+.reply-quote span,
+.reply-target-preview span {
+  display: block;
+  margin-bottom: 4px;
+  font-size: 12px;
+  color: rgba(147, 197, 253, 0.82);
+}
+
+.reply-quote p,
+.reply-target-preview p {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.5;
+  word-break: break-word;
+}
 
 .comment-actions {
   margin-top: 8px;

@@ -58,6 +58,9 @@ public class RecommendationService {
         userPreferenceService.persistSnapshot(userId);
         Set<Long> played = getPlayedSongIds(userId);
         List<Map<String, Object>> results = contentBasedStrategy.recommend(userId, limit, played);
+        if (results.isEmpty()) {
+            return fallbackToHotSongs(limit);
+        }
         writeCache(cacheKey, results);
         return R.success("推荐成功（内容推荐）", results);
     }
@@ -90,6 +93,11 @@ public class RecommendationService {
             if (json != null) {
                 List<Map<String, Object>> cached = objectMapper.readValue(json,
                         new TypeReference<List<Map<String, Object>>>() {});
+                if (cached.isEmpty()) {
+                    stringRedisTemplate.delete(key);
+                    log.info("Ignore empty recommendation cache key={}", key);
+                    return null;
+                }
                 log.debug("Cache hit for {} key={}", strategyName, key);
                 return R.success("推荐成功（" + strategyName + "，今日缓存）", cached);
             }
