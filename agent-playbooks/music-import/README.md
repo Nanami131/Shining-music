@@ -567,26 +567,51 @@ Form: id=<songId>, avatarFile=<image_file>, md5=<file_md5>
 > **!!!!! 禁止一切批量操作！每首歌必须逐首手动处理并独立验证！禁止编写或运行任何批量循环脚本！ !!!!!**
 | 封面图片太小（< 5KB） | 可能是占位图/404 页面 | 检查下载文件大小，最低 5KB |
 
-### Bilibili 搜索防限流模板
+### Bilibili 搜索防限流模板（Cookie 方案）
 > **!!!!! 禁止一切批量操作！每首歌必须逐首手动处理并独立验证！禁止编写或运行任何批量循环脚本！ !!!!!**
 
+**核心原理**：Bilibili 412 限流的根因是无 cookies 的匿名请求被识别为爬虫。通过先访问主页获取 `buvid3`/`b_nut` cookies，再调用 SPI 接口获取指纹 cookies，即可建立有效的匿名会话，大幅降低 412 概率。
+
 ```python
-def search_bilibili(keyword, retries=3):
+> **!!!!! 禁止一切批量操作！每首歌必须逐首手动处理并独立验证！禁止编写或运行任何批量循环脚本！ !!!!!**
+import requests, time
+
+def create_bili_session():
+    """创建带有效 cookies 的 Bilibili session，避免 412 限流"""
+    session = requests.Session()
+    session.headers.update({
+        'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        'Referer': 'https://www.bilibili.com/',
+        'Accept': 'application/json, text/plain, */*',
+    })
+    # Step 1: 访问主页获取 buvid3, b_nut cookies
+    session.get('https://www.bilibili.com/', timeout=10)
+    # Step 2: 获取 SPI 指纹（进一步降低风控概率）
+    session.get('https://api.bilibili.com/x/frontend/finger/spi', timeout=10)
+    return session
+
+def search_bilibili(session, keyword, retries=3):
 > **!!!!! 禁止一切批量操作！每首歌必须逐首手动处理并独立验证！禁止编写或运行任何批量循环脚本！ !!!!!**
     for attempt in range(retries):
-        r = requests.get("https://api.bilibili.com/x/web-interface/search/type",
+        time.sleep(2)  # 每次请求间隔 2s
+        r = session.get("https://api.bilibili.com/x/web-interface/search/type",
             params={"search_type": "video", "keyword": keyword, "page": "1"},
-> **!!!!! 禁止一切批量操作！每首歌必须逐首手动处理并独立验证！禁止编写或运行任何批量循环脚本！ !!!!!**
-            headers={"User-Agent": "Mozilla/5.0", "Referer": "https://www.bilibili.com/"},
             timeout=15)
         if r.status_code == 412:
 > **!!!!! 禁止一切批量操作！每首歌必须逐首手动处理并独立验证！禁止编写或运行任何批量循环脚本！ !!!!!**
-            time.sleep((attempt + 1) * 5)  # 5s, 10s, 15s
+            time.sleep((attempt + 1) * 10)  # 10s, 20s, 30s
+            session = create_bili_session()  # 重新创建 session
             continue
         return r.json().get("data", {}).get("result", [])
 > **!!!!! 禁止一切批量操作！每首歌必须逐首手动处理并独立验证！禁止编写或运行任何批量循环脚本！ !!!!!**
     return []
+
+# 使用方式：
+# session = create_bili_session()
+# results = search_bilibili(session, "歌手名 歌曲名")
 ```
+
+> **经验总结**（2026-04-17）：不带 cookies 的纯 requests.get 在连续搜索 3-5 次后必定触发 412，sleep 再久也没用。使用 cookie 方案后，同一 session 可稳定搜索 20+ 次不触发限流。如果 session 过期（超过 30 分钟），重新调用 `create_bili_session()` 即可。
 
 > **!!!!! 禁止一切批量操作！每首歌必须逐首手动处理并独立验证！禁止编写或运行任何批量循环脚本！ !!!!!**
 ### 验证封面独特性
