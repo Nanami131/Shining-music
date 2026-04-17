@@ -31,6 +31,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 @Service
 public class MusicAppService {
@@ -116,11 +117,15 @@ public class MusicAppService {
 
     public R listSongs(Long userId) {
         List<Song> songs = songService.listSongs();
+        Set<Long> favoriteSongIds = userId == null ? Set.of() : playlistService.getFavoriteSongIds(userId);
+        if (favoriteSongIds == null) {
+            favoriteSongIds = Set.of();
+        }
         List<SongBaseDTO> dtoList = new ArrayList<>();
         for (Song song : songs) {
             SongBaseDTO dto = new SongBaseDTO();
             BeanUtils.copyProperties(song, dto);
-            dto.setFavorite(resolveFavoriteFlag(userId, song.getId()));
+            dto.setFavorite(song.getId() != null && favoriteSongIds.contains(song.getId()));
             dtoList.add(dto);
         }
         return R.success("获取歌曲列表成功", dtoList);

@@ -27,7 +27,7 @@
             <div class="lyrics-select" v-if="allLyrics.length > 1 && !bilingualMode">
               <select v-model="selectedLyricId" @change="loadSelectedLyrics">
                 <option v-for="lyric in allLyrics" :key="lyric.id" :value="lyric.id">
-                  {{ lyric.languageMsg || '版本' }} #{{ lyric.id }}
+                  {{ lyricLabel(lyric.languageMsg) }} #{{ lyric.id }}
                 </option>
               </select>
             </div>
@@ -155,7 +155,15 @@ import musicApi from '@/api/music';
 import statisticsApi from '@/api/statistics';
 import recommendApi from '@/api/recommend';
 import defaultCover from '@/assets/default-cover.png';
-import { parseLyrics as parseLrc, timeToSeconds, mergeMultiLang, detectLangs } from '@/utils/lrcParser';
+import {
+  parseLyrics as parseLrc,
+  timeToSeconds,
+  mergeMultiLang,
+  detectLangs,
+  normalizeLyricLang,
+  orderLyricLangs,
+  lyricLangLabel,
+} from '@/utils/lrcParser';
 
 export default {
   name: 'SongDetail',
@@ -303,7 +311,7 @@ export default {
           this.selectedLyricId = this.allLyrics[0].id;
           const firstLang = this.allLyrics[0].languageMsg;
           if (firstLang) {
-            this.selectedLang = firstLang.toLowerCase().trim();
+            this.selectedLang = normalizeLyricLang(firstLang);
           }
           this.loadSelectedLyrics();
         } else {
@@ -363,21 +371,21 @@ export default {
       this.parsedLyrics = parseLrc(content);
     },
     buildBilingual() {
-      const zhLast = langs => langs.sort((a, b) => (a === 'zh' ? 1 : b === 'zh' ? -1 : 0));
       const parsed = this.parsedLyrics;
       const inlineLangs = detectLangs(parsed);
       if (inlineLangs.length > 0) {
         this.bilingualLyrics = parsed;
-        this.availableLangs = zhLast(inlineLangs);
+        this.availableLangs = orderLyricLangs(inlineLangs);
         return;
       }
       if (this.allLyrics.length >= 2) {
         const sources = this.allLyrics
           .filter(l => l.languageMsg)
-          .map(l => ({ lang: l.languageMsg.toLowerCase().trim(), lines: parseLrc(l.content || '') }));
+          .map(l => ({ lang: normalizeLyricLang(l.languageMsg), lines: parseLrc(l.content || '') }))
+          .filter(s => s.lang);
         if (sources.length >= 2) {
           this.bilingualLyrics = mergeMultiLang(sources);
-          this.availableLangs = zhLast(sources.map(s => s.lang));
+          this.availableLangs = orderLyricLangs(sources.map(s => s.lang));
           return;
         }
       }
@@ -409,14 +417,14 @@ export default {
     },
     hasLang(lang) {
       return this.allLyrics.some(
-        l => l.languageMsg && l.languageMsg.toLowerCase().trim() === lang
+        l => normalizeLyricLang(l.languageMsg) === lang
       );
     },
     setSingleLang(lang) {
       this.bilingualMode = false;
       this.selectedLang = lang;
       const match = this.allLyrics.find(
-        l => l.languageMsg && l.languageMsg.toLowerCase().trim() === lang
+        l => normalizeLyricLang(l.languageMsg) === lang
       );
       if (match && match.id !== this.selectedLyricId) {
         this.selectedLyricId = match.id;
@@ -428,6 +436,9 @@ export default {
     },
     setHighlightColor(color) {
       this.highlightColor = color;
+    },
+    lyricLabel(lang) {
+      return lyricLangLabel(lang);
     },
   },
 };
@@ -778,4 +789,3 @@ h3 {
   padding-bottom: 0;
 }
 </style>
-

@@ -21,6 +21,7 @@ import org.springframework.data.redis.connection.DataType;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -116,6 +117,30 @@ public class PlaylistService {
         migrateSetToZSetIfNeeded(key);
         Double score = stringRedisTemplate.opsForZSet().score(key, String.valueOf(songId));
         return score != null;
+    }
+
+    public Set<Long> getFavoriteSongIds(Long userId) {
+        if (userId == null) {
+            return Set.of();
+        }
+        Playlist favorite = findUserPlaylist(userId, Constants.USER_FAVORITE);
+        if (favorite == null) {
+            return Set.of();
+        }
+        String key = "playlist:" + favorite.getId();
+        migrateSetToZSetIfNeeded(key);
+        Set<String> rawIds = stringRedisTemplate.opsForZSet().range(key, 0, -1);
+        if (rawIds == null || rawIds.isEmpty()) {
+            return Set.of();
+        }
+        Set<Long> favoriteIds = new HashSet<>();
+        for (String rawId : rawIds) {
+            try {
+                favoriteIds.add(Long.valueOf(rawId));
+            } catch (NumberFormatException ignored) {
+            }
+        }
+        return favoriteIds;
     }
 
     public R toggleFavoriteSong(Long userId, Long songId) {
