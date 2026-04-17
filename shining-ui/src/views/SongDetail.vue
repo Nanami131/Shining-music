@@ -263,9 +263,15 @@ export default {
         const songId = this.$route.params.id;
         const response = await musicApi.getSongDetailsInfo(songId, this.userId);
         if (response.data.passed) {
-          this.song = response.data.data;
+          const songDetails = response.data.data || {};
+          this.song = songDetails;
+          const detailsLyrics = Array.isArray(songDetails.allLyrics) ? songDetails.allLyrics : null;
+          if (detailsLyrics) {
+            this.applyLyricsData(detailsLyrics);
+          } else {
+            await this.loadAllLyrics(songId);
+          }
           await this.loadArtistName();
-          await this.loadAllLyrics(songId);
           this.isLoaded = true;
           this.fetchTags(songId);
           if (this.userId) {
@@ -306,24 +312,32 @@ export default {
     async loadAllLyrics(songId) {
       try {
         const response = await musicApi.getAllLyrics(songId);
-        if (response.data.passed && response.data.data.length > 0) {
-          this.allLyrics = response.data.data;
-          this.selectedLyricId = this.allLyrics[0].id;
-          const firstLang = this.allLyrics[0].languageMsg;
-          if (firstLang) {
-            this.selectedLang = normalizeLyricLang(firstLang);
-          }
-          this.loadSelectedLyrics();
+        if (response.data.passed && Array.isArray(response.data.data)) {
+          this.applyLyricsData(response.data.data);
         } else {
-          this.allLyrics = [];
-          this.selectedLyricId = null;
-          this.parsedLyrics = [];
+          this.applyLyricsData([]);
         }
       } catch (error) {
-        this.allLyrics = [];
-        this.selectedLyricId = null;
-        this.parsedLyrics = [];
+        this.applyLyricsData([]);
       }
+    },
+    applyLyricsData(lyrics) {
+      this.allLyrics = Array.isArray(lyrics) ? lyrics : [];
+      this.selectedLyricId = null;
+      this.parsedLyrics = [];
+      this.bilingualLyrics = [];
+      this.availableLangs = [];
+
+      if (!this.allLyrics.length) {
+        return;
+      }
+
+      this.selectedLyricId = this.allLyrics[0].id;
+      const firstLang = this.allLyrics[0].languageMsg;
+      if (firstLang) {
+        this.selectedLang = normalizeLyricLang(firstLang);
+      }
+      this.loadSelectedLyrics();
     },
     loadSelectedLyrics() {
       const selectedLyric = this.allLyrics.find(lyric => lyric.id === this.selectedLyricId);
