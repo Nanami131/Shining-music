@@ -135,7 +135,14 @@
             >
               <div class="order">{{ idx + 1 }}</div>
               <div class="info">
-                <p class="name">{{ song.title || '未知歌曲' }}</p>
+                <button
+                    type="button"
+                    class="name song-name-link"
+                    :title="song.title || '未知歌曲'"
+                    @click.stop="goToSongDetail(song.id)"
+                >
+                  {{ song.title || '未知歌曲' }}
+                </button>
                 <p class="artist">歌手：{{ getArtistName(song.artistId) }}</p>
               </div>
               <button
@@ -882,6 +889,12 @@ export default {
       this.currentIndex = index;
       this.playSong(song.id);
     },
+    goToSongDetail(songId) {
+      if (!songId) {
+        return;
+      }
+      this.$router.push({ name: 'song-detail', params: { id: songId } });
+    },
     async toggleFavoriteFromPlayer() {
       if (!this.currentSong || !this.currentSong.id) {
         return;
@@ -1513,12 +1526,29 @@ export default {
   min-width: 0;
 }
 .playlist-item .info .name {
+  display: block;
+  width: 100%;
   margin: 0;
+  padding: 0;
+  border: none;
+  background: transparent;
   font-size: 14px;
+  font-family: inherit;
+  text-align: left;
   color: #0f172a;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  cursor: pointer;
+}
+.playlist-item .info .song-name-link:hover {
+  color: #2563eb;
+  text-decoration: underline;
+}
+.playlist-item .info .song-name-link:focus-visible {
+  outline: 2px solid #60a5fa;
+  outline-offset: 2px;
+  border-radius: 4px;
 }
 .playlist-item .info .artist {
   margin: 0;
