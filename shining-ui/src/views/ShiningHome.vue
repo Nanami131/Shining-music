@@ -90,17 +90,21 @@
       </div>
     </section>
 
-    <section v-if="cfRecommendations.length" class="recommend-panel cf-panel">
+    <section v-if="isLoggedIn" class="recommend-panel cf-panel">
       <div class="panel-head">
         <div>
           <h2>协同发现 · 和你口味相近的人也在听</h2>
-          <p>Item-based Collaborative Filtering — 基于用户群体的共同偏好挖掘相似歌曲。</p>
+          <p>{{ cfStatusText }}</p>
         </div>
         <div class="panel-head-actions">
           <button class="ghost" @click="playAllCF" v-if="cfRecommendations.length">一键播放全部</button>
+          <button class="ghost" @click="refreshCFRecommendations" :disabled="cfLoading || cfRebuilding">重试</button>
+          <button class="ghost" @click="rebuildCFMatrix" :disabled="cfLoading || cfRebuilding">
+            {{ cfRebuilding ? '重建中...' : '重建矩阵' }}
+          </button>
         </div>
       </div>
-      <div class="recommend-grid">
+      <div v-if="cfRecommendations.length" class="recommend-grid">
         <article
           v-for="(rec, idx) in cfRecommendations"
           :key="'cf-' + rec.songId"
@@ -127,6 +131,9 @@
             @click.stop="playCFSong(rec, idx)"
           >▶</button>
         </article>
+      </div>
+      <div v-else class="recommend-placeholder">
+        <p>{{ cfLoading ? '正在加载协同过滤推荐...' : (cfError || cfMessage || '暂无协同过滤推荐。') }}</p>
       </div>
     </section>
 
@@ -207,6 +214,10 @@ export default {
       allSongs: [],
       dailyRecommendations: [],
       cfRecommendations: [],
+      cfLoading: false,
+      cfRebuilding: false,
+      cfMessage: '',
+      cfError: '',
       isLoggedIn: false,
       heroStats: [
         { value: '--', label: '累计播放' },
@@ -238,7 +249,15 @@ export default {
       this.loadCFRecommendations(userBase.id);
     }
   },
-  computed: {},
+  computed: {
+    cfStatusText() {
+      if (this.cfRebuilding) return '正在根据播放历史重建 Item-CF 相似度矩阵。';
+      if (this.cfLoading) return '正在读取 Item-CF 推荐结果。';
+      if (this.cfError) return this.cfError;
+      if (this.cfMessage) return this.cfMessage;
+      return 'Item-based Collaborative Filtering — 基于用户群体的共同偏好挖掘相似歌曲。';
+    },
+  },
   methods: {
     async loadDynamicContent() {
       try {
@@ -371,12 +390,54 @@ export default {
       } catch (e) { /* silent */ }
     },
     async loadCFRecommendations(userId) {
+      this.cfLoading = true;
+      this.cfError = '';
+      this.cfMessage = '';
       try {
         const res = await recommendApi.getItemCFRecommendations(userId, 10);
         if (res?.data?.passed && Array.isArray(res.data.data)) {
           this.cfRecommendations = await this.enrichRecommendations(res.data.data);
+          if (!this.cfRecommendations.length) {
+            this.cfMessage = res.data.message || '协同过滤暂时没有可展示的歌曲。';
+          }
+        } else {
+          this.cfRecommendations = [];
+          this.cfError = res?.data?.message || '协同过滤推荐暂时不可用。';
         }
-      } catch (e) { /* silent */ }
+      } catch (e) {
+        this.cfRecommendations = [];
+        this.cfError = e?.response?.data?.message || '协同过滤推荐加载失败。';
+      } finally {
+        this.cfLoading = false;
+      }
+    },
+    async refreshCFRecommendations() {
+      let userBase = {};
+      try { userBase = JSON.parse(localStorage.getItem('userBase') || '{}'); } catch (e) { /* ignore */ }
+      if (!userBase.id) return;
+      await this.loadCFRecommendations(userBase.id);
+    },
+    async rebuildCFMatrix() {
+      if (this.cfRebuilding) return;
+      this.cfRebuilding = true;
+      this.cfError = '';
+      this.cfMessage = '正在重建协同过滤矩阵，请稍候。';
+      try {
+        const res = await recommendApi.rebuildItemCFMatrix();
+        if (res?.data?.passed) {
+          const count = res.data.data?.songsWithSimilarity;
+          this.cfMessage = count !== undefined
+            ? `协同过滤矩阵已重建，覆盖 ${count} 首歌曲。`
+            : (res.data.message || '协同过滤矩阵已重建。');
+          await this.refreshCFRecommendations();
+        } else {
+          this.cfError = res?.data?.message || '协同过滤矩阵重建失败。';
+        }
+      } catch (e) {
+        this.cfError = e?.response?.data?.message || '协同过滤矩阵重建失败。';
+      } finally {
+        this.cfRebuilding = false;
+      }
     },
     playCFSong(rec, idx) {
       const songIds = this.cfRecommendations.map(r => r.songId);
@@ -527,6 +588,12 @@ export default {
   color: #f0f5ff;
   border: 1px solid rgba(255, 255, 255, 0.4);
   backdrop-filter: blur(6px);
+}
+
+.ghost:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+  transform: none;
 }
 
 .glass {
@@ -930,6 +997,15 @@ export default {
 .recommend-card:hover {
   transform: translateY(-2px);
   border-color: rgba(168, 85, 247, 0.35);
+}
+
+.recommend-placeholder {
+  padding: 18px 0 4px;
+  color: rgba(236, 242, 255, 0.76);
+}
+
+.recommend-placeholder p {
+  margin: 0;
 }
 
 .rec-rank {

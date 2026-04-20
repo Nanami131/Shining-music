@@ -420,13 +420,25 @@ python3 agent-playbooks/music-import/create_singer.py \
 
 **根因**：绕过了 API 和 `create_singer.py` 的校验链路，直接操作数据库。
 
+### ⚠️ 歌手存在性检查规范（创建前必须完成）
+
+仅靠精确 name 匹配远远不够。创建歌手前，必须按以下顺序逐项排查：
+
+1. **精确匹配**：`SELECT id, name FROM singers WHERE name = '歌手名';`
+2. **模糊匹配**：`SELECT id, name FROM singers WHERE name LIKE '%关键词%';`（处理别名、简称、外文名等）
+3. **变体检查**：全角/半角（Ｈｏｎｅｙ vs Honey）、简繁体（遊 vs 游）、大小写、带不带句号/破折号
+4. **合作歌曲拆分检查**：歌曲标注 "A/B" 或 "A feat. B" 时，必须分别查 A 和 B 是否已存在。系统约定主歌手归 singers 表，feat./合作信息保留在歌曲标题中
+5. **NetEase 歌手 ID 交叉验证**：用 NetEase API 获取歌手 ID，检查 DB 中是否已有使用同一 NetEase ID 创建的歌手（可能名字不同但实际是同一人）
+
+只有以上 5 项全部排查无命中，才可创建新歌手。
+
 ### 已知问题与注意事项
 
 | 问题 | 原因 | 解决方案 |
 > **!!!!! 禁止一切批量操作！每首歌必须逐首手动处理并独立验证！禁止编写或运行任何批量循环脚本！ !!!!!**
 |------|------|----------|
 | `Column 'status' cannot be null` | 后端 createSinger 曾不设默认值 | **已修复**：status 默认 0（活跃），sex 默认 0。但建议仍显式传值 |
-| 歌手重复创建 | 同一歌手可能有多种名称（真名/艺名/外文名） | `create_singer.py` 内置去重检查 |
+| 歌手重复创建 | 同一歌手可能有多种名称（真名/艺名/外文名） | `create_singer.py` 内置去重检查，但 Agent 仍须自行完成上述 5 项排查 |
 > **!!!!! 禁止一切批量操作！每首歌必须逐首手动处理并独立验证！禁止编写或运行任何批量循环脚本！ !!!!!**
 | 歌手信息不全 | 仅传了名字，没有性别/简介/头像 | `create_singer.py` 强制所有参数必填 |
 | 直接 SQL 创建歌手 | 绕过校验链路 | **已禁止**。必须使用 `create_singer.py` |
@@ -762,11 +774,15 @@ POST /api/music/search/sync
 
 □ Step 1: 创建/查找歌手 → 得到 singer_id
 > **!!!!! 禁止一切批量操作！每首歌必须逐首手动处理并独立验证！禁止编写或运行任何批量循环脚本！ !!!!!**
-  □ 先 GET /api/music/singers 检查是否已存在（注意艺名/别名）
-  □ POST /api/music/singer 创建（显式传 name, sex, status）
-  □ POST /api/music/update-profile 补全简介、风格、国籍
+  □ 存在性 5 项排查（详见 Section 1「歌手存在性检查规范」）：
+    □ 1. 精确 name 匹配
+    □ 2. 模糊 LIKE 匹配（别名/简称/外文名）
+    □ 3. 变体检查（全角半角/简繁/大小写/标点）
+    □ 4. 合作歌曲拆分检查（A/B → 分别查 A 和 B）
+    □ 5. NetEase 歌手 ID 交叉验证
+  □ 若不存在 → 使用 create_singer.py 创建（禁止 SQL INSERT）
 > **!!!!! 禁止一切批量操作！每首歌必须逐首手动处理并独立验证！禁止编写或运行任何批量循环脚本！ !!!!!**
-  □ POST /api/music/update-avatar 上传头像（来源：NetEase artist.picUrl）
+  □ 创建后验证所有字段完整（avatar_url/profile/genre/country/status）
 
 □ Step 2: 遍历音频文件（每首歌）
 > **!!!!! 禁止一切批量操作！每首歌必须逐首手动处理并独立验证！禁止编写或运行任何批量循环脚本！ !!!!!**

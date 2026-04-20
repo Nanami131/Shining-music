@@ -13,6 +13,9 @@ export default {
     getItemCFRecommendations(userId, limit = 20) {
         return api.get('/recommend/daily/item-cf', { params: { userId, limit } });
     },
+    rebuildItemCFMatrix() {
+        return api.post('/recommend/itemcf/rebuild');
+    },
     getUserPreference(userId) {
         return api.get('/recommend/preference', { params: { userId } });
     },
