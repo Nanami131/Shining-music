@@ -1,109 +1,114 @@
 <template>
-  <div class="songs-container">
-    <div class="search-bar">
-      <input
-        v-model="searchKeyword"
-        type="text"
-        placeholder="搜索歌曲名、歌手、歌词..."
-        @keyup.enter="handleSearch"
-        @focus="showHistory = true"
-        @blur="hideHistoryDelayed"
-      />
-      <button v-if="searchKeyword" class="clear-btn" @click="clearSearch">×</button>
-      <div v-if="showHistory && !searchKeyword && searchHistory.length" class="search-history-dropdown">
-        <div class="search-history-header">
-          <span>最近搜索</span>
+  <div class="songs-page">
+    <StormFrontRain />
+    <div class="songs-shell">
+      <div class="songs-container">
+        <div class="search-bar">
+          <input
+            v-model="searchKeyword"
+            type="text"
+            placeholder="搜索歌曲名、歌手、歌词..."
+            @keyup.enter="handleSearch"
+            @focus="showHistory = true"
+            @blur="hideHistoryDelayed"
+          />
+          <button v-if="searchKeyword" class="clear-btn" @click="clearSearch">×</button>
+          <div v-if="showHistory && !searchKeyword && searchHistory.length" class="search-history-dropdown">
+            <div class="search-history-header">
+              <span>最近搜索</span>
+            </div>
+            <div
+              v-for="(item, idx) in searchHistory"
+              :key="idx"
+              class="search-history-item"
+              @mousedown.prevent="useHistoryKeyword(item.keyword)"
+            >
+              {{ item.keyword }}
+              <span v-if="item.cnt > 1" class="search-count">{{ item.cnt }}次</span>
+            </div>
+          </div>
         </div>
-        <div
-          v-for="(item, idx) in searchHistory"
-          :key="idx"
-          class="search-history-item"
-          @mousedown.prevent="useHistoryKeyword(item.keyword)"
-        >
-          {{ item.keyword }}
-          <span v-if="item.cnt > 1" class="search-count">{{ item.cnt }}次</span>
-        </div>
+
+        <!-- 搜索结果 -->
+        <section v-if="searchResults !== null" class="section section-search">
+          <h2>搜索结果</h2>
+          <div v-if="searchResults.length" class="songs-list">
+            <div
+              v-for="item in searchResults"
+              :key="item.songId"
+              class="song-card"
+              @click="goToSong(item.songId)"
+            >
+              <img :src="item.coverUrl || defaultCover" class="song-cover" alt="歌曲封面" />
+              <div class="song-info">
+                <h3 v-html="highlightTitle(item)"></h3>
+                <p v-html="highlightSinger(item)"></p>
+              </div>
+              <div v-if="hasLyricsHighlight(item)" class="lyrics-snippet">
+                <span v-for="(frag, i) in getLyricsHighlights(item)" :key="i" v-html="frag"></span>
+              </div>
+            </div>
+          </div>
+          <p v-else class="placeholder-text">没有找到相关结果</p>
+        </section>
+
+        <section v-if="searchResults === null && recommendedSongs.length" class="section section-recommend">
+          <h2>最近常听</h2>
+          <div class="songs-list">
+            <div
+              v-for="song in recommendedSongs"
+              :key="song.id"
+              class="song-card"
+              @click="goToSong(song.id)"
+            >
+              <img :src="song.coverUrl || defaultCover" class="song-cover" alt="歌曲封面" />
+              <div class="song-info">
+                <h3>{{ song.title || '未知歌曲' }}</h3>
+                <p>{{ artistNameMap[song.artistId] || (song.artistId ? `歌手 ${song.artistId}` : '未知') }}</p>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- 全部歌曲 -->
+        <section class="section section-more">
+          <h2>全部歌曲</h2>
+          <div class="section-actions">
+            <button class="play-all-btn" :disabled="songOperating || !songs.length" @click="playAllSongs">
+              {{ songOperating ? '处理中...' : '播放全部' }}
+            </button>
+            <button class="ranking-link-btn" @click="$router.push('/ranking')">热门排行榜</button>
+          </div>
+          <div class="songs-list">
+            <div
+              v-for="song in songs"
+              :key="song.id"
+              class="song-card"
+              @click="goToSong(song.id)"
+            >
+              <img :src="song.coverUrl || defaultCover" class="song-cover" alt="歌曲封面" />
+              <div class="song-info">
+                <h3>{{ song.title || '未知歌曲' }}</h3>
+                <p>
+                  {{
+                    artistNameMap[song.artistId] ||
+                      (song.artistId ? `歌手 ${song.artistId}` : '未知')
+                  }}
+                </p>
+              </div>
+              <button
+                class="favorite-btn"
+                :class="{ active: song.favorite }"
+                @click.stop="toggleFavorite(song)"
+                :title="song.favorite ? '取消收藏' : '收藏歌曲'"
+              >
+                <span class="heart-icon"></span>
+              </button>
+            </div>
+          </div>
+        </section>
       </div>
     </div>
-
-    <!-- 搜索结果 -->
-    <section v-if="searchResults !== null" class="section section-search">
-      <h2>搜索结果</h2>
-      <div v-if="searchResults.length" class="songs-list">
-        <div
-          v-for="item in searchResults"
-          :key="item.songId"
-          class="song-card"
-          @click="goToSong(item.songId)"
-        >
-          <img :src="item.coverUrl || defaultCover" class="song-cover" alt="歌曲封面" />
-          <div class="song-info">
-            <h3 v-html="highlightTitle(item)"></h3>
-            <p v-html="highlightSinger(item)"></p>
-          </div>
-          <div v-if="hasLyricsHighlight(item)" class="lyrics-snippet">
-            <span v-for="(frag, i) in getLyricsHighlights(item)" :key="i" v-html="frag"></span>
-          </div>
-        </div>
-      </div>
-      <p v-else class="placeholder-text">没有找到相关结果</p>
-    </section>
-
-    <section v-if="searchResults === null && recommendedSongs.length" class="section section-recommend">
-      <h2>最近常听</h2>
-      <div class="songs-list">
-        <div
-          v-for="song in recommendedSongs"
-          :key="song.id"
-          class="song-card"
-          @click="goToSong(song.id)"
-        >
-          <img :src="song.coverUrl || defaultCover" class="song-cover" alt="歌曲封面" />
-          <div class="song-info">
-            <h3>{{ song.title || '未知歌曲' }}</h3>
-            <p>{{ artistNameMap[song.artistId] || (song.artistId ? `歌手 ${song.artistId}` : '未知') }}</p>
-          </div>
-        </div>
-      </div>
-    </section>
-
-    <!-- 全部歌曲 -->
-    <section class="section section-more">
-      <h2>全部歌曲</h2>
-      <div class="section-actions">
-        <button class="play-all-btn" :disabled="songOperating || !songs.length" @click="playAllSongs">
-          {{ songOperating ? '处理中...' : '播放全部' }}
-        </button>
-        <button class="ranking-link-btn" @click="$router.push('/ranking')">热门排行榜</button>
-      </div>
-      <div class="songs-list">
-        <div
-          v-for="song in songs"
-          :key="song.id"
-          class="song-card"
-          @click="goToSong(song.id)"
-        >
-          <img :src="song.coverUrl || defaultCover" class="song-cover" alt="歌曲封面" />
-          <div class="song-info">
-            <h3>{{ song.title || '未知歌曲' }}</h3>
-            <p>
-              {{
-                artistNameMap[song.artistId] ||
-                  (song.artistId ? `歌手 ${song.artistId}` : '未知')
-              }}
-            </p>
-          </div>
-          <button
-            class="favorite-btn"
-            :class="{ active: song.favorite }"
-            @click.stop="toggleFavorite(song)"
-            :title="song.favorite ? '取消收藏' : '收藏歌曲'"
-          >
-            <span class="heart-icon"></span>
-          </button>
-        </div>
-      </div>
-    </section>
   </div>
 </template>
 
@@ -112,9 +117,13 @@ import musicApi from '@/api/music';
 import statisticsApi from '@/api/statistics';
 import defaultCover from '@/assets/default-cover.png';
 import DOMPurify from 'dompurify';
+import StormFrontRain from '@/components/StormFrontRain.vue';
 
 export default {
   name: 'Songs',
+  components: {
+    StormFrontRain,
+  },
   data() {
     return {
       songs: [],
@@ -379,11 +388,30 @@ export default {
 </script>
 
 <style scoped>
+.songs-page {
+  position: relative;
+  min-height: calc(100vh - 80px);
+}
+
+.songs-shell {
+  position: relative;
+  z-index: 1;
+  padding: 20px clamp(96px, 12vw, 180px) 28px;
+}
+
 .songs-container {
   padding: 20px;
   max-width: 1200px;
   margin: 0 auto;
   background: linear-gradient(to bottom, #e0f7fa, #ffffff);
+  position: relative;
+}
+
+@media (max-width: 900px) {
+  .songs-shell {
+    padding-left: 20px;
+    padding-right: 20px;
+  }
 }
 
 .search-bar {

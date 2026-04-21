@@ -1,45 +1,50 @@
 <template>
-  <div class="singers-container">
-    <div class="search-bar">
-      <input type="text" v-model="searchQuery" placeholder="搜索歌手名称、风格、地区…" />
+  <div class="singers-page">
+    <StormFrontRain />
+    <div class="singers-shell">
+      <div class="singers-container">
+        <div class="search-bar">
+          <input type="text" v-model="searchQuery" placeholder="搜索歌手名称、风格、地区…" />
+        </div>
+
+        <section v-if="hotSingers.length" class="section section-recommend">
+          <h2>你最爱的歌手</h2>
+          <div class="singers-list">
+            <div
+              v-for="item in hotSingers"
+              :key="item.id"
+              class="singer-card hot"
+              @click="goToSinger(item.id)"
+            >
+              <img :src="item.avatarUrl || defaultAvatar" class="singer-avatar" alt="歌手头像" />
+              <div class="singer-info">
+                <h3>{{ item.name || '未知歌手' }}</h3>
+                <p>播放 {{ item.playCount }} 次</p>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- 全部歌手：这里放原来的内容 -->
+        <section class="section section-more">
+          <h2>全部歌手</h2>
+          <div class="singers-list">
+            <div
+              v-for="singer in filteredSingers"
+              :key="singer.id"
+              class="singer-card"
+              @click="goToSinger(singer.id)"
+            >
+              <img :src="singer.avatarUrl || defaultAvatar" class="singer-avatar" alt="歌手头像" />
+              <div class="singer-info">
+                <h3>{{ singer.name || '未知歌手' }}</h3>
+                <p>{{ singer.genre || '未知风格' }} | {{ singer.country || '未知地区' }}</p>
+              </div>
+            </div>
+          </div>
+        </section>
+      </div>
     </div>
-
-    <section v-if="hotSingers.length" class="section section-recommend">
-      <h2>你最爱的歌手</h2>
-      <div class="singers-list">
-        <div
-          v-for="item in hotSingers"
-          :key="item.id"
-          class="singer-card hot"
-          @click="goToSinger(item.id)"
-        >
-          <img :src="item.avatarUrl || defaultAvatar" class="singer-avatar" alt="歌手头像" />
-          <div class="singer-info">
-            <h3>{{ item.name || '未知歌手' }}</h3>
-            <p>播放 {{ item.playCount }} 次</p>
-          </div>
-        </div>
-      </div>
-    </section>
-
-    <!-- 全部歌手：这里放原来的内容 -->
-    <section class="section section-more">
-      <h2>全部歌手</h2>
-      <div class="singers-list">
-        <div
-          v-for="singer in filteredSingers"
-          :key="singer.id"
-          class="singer-card"
-          @click="goToSinger(singer.id)"
-        >
-          <img :src="singer.avatarUrl || defaultAvatar" class="singer-avatar" alt="歌手头像" />
-          <div class="singer-info">
-            <h3>{{ singer.name || '未知歌手' }}</h3>
-            <p>{{ singer.genre || '未知风格' }} | {{ singer.country || '未知地区' }}</p>
-          </div>
-        </div>
-      </div>
-    </section>
   </div>
 </template>
 
@@ -47,9 +52,13 @@
 import musicApi from '@/api/music';
 import statisticsApi from '@/api/statistics';
 import defaultAvatar from '@/assets/default-avatar.png';
+import StormFrontRain from '@/components/StormFrontRain.vue';
 
 export default {
   name: 'Singers',
+  components: {
+    StormFrontRain,
+  },
   data() {
     return {
       singers: [],
@@ -126,11 +135,24 @@ export default {
 </script>
 
 <style scoped>
+.singers-page {
+  position: relative;
+  min-height: calc(100vh - 80px);
+}
+
+.singers-shell {
+  position: relative;
+  z-index: 1;
+  padding: 20px clamp(96px, 12vw, 180px) 28px;
+}
+
 .singers-container {
   padding: 20px;
   max-width: 1200px;
   margin: 0 auto;
   background: linear-gradient(to bottom, #e0f7fa, #ffffff);
+  position: relative;
+  z-index: 1;
 }
 
 .search-bar {
@@ -197,5 +219,12 @@ export default {
 .singer-card.hot {
   border: 2px solid #f0abfc;
   background: linear-gradient(135deg, #fdf2f8, #ffffff);
+}
+
+@media (max-width: 900px) {
+  .singers-shell {
+    padding-left: 20px;
+    padding-right: 20px;
+  }
 }
 </style>

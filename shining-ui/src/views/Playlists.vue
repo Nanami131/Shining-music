@@ -1,139 +1,148 @@
 <template>
-  <div class="playlists-container">
-    <!-- 搜索占位 + 创建按钮 -->
-    <div class="top-bar">
-      <div class="search-bar">
-        <input type="text" v-model="searchQuery" placeholder="搜索歌单名称、简介…" />
-      </div>
-      <button
-        v-if="userId"
-        class="btn primary create-toggle-btn"
-        @click="toggleCreatePanel"
-      >
-        {{ showCreatePanel ? '收起创建歌单' : '创建歌单' }}
-      </button>
-    </div>
-
-    <!-- 创建歌单，仅在点击按钮后展示 -->
-    <section class="section section-create" v-if="userId && showCreatePanel">
-      <h2>创建歌单</h2>
-      <div class="create-form">
-        <div class="field-row">
-          <input
-            v-model="newPlaylistName"
-            type="text"
-            placeholder="歌单名称（必填）"
-          />
-        </div>
-        <div class="field-row">
-          <textarea
-            v-model="newPlaylistDescription"
-            placeholder="简介（可选）"
-          ></textarea>
-        </div>
-        <div class="field-row favorites-actions">
-          <button class="btn" @click="toggleFavoriteSelector" :disabled="loadingFavorites">
-            {{ showFavoriteSelector ? '收起收藏歌曲' : '从我的收藏中选择歌曲' }}
-          </button>
+  <div class="playlists-page">
+    <StormFrontRain />
+    <div class="playlists-shell">
+      <div class="playlists-container">
+        <!-- 搜索占位 + 创建按钮 -->
+        <div class="top-bar">
+          <div class="search-bar">
+            <input type="text" v-model="searchQuery" placeholder="搜索歌单名称、简介…" />
+          </div>
           <button
-            v-if="showFavoriteSelector && favoriteSongsForCreate.length"
-            class="btn link"
-            @click="toggleSelectAllFavorites"
+            v-if="userId"
+            class="btn primary create-toggle-btn"
+            @click="toggleCreatePanel"
           >
-            {{ isAllFavoritesSelected ? '取消全选' : '全选收藏歌曲' }}
+            {{ showCreatePanel ? '收起创建歌单' : '创建歌单' }}
           </button>
-          <span class="selected-count" v-if="selectedFavoriteSongIds.length">
-            已选 {{ selectedFavoriteSongIds.length }} 首
-          </span>
         </div>
-      </div>
 
-      <div v-if="showFavoriteSelector" class="favorite-selector">
-        <div v-if="loadingFavorites" class="placeholder-text">
-          正在加载我的收藏...
-        </div>
-        <div v-else-if="!favoriteSongsForCreate.length" class="placeholder-text">
-          你还没有收藏任何歌曲，先去收藏几首吧～
-        </div>
-        <div v-else class="favorite-songs-list">
-          <label
-            v-for="song in favoriteSongsForCreate"
-            :key="song.id"
-            class="favorite-item"
-          >
-            <input
-              type="checkbox"
-              :value="song.id"
-              v-model="selectedFavoriteSongIds"
-            />
-            <img :src="song.coverUrl || defaultCover" class="song-cover" alt="歌曲封面" />
-            <div class="song-info">
-              <div class="title">{{ song.title || '未知歌曲' }}</div>
-              <div class="sub">歌手 ID: {{ song.artistId || '未知' }}</div>
+        <!-- 创建歌单，仅在点击按钮后展示 -->
+        <section class="section section-create" v-if="userId && showCreatePanel">
+          <h2>创建歌单</h2>
+          <div class="create-form">
+            <div class="field-row">
+              <input
+                v-model="newPlaylistName"
+                type="text"
+                placeholder="歌单名称（必填）"
+              />
             </div>
-          </label>
-        </div>
-      </div>
-
-      <div class="create-actions">
-        <button class="btn primary" @click="createPlaylist" :disabled="creating">
-          {{ creating ? '创建中...' : '创建歌单' }}
-        </button>
-      </div>
-    </section>
-
-    <section v-if="discoverList.length" class="section section-recommend">
-      <h2>发现歌单</h2>
-      <div class="playlists-list">
-        <div
-          v-for="pl in discoverList"
-          :key="pl.id"
-          class="playlist-card discover"
-          @click="goToPlaylist(pl.id)"
-        >
-          <img :src="pl.coverUrl || defaultCover" class="playlist-cover" alt="歌单封面" />
-          <div class="playlist-info">
-            <h3>{{ pl.name || '未命名歌单' }}</h3>
-            <p>{{ pl.description || '' }}</p>
+            <div class="field-row">
+              <textarea
+                v-model="newPlaylistDescription"
+                placeholder="简介（可选）"
+              ></textarea>
+            </div>
+            <div class="field-row favorites-actions">
+              <button class="btn" @click="toggleFavoriteSelector" :disabled="loadingFavorites">
+                {{ showFavoriteSelector ? '收起收藏歌曲' : '从我的收藏中选择歌曲' }}
+              </button>
+              <button
+                v-if="showFavoriteSelector && favoriteSongsForCreate.length"
+                class="btn link"
+                @click="toggleSelectAllFavorites"
+              >
+                {{ isAllFavoritesSelected ? '取消全选' : '全选收藏歌曲' }}
+              </button>
+              <span class="selected-count" v-if="selectedFavoriteSongIds.length">
+                已选 {{ selectedFavoriteSongIds.length }} 首
+              </span>
+            </div>
           </div>
-        </div>
-      </div>
-    </section>
 
-    <!-- 全部歌单 -->
-    <section class="section section-more">
-      <h2>全部歌单</h2>
-      <div class="playlists-list">
-        <div
-          v-for="playlist in filteredPlaylists"
-          :key="playlist.id"
-          class="playlist-card"
-          @click="goToPlaylist(playlist.id)"
-        >
-          <img
-            :src="playlist.coverUrl || defaultCover"
-            class="playlist-cover"
-            alt="歌单封面"
-          />
-          <div class="playlist-info">
-            <h3>{{ playlist.name || '未知歌单' }}</h3>
-            <p>{{ playlist.description || '暂无简介' }}</p>
-            <p class="creator" v-if="playlist.nickName || playlist.userId !== undefined">
-              创建者：{{ getCreatorName(playlist) }}
-            </p>
+          <div v-if="showFavoriteSelector" class="favorite-selector">
+            <div v-if="loadingFavorites" class="placeholder-text">
+              正在加载我的收藏...
+            </div>
+            <div v-else-if="!favoriteSongsForCreate.length" class="placeholder-text">
+              你还没有收藏任何歌曲，先去收藏几首吧～
+            </div>
+            <div v-else class="favorite-songs-list">
+              <label
+                v-for="song in favoriteSongsForCreate"
+                :key="song.id"
+                class="favorite-item"
+              >
+                <input
+                  type="checkbox"
+                  :value="song.id"
+                  v-model="selectedFavoriteSongIds"
+                />
+                <img :src="song.coverUrl || defaultCover" class="song-cover" alt="歌曲封面" />
+                <div class="song-info">
+                  <div class="title">{{ song.title || '未知歌曲' }}</div>
+                  <div class="sub">歌手 ID: {{ song.artistId || '未知' }}</div>
+                </div>
+              </label>
+            </div>
           </div>
-        </div>
+
+          <div class="create-actions">
+            <button class="btn primary" @click="createPlaylist" :disabled="creating">
+              {{ creating ? '创建中...' : '创建歌单' }}
+            </button>
+          </div>
+        </section>
+
+        <section v-if="discoverList.length" class="section section-recommend">
+          <h2>发现歌单</h2>
+          <div class="playlists-list">
+            <div
+              v-for="pl in discoverList"
+              :key="pl.id"
+              class="playlist-card discover"
+              @click="goToPlaylist(pl.id)"
+            >
+              <img :src="pl.coverUrl || defaultCover" class="playlist-cover" alt="歌单封面" />
+              <div class="playlist-info">
+                <h3>{{ pl.name || '未命名歌单' }}</h3>
+                <p>{{ pl.description || '' }}</p>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- 全部歌单 -->
+        <section class="section section-more">
+          <h2>全部歌单</h2>
+          <div class="playlists-list">
+            <div
+              v-for="playlist in filteredPlaylists"
+              :key="playlist.id"
+              class="playlist-card"
+              @click="goToPlaylist(playlist.id)"
+            >
+              <img
+                :src="playlist.coverUrl || defaultCover"
+                class="playlist-cover"
+                alt="歌单封面"
+              />
+              <div class="playlist-info">
+                <h3>{{ playlist.name || '未知歌单' }}</h3>
+                <p>{{ playlist.description || '暂无简介' }}</p>
+                <p class="creator" v-if="playlist.nickName || playlist.userId !== undefined">
+                  创建者：{{ getCreatorName(playlist) }}
+                </p>
+              </div>
+            </div>
+          </div>
+        </section>
       </div>
-    </section>
+    </div>
   </div>
 </template>
 
 <script>
 import musicApi from '@/api/music';
 import defaultCover from '@/assets/default-cover.png';
+import StormFrontRain from '@/components/StormFrontRain.vue';
 
 export default {
   name: 'Playlists',
+  components: {
+    StormFrontRain,
+  },
   data() {
     return {
       playlists: [],
@@ -334,11 +343,24 @@ export default {
 </script>
 
 <style scoped>
+.playlists-page {
+  position: relative;
+  min-height: calc(100vh - 80px);
+}
+
+.playlists-shell {
+  position: relative;
+  z-index: 1;
+  padding: 20px clamp(96px, 12vw, 180px) 28px;
+}
+
 .playlists-container {
   padding: 20px;
   max-width: 1200px;
   margin: 0 auto;
   background: linear-gradient(to bottom, #e0f7fa, #ffffff);
+  position: relative;
+  z-index: 1;
 }
 
 .top-bar {
@@ -539,5 +561,12 @@ export default {
 .creator {
   color: #9ca3af;
   font-size: 12px;
+}
+
+@media (max-width: 900px) {
+  .playlists-shell {
+    padding-left: 20px;
+    padding-right: 20px;
+  }
 }
 </style>
