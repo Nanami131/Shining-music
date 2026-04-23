@@ -5,6 +5,7 @@ import org.L2.common.annotation.PermissionCheck;
 import org.L2.common.context.UserContext;
 import org.L2.common.mq.PlayRecordProducer;
 import org.L2.common.rpc.UserClient;
+import org.L2.common.util.Md5Util;
 import org.L2.music.application.dto.*;
 import org.L2.music.application.request.*;
 import org.L2.music.constant.Constants;
@@ -194,6 +195,8 @@ public class MusicAppService {
     }
 
     public R uploadSong(Long id, MultipartFile file, String md5) {
+        R md5Check = verifyMd5(file, md5);
+        if (md5Check != null) return md5Check;
         R result = songService.uploadSong(id, file);
         if (result.getPassed()) {
             searchSyncService.syncSong(id);
@@ -202,6 +205,8 @@ public class MusicAppService {
     }
 
     public R uploadSongAvatar(Long id, MultipartFile avatarFile, String md5) {
+        R md5Check = verifyMd5(avatarFile, md5);
+        if (md5Check != null) return md5Check;
         R result = songService.uploadSongAvatar(id, avatarFile);
         if (result.getPassed()) {
             searchSyncService.syncSong(id);
@@ -295,6 +300,8 @@ public class MusicAppService {
     }
 
     public R uploadPlaylistAvatar(Long id, MultipartFile avatarFile, String md5) {
+        R md5Check = verifyMd5(avatarFile, md5);
+        if (md5Check != null) return md5Check;
         return playlistService.uploadPlaylistAvatar(id, avatarFile);
     }
 
@@ -355,6 +362,8 @@ public class MusicAppService {
      * 视频模块
      */
     public R uploadVideo(Long singerId, String title, MultipartFile file, String md5) {
+        R md5Check = verifyMd5(file, md5);
+        if (md5Check != null) return md5Check;
         return videoService.uploadVideo(singerId, title, file, md5);
     }
 
@@ -465,6 +474,8 @@ public class MusicAppService {
     }
 
     public R updateSingerAvatar(Long id, MultipartFile avatarFile, String md5) {
+        R md5Check = verifyMd5(avatarFile, md5);
+        if (md5Check != null) return md5Check;
         R ownerCheck = checkSingerOwnership(id);
         if (ownerCheck != null) return ownerCheck;
         R result = singerService.updateSingerAvatar(id, avatarFile);
@@ -538,6 +549,21 @@ public class MusicAppService {
             log.error("Full sync to ES failed", e);
             return R.error("同步失败: " + e.getMessage());
         }
+    }
+
+    private R verifyMd5(MultipartFile file, String md5) {
+        if (md5 == null || md5.isBlank()) {
+            return null;
+        }
+        try {
+            if (!Md5Util.verify(file, md5)) {
+                return R.error("文件MD5校验失败，文件可能在传输过程中损坏");
+            }
+        } catch (Exception e) {
+            log.warn("MD5 verification failed due to IO error", e);
+            return R.error("MD5校验异常: " + e.getMessage());
+        }
+        return null;
     }
 
     private boolean resolveFavoriteFlag(Long userId, Long songId) {

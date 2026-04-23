@@ -2,6 +2,7 @@ package org.L2.user.application.service;
 
 import org.L2.common.R;
 import org.L2.common.annotation.PermissionCheck;
+import org.L2.common.util.Md5Util;
 import org.L2.user.application.dto.*;
 import org.L2.user.application.request.LoginRequest;
 import org.L2.user.application.request.RegisterRequest;
@@ -126,8 +127,16 @@ public class UserAppService {
         }
     }
 
-    public R updateAvatar(Long id, MultipartFile avatarFile,String md5) {
-        // MD5校验以后再写
-        return userProfileService.updateUserAvatar(id,avatarFile);
+    public R updateAvatar(Long id, MultipartFile avatarFile, String md5) {
+        if (md5 != null && !md5.isBlank()) {
+            try {
+                if (!Md5Util.verify(avatarFile, md5)) {
+                    return R.error("文件MD5校验失败，文件可能在传输过程中损坏");
+                }
+            } catch (Exception e) {
+                return R.error("MD5校验异常: " + e.getMessage());
+            }
+        }
+        return userProfileService.updateUserAvatar(id, avatarFile);
     }
 }
