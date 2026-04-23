@@ -18,6 +18,13 @@
         SELECT * FROM songs WHERE id = #{id}
     </select>
 
+    <select id="selectByIds" resultMap="SongResultMap">
+        SELECT * FROM songs WHERE id IN
+        <foreach collection="ids" item="id" open="(" separator="," close=")">
+            #{id}
+        </foreach>
+    </select>
+
     <insert id="insert" parameterType="org.L2.music.domain.model.Song" useGeneratedKeys="true" keyProperty="id">
         INSERT INTO songs (title, artist_id, album_id, file_url, cover_url, duration, status, created_at, updated_at)
         VALUES (#{title}, #{artistId}, #{albumId}, #{fileUrl}, #{coverUrl}, #{duration}, #{status}, #{createdAt}, #{updatedAt})

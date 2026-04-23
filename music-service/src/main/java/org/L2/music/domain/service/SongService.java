@@ -22,6 +22,7 @@ import org.springframework.web.multipart.MultipartFile;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 @Service
@@ -81,17 +82,29 @@ public class SongService {
             String key = "playlist:" + playlistId;
             migrateSetToZSetIfNeeded(key);
             Set<String> songIdSet = stringRedisTemplate.opsForZSet().range(key, 0, -1);
+            if (songIdSet == null || songIdSet.isEmpty()) {
+                return R.success("获取歌单歌曲成功", new ArrayList<>());
+            }
+            List<Long> orderedIds = new ArrayList<>();
+            for (String idStr : songIdSet) {
+                try {
+                    orderedIds.add(Long.valueOf(idStr));
+                } catch (NumberFormatException ignored) {
+                }
+            }
+            if (orderedIds.isEmpty()) {
+                return R.success("获取歌单歌曲成功", new ArrayList<>());
+            }
+            List<Song> batchResult = songMapper.selectByIds(orderedIds);
+            Map<Long, Song> songMap = new java.util.LinkedHashMap<>();
+            for (Song song : batchResult) {
+                songMap.put(song.getId(), song);
+            }
             List<Song> songs = new ArrayList<>();
-            if (songIdSet != null && !songIdSet.isEmpty()) {
-                for (String idStr : songIdSet) {
-                    try {
-                        Long id = Long.valueOf(idStr);
-                        Song song = songMapper.selectById(id);
-                        if (song != null) {
-                            songs.add(song);
-                        }
-                    } catch (NumberFormatException ignored) {
-                    }
+            for (Long id : orderedIds) {
+                Song song = songMap.get(id);
+                if (song != null) {
+                    songs.add(song);
                 }
             }
             return R.success("获取歌单歌曲成功", songs);
