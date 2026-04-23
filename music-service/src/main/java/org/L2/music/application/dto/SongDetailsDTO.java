@@ -17,6 +17,7 @@ public class SongDetailsDTO {
     private String fileUrl;
     private String coverUrl;
     private Integer duration;
+    private Float volumeGain;
     private Byte status;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;

@@ -295,6 +295,9 @@ export default {
       bottomFixedHeight: 90,
       artistNameCache: {},
       playSource: 'unknown',
+      audioContext: null,
+      gainNode: null,
+      audioSourceConnected: false,
     };
   },
   computed: {
@@ -361,6 +364,10 @@ export default {
     this.$bus.off('refreshCurrentPlaylist', this.loadCurrentPlaylist);
     this.audio.pause();
     this.audio.src = '';
+    if (this.audioContext) {
+      this.audioContext.close().catch(() => {});
+      this.audioContext = null;
+    }
     window.removeEventListener('userBaseUpdated', this.handleUserStateChange);
     window.removeEventListener('mousemove', this.onLyricsResizing);
     window.removeEventListener('mouseup', this.stopLyricsResize);
@@ -557,6 +564,8 @@ export default {
           const url = this.currentSong.fileUrl || '';
           if (!url) return;
           this.audio.src = url;
+          this.ensureAudioContext();
+          this.applyVolumeGain(this.currentSong);
           try {
             await this.audio.play();
             if (this._playSeq !== playId) return;
@@ -1054,6 +1063,7 @@ export default {
         if (!this.audio.src) {
           return;
         }
+        this.ensureAudioContext();
         this.audio.play();
         this.isPlaying = true;
       }
@@ -1133,6 +1143,29 @@ export default {
           .toString()
           .padStart(2, '0');
       return `${minutes}:${seconds}`;
+    },
+
+    ensureAudioContext() {
+      if (this.audioContext) {
+        if (this.audioContext.state === 'suspended') {
+          this.audioContext.resume();
+        }
+        return;
+      }
+      const AudioCtx = window.AudioContext || window.webkitAudioContext;
+      if (!AudioCtx) return;
+      this.audioContext = new AudioCtx();
+      this.gainNode = this.audioContext.createGain();
+      const source = this.audioContext.createMediaElementSource(this.audio);
+      source.connect(this.gainNode);
+      this.gainNode.connect(this.audioContext.destination);
+      this.audioSourceConnected = true;
+    },
+    applyVolumeGain(song) {
+      if (!this.gainNode) return;
+      const gainDb = (song && song.volumeGain != null) ? song.volumeGain : 0;
+      const linear = Math.pow(10, gainDb / 20);
+      this.gainNode.gain.value = Math.min(Math.max(linear, 0.05), 15.0);
     },
 
     // 歌词区域拖拽相关方法

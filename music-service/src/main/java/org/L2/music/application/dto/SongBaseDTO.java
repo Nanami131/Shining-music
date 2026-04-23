@@ -13,5 +13,6 @@ public class SongBaseDTO {
     private Long artistId;
     private String coverUrl;
     private Integer duration;
+    private Float volumeGain;
     private Boolean favorite;
 }
