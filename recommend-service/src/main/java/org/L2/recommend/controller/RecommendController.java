@@ -98,6 +98,14 @@ public class RecommendController {
         }
     }
 
+    // ─── 相似歌曲 ───
+
+    @GetMapping("/similar")
+    public R getSimilarSongs(@RequestParam("songId") Long songId,
+                             @RequestParam(value = "limit", defaultValue = "10") int limit) {
+        return recommendationService.findSimilarSongs(songId, limit);
+    }
+
     // ─── 推荐 ───
 
     @GetMapping("/daily")

@@ -19,4 +19,7 @@ export default {
     getUserPreference(userId) {
         return api.get('/recommend/preference', { params: { userId } });
     },
+    getSimilarSongs(songId, limit = 10) {
+        return api.get('/recommend/similar', { params: { songId, limit } });
+    },
 };

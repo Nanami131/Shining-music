@@ -22,6 +22,7 @@ public class TagVectorService {
 
     private static final Logger log = LoggerFactory.getLogger(TagVectorService.class);
     private static final String VECTOR_KEY_PREFIX = "song:vector:";
+    private static final String SIMILAR_CACHE_PREFIX = "song:similar:";
 
     /**
      * Ribecky, Abeßer & Lukashevich (2021) ISMIR — Triplet prediction accuracy per dimension.
@@ -139,6 +140,12 @@ public class TagVectorService {
         } catch (Exception e) {
             log.error("Failed to store vector for song {}", songId, e);
             throw new RuntimeException("向量写入 Redis 失败: " + e.getMessage(), e);
+        }
+
+        try {
+            stringRedisTemplate.delete(SIMILAR_CACHE_PREFIX + songId);
+        } catch (Exception e) {
+            log.warn("Failed to invalidate similar-songs cache for songId={}", songId, e);
         }
     }
 

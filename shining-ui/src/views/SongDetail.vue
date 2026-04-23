@@ -146,6 +146,36 @@
         <h3>歌曲标签</h3>
         <p class="no-tags">暂无标签数据</p>
       </div>
+
+      <!-- 相似歌曲 -->
+      <div class="similar-section" v-if="similarSongs.length">
+        <h3>相似歌曲</h3>
+        <div class="similar-list">
+          <div
+            v-for="item in similarSongs"
+            :key="item.songId"
+            class="similar-card"
+            @click="goToSong(item.songId)"
+          >
+            <img :src="item.coverUrl || defaultCover" class="similar-cover" alt="" />
+            <div class="similar-info">
+              <span class="similar-title">{{ item.title || '未知歌曲' }}</span>
+              <span class="similar-artist">{{ item.artistName || '' }}</span>
+            </div>
+            <div class="similar-score">
+              <div class="score-bar-bg">
+                <div class="score-bar-fill" :style="{ width: (item.similarity * 100) + '%' }"></div>
+              </div>
+              <span class="score-text">{{ (item.similarity * 100).toFixed(0) }}%</span>
+            </div>
+            <button class="similar-play" @click.stop="playSimilar(item.songId)" title="播放">▶</button>
+          </div>
+        </div>
+      </div>
+      <div class="similar-section" v-else-if="isLoaded && similarFetched && !similarSongs.length">
+        <h3>相似歌曲</h3>
+        <p class="no-similar">暂无相似歌曲数据</p>
+      </div>
     </div>
     <div v-else-if="hasError">
       <h2>歌曲信息加载失败</h2>
@@ -191,6 +221,8 @@ export default {
       songTags: [],
       tagsFetched: false,
       expandedCategories: {},
+      similarSongs: [],
+      similarFetched: false,
       currentPlaybackSongId: null,
       playbackCurrentTime: 0,
       playbackDuration: 0,
@@ -277,6 +309,51 @@ export default {
       }
       this.tagsFetched = true;
     },
+    async fetchSimilarSongs(songId) {
+      this.similarSongs = [];
+      this.similarFetched = false;
+      try {
+        const res = await recommendApi.getSimilarSongs(songId, 10);
+        if (res.data && res.data.passed && Array.isArray(res.data.data)) {
+          const items = res.data.data;
+          const enriched = await Promise.all(items.map(async (item) => {
+            try {
+              const songRes = await musicApi.getSongBaseInfo(item.songId);
+              if (songRes.data && songRes.data.passed && songRes.data.data) {
+                const s = songRes.data.data;
+                let artistName = '';
+                if (s.artistId) {
+                  try {
+                    const aRes = await musicApi.getSingerBaseInfo(s.artistId);
+                    if (aRes.data && aRes.data.passed && aRes.data.data) {
+                      artistName = aRes.data.data.name || '';
+                    }
+                  } catch (_) { /* ignore */ }
+                }
+                return {
+                  songId: item.songId,
+                  similarity: item.similarity,
+                  title: s.title || '未知歌曲',
+                  coverUrl: s.coverUrl || null,
+                  artistName,
+                };
+              }
+            } catch (_) { /* ignore */ }
+            return { songId: item.songId, similarity: item.similarity, title: '未知歌曲', coverUrl: null, artistName: '' };
+          }));
+          this.similarSongs = enriched;
+        }
+      } catch (e) {
+        console.warn('相似歌曲加载失败', e);
+      }
+      this.similarFetched = true;
+    },
+    goToSong(songId) {
+      this.$router.push(`/song/${songId}`);
+    },
+    playSimilar(songId) {
+      this.$bus.emit('playSong', { songId, source: 'similarSongs' });
+    },
     async loadSongDetails() {
       this.isLoaded = false;
       this.hasError = false;
@@ -295,6 +372,7 @@ export default {
           await this.loadArtistName();
           this.isLoaded = true;
           this.fetchTags(songId);
+          this.fetchSimilarSongs(songId);
           if (this.userId) {
             statisticsApi.reportEvent({
               userId: this.userId,
@@ -887,5 +965,113 @@ h3 {
   opacity: 0;
   padding-top: 0;
   padding-bottom: 0;
+}
+
+/* ---- 相似歌曲区 ---- */
+.similar-section {
+  margin-top: 30px;
+  padding: 0 10px;
+}
+.similar-section h3 {
+  font-size: 20px;
+  margin-bottom: 16px;
+  color: #333;
+}
+.no-similar {
+  color: #999;
+  font-size: 14px;
+}
+.similar-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.similar-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 14px;
+  background: #fff;
+  border: 1px solid #eee;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: box-shadow 0.2s, transform 0.15s;
+}
+.similar-card:hover {
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.08);
+  transform: translateY(-1px);
+}
+.similar-cover {
+  width: 48px;
+  height: 48px;
+  border-radius: 6px;
+  object-fit: cover;
+  flex-shrink: 0;
+}
+.similar-info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.similar-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: #333;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.similar-artist {
+  font-size: 12px;
+  color: #999;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.similar-score {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+  width: 100px;
+}
+.score-bar-bg {
+  flex: 1;
+  height: 6px;
+  background: #eee;
+  border-radius: 3px;
+  overflow: hidden;
+}
+.score-bar-fill {
+  height: 100%;
+  border-radius: 3px;
+  background: linear-gradient(90deg, #4facfe, #00f2fe);
+  transition: width 0.4s ease;
+}
+.score-text {
+  font-size: 12px;
+  color: #666;
+  width: 32px;
+  text-align: right;
+}
+.similar-play {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: none;
+  background: linear-gradient(135deg, #4facfe, #00f2fe);
+  color: #fff;
+  font-size: 12px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: transform 0.15s;
+}
+.similar-play:hover {
+  transform: scale(1.15);
 }
 </style>

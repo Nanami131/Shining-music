@@ -4,6 +4,7 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.L2.common.R;
 import org.L2.common.rpc.StatisticsClient;
+import org.L2.recommend.infrastructure.SongTagMapper;
 import org.L2.recommend.strategy.impl.ContentBasedStrategy;
 import org.L2.recommend.strategy.impl.ItemCFStrategy;
 import org.slf4j.Logger;
@@ -17,6 +18,7 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.*;
+import java.util.concurrent.TimeUnit;
 
 @Service
 public class RecommendationService {
@@ -24,6 +26,8 @@ public class RecommendationService {
     private static final Logger log = LoggerFactory.getLogger(RecommendationService.class);
     private static final String CACHE_PREFIX_CB = "recommend:daily:cb:";
     private static final String CACHE_PREFIX_CF = "recommend:daily:cf:";
+    static final String SIMILAR_CACHE_PREFIX = "song:similar:";
+    private static final int SIMILAR_CACHE_DAYS = 30;
 
     @Autowired
     private ContentBasedStrategy contentBasedStrategy;
@@ -33,6 +37,12 @@ public class RecommendationService {
 
     @Autowired
     private UserPreferenceService userPreferenceService;
+
+    @Autowired
+    private TagVectorService tagVectorService;
+
+    @Autowired
+    private SongTagMapper songTagMapper;
 
     @Autowired(required = false)
     private StatisticsClient statisticsClient;
@@ -85,6 +95,102 @@ public class RecommendationService {
     public R rebuildItemCFMatrix() {
         int count = itemCFStrategy.rebuildSimilarityMatrix();
         return R.success("Item-CF 相似度矩阵构建完成", Map.of("songsWithSimilarity", count));
+    }
+
+    public R findSimilarSongs(Long songId, int limit) {
+        String cacheKey = SIMILAR_CACHE_PREFIX + songId;
+        try {
+            String cached = stringRedisTemplate.opsForValue().get(cacheKey);
+            if (cached != null) {
+                List<Map<String, Object>> list = objectMapper.readValue(cached,
+                        new TypeReference<List<Map<String, Object>>>() {});
+                if (!list.isEmpty()) {
+                    List<Map<String, Object>> trimmed = list.size() > limit ? list.subList(0, limit) : list;
+                    return R.success("查询成功（缓存）", trimmed);
+                }
+            }
+        } catch (Exception e) {
+            log.warn("Failed to read similar-songs cache for songId={}", songId, e);
+        }
+
+        float[] targetVector = tagVectorService.getVector(songId);
+        if (targetVector == null) {
+            return R.error("该歌曲暂无标签向量，无法计算相似度");
+        }
+
+        List<Long> allSongIds = songTagMapper.selectAllDistinctSongIds();
+        float[] weights = tagVectorService.getDimensionWeights();
+        int[] nonLangDims = tagVectorService.getNonLanguageDimIndices();
+
+        List<float[]> allVectors = new ArrayList<>();
+        List<Long> vectorSongIds = new ArrayList<>();
+        for (Long sid : allSongIds) {
+            if (sid.equals(songId)) continue;
+            float[] v = tagVectorService.getVector(sid);
+            if (v != null) {
+                allVectors.add(v);
+                vectorSongIds.add(sid);
+            }
+        }
+
+        float[] globalMean = computeGlobalMean(allVectors, targetVector, targetVector.length);
+
+        List<Map<String, Object>> scored = new ArrayList<>();
+        for (int i = 0; i < vectorSongIds.size(); i++) {
+            double sim = adjustedWeightedCosine(targetVector, allVectors.get(i), globalMean, weights, nonLangDims);
+            if (sim > 0) {
+                Map<String, Object> m = new HashMap<>();
+                m.put("songId", vectorSongIds.get(i));
+                m.put("similarity", Math.round(sim * 10000.0) / 10000.0);
+                scored.add(m);
+            }
+        }
+        scored.sort(Comparator.comparingDouble(m -> -((Number) m.get("similarity")).doubleValue()));
+
+        int cacheSize = Math.max(limit, 20);
+        List<Map<String, Object>> toCache = scored.size() > cacheSize ? scored.subList(0, cacheSize) : scored;
+        try {
+            stringRedisTemplate.opsForValue().set(cacheKey,
+                    objectMapper.writeValueAsString(toCache), SIMILAR_CACHE_DAYS, TimeUnit.DAYS);
+        } catch (Exception e) {
+            log.warn("Failed to write similar-songs cache for songId={}", songId, e);
+        }
+
+        List<Map<String, Object>> result = scored.size() > limit ? scored.subList(0, limit) : scored;
+        return R.success("查询成功", result);
+    }
+
+    private float[] computeGlobalMean(List<float[]> vectors, float[] extra, int dims) {
+        float[] mean = new float[dims];
+        int total = vectors.size() + 1;
+        for (int i = 0; i < Math.min(extra.length, dims); i++) {
+            mean[i] += extra[i];
+        }
+        for (float[] v : vectors) {
+            for (int i = 0; i < Math.min(v.length, dims); i++) {
+                mean[i] += v[i];
+            }
+        }
+        for (int i = 0; i < dims; i++) {
+            mean[i] /= total;
+        }
+        return mean;
+    }
+
+    private double adjustedWeightedCosine(float[] a, float[] b, float[] mean,
+                                          float[] weights, int[] dimIndices) {
+        double dot = 0, normA = 0, normB = 0;
+        for (int i : dimIndices) {
+            if (i >= a.length || i >= b.length) continue;
+            double w = weights[i];
+            double ai = a[i] - mean[i];
+            double bi = b[i] - mean[i];
+            dot   += w * ai * bi;
+            normA += w * ai * ai;
+            normB += w * bi * bi;
+        }
+        if (normA == 0 || normB == 0) return 0;
+        return Math.max(0, dot / (Math.sqrt(normA) * Math.sqrt(normB)));
     }
 
     private R tryReadCache(String key, String strategyName) {
