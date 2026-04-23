@@ -238,6 +238,23 @@ import {
 
 export default {
   name: 'BottomBar',
+  watch: {
+    currentSong: {
+      deep: true,
+      handler() {
+        this.broadcastPlaybackState();
+      },
+    },
+    currentTime() {
+      this.broadcastPlaybackState();
+    },
+    isPlaying() {
+      this.broadcastPlaybackState();
+    },
+    duration() {
+      this.broadcastPlaybackState();
+    },
+  },
   data() {
     return {
       currentSong: {},
@@ -351,6 +368,18 @@ export default {
     if (this._saveStateTimer) clearTimeout(this._saveStateTimer);
   },
   methods: {
+    broadcastPlaybackState() {
+      const state = {
+        songId: this.currentSong?.id ? Number(this.currentSong.id) : null,
+        currentTime: Number(this.currentTime || 0),
+        duration: Number(this.duration || 0),
+        isPlaying: !!this.isPlaying,
+      };
+      if (typeof window !== 'undefined') {
+        window.__SHINING_PLAYBACK_STATE__ = state;
+      }
+      this.$bus.emit('playbackStateChanged', state);
+    },
     async restorePlaybackState() {
       if (!this.userId) return;
       try {

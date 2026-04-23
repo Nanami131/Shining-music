@@ -85,10 +85,14 @@
             </div>
           </div>
         </div>
-        <div class="lyrics-content" :class="'highlight-color-' + highlightColor">
+        <div
+          ref="lyricsContent"
+          class="lyrics-content"
+          :class="'highlight-color-' + highlightColor"
+        >
           <div v-for="(line, index) in displayLyrics" :key="index" class="lyrics-group">
             <div v-if="line.break" class="lyric-break"></div>
-            <div v-else class="lyric-line">
+            <div v-else class="lyric-line" :class="{ active: isActiveLine(line.time, index) }">
               <template v-if="bilingualMode">
                 <p v-for="(lang, li) in availableLangs" :key="li"
                    :class="li === 0 ? 'lyric-primary' : 'lyric-secondary'"
@@ -187,11 +191,20 @@ export default {
       songTags: [],
       tagsFetched: false,
       expandedCategories: {},
+      currentPlaybackSongId: null,
+      playbackCurrentTime: 0,
+      playbackDuration: 0,
+      isPlaybackActive: false,
     };
   },
   computed: {
     displayLyrics() {
       return this.bilingualMode ? this.bilingualLyrics : this.parsedLyrics;
+    },
+    isCurrentPlaybackSong() {
+      const routeSongId = Number(this.song?.id);
+      const playbackSongId = Number(this.currentPlaybackSongId);
+      return !!routeSongId && !!playbackSongId && routeSongId === playbackSongId;
     },
     tagCategories() {
       const categoryLabels = {
@@ -225,9 +238,17 @@ export default {
     this.userId = userBase.id ?? null;
     this.loadSongDetails();
   },
+  mounted() {
+    this.$bus.on('playbackStateChanged', this.handlePlaybackStateChanged);
+    this.applyPlaybackSnapshot();
+  },
+  beforeUnmount() {
+    this.$bus.off('playbackStateChanged', this.handlePlaybackStateChanged);
+  },
   watch: {
     '$route.params.id'() {
       this.loadSongDetails();
+      this.applyPlaybackSnapshot();
     },
   },
   methods: {
@@ -451,6 +472,50 @@ export default {
     setHighlightColor(color) {
       this.highlightColor = color;
     },
+    handlePlaybackStateChanged(snapshot) {
+      this.applyPlaybackSnapshot(snapshot);
+    },
+    applyPlaybackSnapshot(snapshot) {
+      const state = snapshot || (typeof window !== 'undefined' ? window.__SHINING_PLAYBACK_STATE__ : null);
+      if (!state) {
+        this.currentPlaybackSongId = null;
+        this.playbackCurrentTime = 0;
+        this.playbackDuration = 0;
+        this.isPlaybackActive = false;
+        return;
+      }
+      this.currentPlaybackSongId = state.songId ? Number(state.songId) : null;
+      this.playbackCurrentTime = Number(state.currentTime || 0);
+      this.playbackDuration = Number(state.duration || 0);
+      this.isPlaybackActive = !!state.isPlaying;
+    },
+    isActiveLine(time, index) {
+      if (!this.isCurrentPlaybackSong || typeof time !== 'number') {
+        return false;
+      }
+      const lyrics = this.displayLyrics || [];
+      if (!lyrics.length) {
+        return false;
+      }
+      const nextLine = lyrics[index + 1];
+      const now = this.playbackCurrentTime;
+      const isActive = now >= time && (!nextLine || now < nextLine.time);
+      if (isActive) {
+        this.$nextTick(() => this.scrollToActiveLine(index));
+      }
+      return isActive;
+    },
+    scrollToActiveLine(index) {
+      const lyricsContent = this.$refs.lyricsContent;
+      if (!lyricsContent) return;
+      const groups = lyricsContent.querySelectorAll('.lyrics-group');
+      const target = groups && groups[index];
+      if (!target) return;
+      const scrollTop = target.offsetTop - lyricsContent.offsetTop - 50;
+      if (scrollTop >= 0 && scrollTop <= lyricsContent.scrollHeight - lyricsContent.clientHeight) {
+        lyricsContent.scrollTo({ top: scrollTop, behavior: 'smooth' });
+      }
+    },
     lyricLabel(lang) {
       return lyricLangLabel(lang);
     },
@@ -647,6 +712,22 @@ h3 {
 .lyrics-content.highlight-color-purple .lyric-line {
   color: #9b59b6;
 }
+.lyrics-content.highlight-color-pink .lyric-line.active {
+  --highlight-color: #ff6b81;
+  --highlight-bg: rgba(255, 107, 129, 0.2);
+}
+.lyrics-content.highlight-color-blue .lyric-line.active {
+  --highlight-color: #3498db;
+  --highlight-bg: rgba(52, 152, 219, 0.2);
+}
+.lyrics-content.highlight-color-green .lyric-line.active {
+  --highlight-color: #2ecc71;
+  --highlight-bg: rgba(46, 204, 113, 0.2);
+}
+.lyrics-content.highlight-color-purple .lyric-line.active {
+  --highlight-color: #9b59b6;
+  --highlight-bg: rgba(155, 89, 182, 0.2);
+}
 .lyrics-group {
   margin-bottom: 20px;
 }
@@ -658,6 +739,11 @@ h3 {
   display: inline-block;
   width: 100%;
   padding: 8px 0;
+}
+.lyric-line.active {
+  color: var(--highlight-color);
+  background: var(--highlight-bg);
+  font-weight: 600;
 }
 .lyric-line p {
   margin: 2px 0;

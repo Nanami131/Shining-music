@@ -25,7 +25,7 @@
       </div>
       <div class="songs-list">
         <div
-          v-for="(song, idx) in singer.songs"
+          v-for="song in singer.songs"
           :key="song.id"
           class="song-card"
         >
@@ -33,7 +33,17 @@
           <div class="song-info" @click="goToSong(song.id)">
             <h4>{{ song.title || '未知歌曲' }}</h4>
           </div>
-          <button class="play-single-btn" @click="playSingleSong(song.id, idx)" title="播放">&#9654;</button>
+          <div class="song-card-actions">
+            <button class="song-action-btn play-action-btn" @click.stop="playSingleSong(song.id)" title="播放">▶</button>
+            <button
+              class="song-action-btn add-action-btn"
+              :class="{ added: isSongInCurrentPlaylist(song.id) }"
+              :title="isSongInCurrentPlaylist(song.id) ? '已加入当前歌单' : '加入当前歌单'"
+              @click.stop="addSongToCurrentPlaylist(song)"
+            >
+              {{ isSongInCurrentPlaylist(song.id) ? '✓' : '+' }}
+            </button>
+          </div>
         </div>
       </div>
     </div>
@@ -61,6 +71,8 @@ export default {
       hasError: false,
       userId: null,
       songOperating: false,
+      currentPlaylistId: null,
+      currentPlaylistSongIds: [],
     };
   },
   created() {
@@ -69,12 +81,94 @@ export default {
     this.userId = userBase.id ?? null;
     this.loadSingerDetails();
   },
+  mounted() {
+    if (this.userId) {
+      this.loadCurrentPlaylistState();
+    }
+    this.$bus.on('refreshCurrentPlaylist', this.handlePlaylistRefresh);
+  },
+  beforeUnmount() {
+    this.$bus.off('refreshCurrentPlaylist', this.handlePlaylistRefresh);
+  },
   watch: {
     '$route.params.id'() {
       this.loadSingerDetails();
     },
   },
   methods: {
+    handlePlaylistRefresh() {
+      if (!this.userId) {
+        this.currentPlaylistId = null;
+        this.currentPlaylistSongIds = [];
+        return;
+      }
+      this.loadCurrentPlaylistState();
+    },
+    async loadCurrentPlaylistState() {
+      if (!this.userId) {
+        this.currentPlaylistId = null;
+        this.currentPlaylistSongIds = [];
+        return;
+      }
+      try {
+        const response = await musicApi.getCurrentPlaylist(this.userId);
+        if (response.data?.passed) {
+          const playlist = response.data.data || {};
+          this.currentPlaylistId = playlist.id || null;
+          this.currentPlaylistSongIds = Array.isArray(playlist.songs)
+            ? playlist.songs.map(song => Number(song.id)).filter(id => !Number.isNaN(id))
+            : [];
+        }
+      } catch (error) {
+        console.error('获取当前播放列表失败', error);
+      }
+    },
+    isSongInCurrentPlaylist(songId) {
+      const normalizedId = Number(songId);
+      return !!normalizedId && this.currentPlaylistSongIds.includes(normalizedId);
+    },
+    markSongInCurrentPlaylist(songId) {
+      const normalizedId = Number(songId);
+      if (!normalizedId || this.currentPlaylistSongIds.includes(normalizedId)) {
+        return;
+      }
+      this.currentPlaylistSongIds = [...this.currentPlaylistSongIds, normalizedId];
+    },
+    async addSongToCurrentPlaylist(song) {
+      const songId = Number(song?.id);
+      if (!songId) {
+        return;
+      }
+      if (!this.userId) {
+        alert('请先登录再加入当前歌单');
+        return;
+      }
+      if (!this.currentPlaylistId) {
+        await this.loadCurrentPlaylistState();
+      }
+      if (!this.currentPlaylistId) {
+        alert('获取当前歌单失败，请稍后重试');
+        return;
+      }
+      if (this.isSongInCurrentPlaylist(songId)) {
+        return;
+      }
+      try {
+        const response = await musicApi.managePlaylistSong({
+          playlistId: this.currentPlaylistId,
+          songId,
+          action: 'add',
+        });
+        if (response.data?.passed) {
+          this.markSongInCurrentPlaylist(songId);
+          this.$bus.emit('refreshCurrentPlaylist');
+        } else {
+          alert('加入当前歌单失败：' + (response.data?.message || '未知错误'));
+        }
+      } catch (error) {
+        alert('加入当前歌单失败：' + error.message);
+      }
+    },
     async loadSingerDetails() {
       this.isLoaded = false;
       this.hasError = false;
@@ -133,6 +227,8 @@ export default {
               return;
             }
           }
+          this.currentPlaylistId = playlistId;
+          this.currentPlaylistSongIds = songs.map(song => Number(song.id)).filter(id => !Number.isNaN(id));
           this.$bus.emit('refreshCurrentPlaylist');
         }
 
@@ -148,13 +244,14 @@ export default {
         this.songOperating = false;
       }
     },
-    playSingleSong(songId, index) {
+    playSingleSong(songId) {
       const songs = this.singer?.songs;
       if (!songs) return;
+      if (this.userId) {
+        this.markSongInCurrentPlaylist(songId);
+      }
       this.$bus.emit('playSong', {
         songId,
-        playlist: songs.map(s => s.id),
-        index,
         source: 'singerDetail',
       });
     },
@@ -225,7 +322,7 @@ h2 {
   background: white;
   border-radius: 8px;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-  padding: 15px;
+  padding: 15px 15px 58px;
   transition: transform 0.2s;
 }
 .song-card:hover {
@@ -245,31 +342,55 @@ h2 {
 .song-info h4 {
   margin: 0;
   font-size: 16px;
-  padding-right: 36px;
 }
-.play-single-btn {
+.song-card-actions {
   position: absolute;
-  bottom: 14px;
-  right: 14px;
+  right: 12px;
+  bottom: 12px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  opacity: 0;
+  transform: translateY(4px);
+  transition: opacity 0.2s, transform 0.2s;
+}
+.song-card:hover .song-card-actions {
+  opacity: 1;
+  transform: translateY(0);
+}
+.song-action-btn {
   width: 32px;
   height: 32px;
   border-radius: 50%;
   border: none;
-  background: linear-gradient(135deg, #42a5f5, #1e88e5);
   color: white;
   font-size: 14px;
+  font-weight: 700;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
-  opacity: 0;
-  transition: opacity 0.2s, transform 0.15s;
+  box-shadow: 0 6px 14px rgba(15, 23, 42, 0.18);
+  transition: transform 0.15s, box-shadow 0.15s, opacity 0.15s;
 }
-.song-card:hover .play-single-btn {
-  opacity: 1;
+.song-action-btn:hover {
+  transform: translateY(-1px) scale(1.06);
+  box-shadow: 0 10px 18px rgba(15, 23, 42, 0.22);
 }
-.play-single-btn:hover {
-  transform: scale(1.15);
+.play-action-btn {
+  background: linear-gradient(135deg, #42a5f5, #1e88e5);
+}
+.add-action-btn {
+  background: linear-gradient(135deg, #f59e0b, #ea580c);
+}
+.add-action-btn.added {
+  background: linear-gradient(135deg, #34d399, #059669);
+}
+
+@media (hover: none) {
+  .song-card-actions {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 </style>
-
