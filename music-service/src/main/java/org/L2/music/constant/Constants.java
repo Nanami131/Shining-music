@@ -6,5 +6,5 @@ public class Constants {
     public static final byte USER_FAVORITE = 3;
     public static final byte CURRENT_PLAYLIST = 4;
 
-    public static final int MAX_PLAYLIST_SIZE = 200;
+    public static final int MAX_PLAYLIST_SIZE = 1000;
 }

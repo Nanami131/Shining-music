@@ -65,6 +65,32 @@
         </div>
       </section>
 
+      <!-- 听歌 DNA -->
+      <section v-if="prefTags.length" class="dna-section">
+        <div class="dna-hero">
+          <div class="dna-hero-bg"></div>
+          <div class="dna-hero-inner">
+            <h2 class="dna-hero-title">听歌 DNA</h2>
+            <p class="dna-hero-sub">基于你的播放偏好生成</p>
+          </div>
+        </div>
+        <div class="dna-body">
+          <div v-for="(tag, idx) in prefTags" :key="tag.name" class="dna-item">
+            <div class="dna-rank" :class="'dna-rank-' + (idx + 1)">{{ idx + 1 }}</div>
+            <div class="dna-info">
+              <div class="dna-info-top">
+                <span class="dna-tag-name">{{ tag.labelZh }}</span>
+                <span class="dna-tag-cat">{{ catLabel(tag.category) }}</span>
+              </div>
+              <div class="dna-bar-track">
+                <div class="dna-bar-fill" :style="barStyle(tag)"></div>
+              </div>
+            </div>
+            <span class="dna-pct">{{ (tag.value * 100).toFixed(0) }}%</span>
+          </div>
+        </div>
+      </section>
+
       <!-- Follow Stats (always visible) -->
       <section class="stats-section">
         <div class="stats-grid">
@@ -246,6 +272,7 @@ import userApi from '@/api/user';
 import communityApi from '@/api/community';
 import statisticsApi from '@/api/statistics';
 import musicApi from '@/api/music';
+import recommendApi from '@/api/recommend';
 import defaultAvatar from '@/assets/default-avatar.png';
 import defaultCover from '@/assets/default-cover.png';
 
@@ -299,6 +326,7 @@ export default {
       followersList: [],
       followingUsers: {},
       followersUsers: {},
+      prefTags: [],
     };
   },
   computed: {
@@ -349,6 +377,7 @@ export default {
         this.loadPlaylists();
         this.loadRecentComments();
         this.loadFollowData();
+        this.loadPrefTags();
       }
     },
 
@@ -547,6 +576,40 @@ export default {
         if (res.data?.passed && res.data.data) return res.data.data;
       } catch { /* silent */ }
       return { name: `歌手 ${singerId}`, avatarUrl: null };
+    },
+
+    async loadPrefTags() {
+      try {
+        const res = await recommendApi.getUserPreferenceProfile(this.targetUserId);
+        if (res.data?.passed && res.data.data?.radar) {
+          const all = [];
+          for (const cat of res.data.data.radar) {
+            for (const t of cat.tags) {
+              all.push({ name: t.name, labelZh: t.labelZh, value: t.value, category: cat.category });
+            }
+          }
+          all.sort((a, b) => b.value - a.value);
+          this.prefTags = all.filter(t => t.value > 0.01).slice(0, 10);
+        }
+      } catch { /* silent */ }
+    },
+    catLabel(category) {
+      const map = { language: '语言', source: '来源', mood: '情绪', vocal: '声线', audio: '音频', era: '年代' };
+      return map[category] || '';
+    },
+    barStyle(tag) {
+      const gradients = {
+        language: 'linear-gradient(90deg, #667eea, #764ba2)',
+        source: 'linear-gradient(90deg, #f5576c, #f093fb)',
+        mood: 'linear-gradient(90deg, #4facfe, #00f2fe)',
+        vocal: 'linear-gradient(90deg, #43e97b, #38f9d7)',
+        audio: 'linear-gradient(90deg, #fa709a, #fee140)',
+        era: 'linear-gradient(90deg, #a18cd1, #fbc2eb)',
+      };
+      return {
+        width: `${Math.max(tag.value * 100, 4)}%`,
+        background: gradients[tag.category] || 'linear-gradient(90deg, #999, #ccc)',
+      };
     },
 
     formatDuration(seconds) {
@@ -1036,4 +1099,126 @@ export default {
 .user-list-info { flex: 1; min-width: 0; }
 .user-list-name { margin: 0; font-size: 15px; font-weight: 600; }
 .user-list-sig { margin: 2px 0 0; font-size: 13px; color: rgba(228, 235, 255, 0.5); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+/* ---- Listen DNA (Annual Report style) ---- */
+.dna-section {
+  max-width: 900px;
+  margin: 0 auto 20px;
+  padding: 0 clamp(20px, 5vw, 60px);
+}
+.dna-hero {
+  position: relative;
+  border-radius: 20px 20px 0 0;
+  overflow: hidden;
+  padding: 28px 24px 20px;
+  text-align: center;
+}
+.dna-hero-bg {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 50%, #f093fb 100%);
+  z-index: 0;
+}
+.dna-hero-inner {
+  position: relative;
+  z-index: 1;
+}
+.dna-hero-title {
+  margin: 0 0 4px;
+  font-size: 20px;
+  font-weight: 800;
+  color: #fff;
+  letter-spacing: 1px;
+}
+.dna-hero-sub {
+  margin: 0;
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.75);
+}
+.dna-body {
+  background: rgba(255, 255, 255, 0.05);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-top: none;
+  border-radius: 0 0 20px 20px;
+  padding: 18px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.dna-item {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 10px 14px;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.04);
+  transition: transform 0.15s, border-color 0.2s;
+}
+.dna-item:hover {
+  transform: translateX(3px);
+  border-color: rgba(102, 126, 234, 0.2);
+}
+.dna-rank {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 13px;
+  color: #fff;
+  background: rgba(148, 163, 184, 0.5);
+  flex-shrink: 0;
+}
+.dna-rank-1 { background: linear-gradient(135deg, #fbbf24, #f59e0b); }
+.dna-rank-2 { background: linear-gradient(135deg, #94a3b8, #64748b); }
+.dna-rank-3 { background: linear-gradient(135deg, #d97706, #b45309); }
+.dna-info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.dna-info-top {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+.dna-tag-name {
+  font-size: 14px;
+  font-weight: 600;
+  color: rgba(228, 235, 255, 0.9);
+}
+.dna-tag-cat {
+  font-size: 11px;
+  color: rgba(228, 235, 255, 0.35);
+  background: rgba(255, 255, 255, 0.06);
+  padding: 1px 8px;
+  border-radius: 6px;
+}
+.dna-bar-track {
+  height: 6px;
+  border-radius: 3px;
+  background: rgba(255, 255, 255, 0.06);
+  overflow: hidden;
+}
+.dna-bar-fill {
+  height: 100%;
+  border-radius: 3px;
+  transition: width 0.8s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+}
+.dna-pct {
+  width: 44px;
+  flex-shrink: 0;
+  font-size: 15px;
+  font-weight: 700;
+  color: rgba(228, 235, 255, 0.8);
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
 </style>

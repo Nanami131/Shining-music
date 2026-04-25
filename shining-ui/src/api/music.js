@@ -116,6 +116,12 @@ export default {
             params: { userId },
         });
     },
+    replaceCurrentPlaylist(userId, songIds) {
+        return api.post('/music/playlist/current/replace', {
+            userId,
+            songIds,
+        });
+    },
     clearPlaylistSongs(playlistId) {
         return api.post('/music/playlist/clear-songs', null, {
             params: { playlistId },

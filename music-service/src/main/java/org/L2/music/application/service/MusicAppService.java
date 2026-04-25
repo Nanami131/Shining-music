@@ -309,6 +309,17 @@ public class MusicAppService {
         return playlistService.clearUserCurrentPlaylist(userId);
     }
 
+    public R replaceCurrentPlaylistSongs(PlaylistSongListRequest request) {
+        if (request == null) {
+            return R.error("请求不能为空");
+        }
+        Long userId = UserContext.getUserId();
+        if (userId == null) {
+            userId = request.getUserId();
+        }
+        return playlistService.replaceCurrentPlaylistSongs(userId, request.getSongIds());
+    }
+
     public R clearPlaylistSongs(Long playlistId) {
         Long userId = UserContext.getUserId();
         if (userId == null) {

@@ -412,29 +412,36 @@ export default {
         alert('当前没有可播放歌曲');
         return;
       }
+      const songIds = this.songs
+        .map(song => Number(song.id))
+        .filter(id => !Number.isNaN(id) && id > 0);
+      if (!songIds.length) {
+        alert('当前没有可播放歌曲');
+        return;
+      }
       this.songOperating = true;
       try {
         this.$bus.emit('playSong', {
-          songId: this.songs[0].id,
-          playlist: this.songs.map(song => song.id),
+          songId: songIds[0],
+          playlist: songIds,
           index: 0,
           source: 'songs',
         });
 
         if (this.userId) {
-          await musicApi.clearCurrentPlaylist(this.userId).catch(() => {});
-          const currentResponse = await musicApi.getCurrentPlaylist(this.userId);
-          const currentPlaylistId = currentResponse.data?.data?.id;
-          if (currentPlaylistId) {
-            this.currentPlaylistId = currentPlaylistId;
-            for (const song of this.songs) {
-              await musicApi.managePlaylistSong({
-                playlistId: currentPlaylistId,
-                songId: song.id,
-                action: 'add',
-              }).catch(() => {});
+          const response = await musicApi.replaceCurrentPlaylist(this.userId, songIds);
+          if (!response.data?.passed) {
+            alert('播放队列同步失败：' + (response.data?.message || '未知错误'));
+          } else {
+            const result = response.data.data || {};
+            const synced = Number(result.synced ?? songIds.length);
+            const requested = Number(result.requested ?? songIds.length);
+            this.currentPlaylistId = result.playlistId || this.currentPlaylistId;
+            this.currentPlaylistSongIds = Array.isArray(result.syncedIds) ? result.syncedIds : songIds.slice(0, synced);
+            if (synced !== requested) {
+              console.warn('播放队列存在未同步歌曲', result.failedIds || []);
+              alert(`播放队列同步不完整：成功 ${synced}/${requested} 首`);
             }
-            this.currentPlaylistSongIds = this.songs.map(song => Number(song.id)).filter(id => !Number.isNaN(id));
           }
           this.$bus.emit('refreshCurrentPlaylist');
         }

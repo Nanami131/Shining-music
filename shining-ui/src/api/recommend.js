@@ -19,6 +19,9 @@ export default {
     getUserPreference(userId) {
         return api.get('/recommend/preference', { params: { userId } });
     },
+    getUserPreferenceProfile(userId) {
+        return api.get('/recommend/preference/profile', { params: { userId } });
+    },
     getSimilarSongs(songId, limit = 10) {
         return api.get('/recommend/similar', { params: { songId, limit } });
     },

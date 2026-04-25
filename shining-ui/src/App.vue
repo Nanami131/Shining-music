@@ -40,6 +40,6 @@ export default {
     linear-gradient(180deg, #e8eef5 0%, #dfe6ed 50%, #e8eef5 100%);
 }
 #app.has-bar {
-  padding-bottom: 80px;
+  padding-bottom: 104px;
 }
 </style>

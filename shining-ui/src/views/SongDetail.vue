@@ -10,6 +10,14 @@
           <div class="action-buttons">
             <button class="play-btn" @click="playSong">播放</button>
             <button
+              class="add-playlist-btn"
+              :class="{ added: addedToPlaylist }"
+              @click="addToCurrentPlaylist"
+              :title="addedToPlaylist ? '已加入当前歌单' : '加入当前歌单'"
+            >
+              {{ addedToPlaylist ? '✓ 已加入' : '+ 加入歌单' }}
+            </button>
+            <button
               class="favorite-btn"
               :class="{ active: song && song.favorite }"
               @click="toggleFavorite"
@@ -223,6 +231,8 @@ export default {
       expandedCategories: {},
       similarSongs: [],
       similarFetched: false,
+      addedToPlaylist: false,
+      currentPlaylistId: null,
       currentPlaybackSongId: null,
       playbackCurrentTime: 0,
       playbackDuration: 0,
@@ -279,6 +289,7 @@ export default {
   },
   watch: {
     '$route.params.id'() {
+      this.addedToPlaylist = false;
       this.loadSongDetails();
       this.applyPlaybackSnapshot();
     },
@@ -517,6 +528,30 @@ export default {
     playSong() {
       this.$bus.emit('playSong', { songId: this.song.id, source: 'songDetail' });
     },
+    async addToCurrentPlaylist() {
+      if (!this.song || !this.song.id || this.addedToPlaylist) return;
+      if (!this.userId) return;
+      if (!this.currentPlaylistId) {
+        try {
+          const res = await musicApi.getCurrentPlaylist(this.userId);
+          if (res.data?.passed && res.data.data?.playlistId) {
+            this.currentPlaylistId = res.data.data.playlistId;
+          }
+        } catch { /* silent */ }
+      }
+      if (!this.currentPlaylistId) return;
+      try {
+        const res = await musicApi.managePlaylistSong({
+          playlistId: this.currentPlaylistId,
+          songId: this.song.id,
+          action: 'add',
+        });
+        if (res.data?.passed) {
+          this.addedToPlaylist = true;
+          this.$bus.emit('refreshCurrentPlaylist');
+        }
+      } catch { /* silent */ }
+    },
     goToArtist() {
       if (this.song && this.song.artistId) {
         this.$router.push(`/singer/${this.song.artistId}`);
@@ -650,6 +685,26 @@ h2 {
 }
 .play-btn:hover {
   transform: scale(1.05);
+}
+.add-playlist-btn {
+  padding: 10px 16px;
+  border: 2px solid #4facfe;
+  border-radius: 4px;
+  background: transparent;
+  color: #4facfe;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.add-playlist-btn:hover {
+  background: rgba(79, 172, 254, 0.1);
+  transform: scale(1.05);
+}
+.add-playlist-btn.added {
+  border-color: #2ecc71;
+  color: #2ecc71;
+  cursor: default;
 }
 .favorite-btn {
   width: 44px;

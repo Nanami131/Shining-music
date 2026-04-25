@@ -10,6 +10,7 @@ import org.L2.common.minio.service.SimpleMinioService;
 import org.L2.common.context.UserContext;
 import org.L2.music.constant.Constants;
 import org.L2.music.domain.model.Playlist;
+import org.L2.music.domain.model.Song;
 import org.L2.music.infrastructure.PlaylistMapper;
 import org.L2.music.infrastructure.SongMapper;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -22,6 +23,7 @@ import org.springframework.data.redis.connection.DataType;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -82,7 +84,7 @@ public class PlaylistService {
         if ("add".equals(action)) {
             if (exists) return R.success("歌曲已在歌单中");
             Long size = stringRedisTemplate.opsForZSet().zCard(key);
-            if (size != null && size >= Constants.MAX_PLAYLIST_SIZE) {
+            if (isCapacityLimited(playlist) && size != null && size >= Constants.MAX_PLAYLIST_SIZE) {
                 return R.error("歌单歌曲数量已达上限");
             }
             stringRedisTemplate.opsForZSet().add(key, songKey, System.currentTimeMillis());
@@ -96,7 +98,7 @@ public class PlaylistService {
                 stringRedisTemplate.opsForZSet().remove(key, songKey);
             } else {
                 Long size = stringRedisTemplate.opsForZSet().zCard(key);
-                if (size != null && size >= Constants.MAX_PLAYLIST_SIZE) {
+                if (isCapacityLimited(playlist) && size != null && size >= Constants.MAX_PLAYLIST_SIZE) {
                     return R.error("歌单歌曲数量已达上限");
                 }
                 stringRedisTemplate.opsForZSet().add(key, songKey, System.currentTimeMillis());
@@ -387,6 +389,74 @@ public class PlaylistService {
         }
     }
 
+    public R replaceCurrentPlaylistSongs(Long userId, List<Long> songIds) {
+        if (userId == null) {
+            return R.error("用户ID不能为空");
+        }
+        if (songIds == null) {
+            return R.error("歌曲列表不能为空");
+        }
+        try {
+            Playlist playlist = ensureCurrentPlaylist(userId);
+            if (playlist == null || playlist.getId() == null) {
+                return R.error("初始化当前列表失败");
+            }
+
+            LinkedHashSet<Long> orderedSongIds = new LinkedHashSet<>();
+            for (Long songId : songIds) {
+                if (songId != null && songId > 0) {
+                    orderedSongIds.add(songId);
+                }
+            }
+
+            String key = "playlist:" + playlist.getId();
+            stringRedisTemplate.delete(key);
+            if (orderedSongIds.isEmpty()) {
+                return R.success("当前播放列表已清空", Map.of(
+                        "playlistId", playlist.getId(),
+                        "requested", songIds.size(),
+                        "synced", 0,
+                        "syncedIds", List.of(),
+                        "failedIds", List.of()
+                ));
+            }
+
+            List<Song> existingSongs = songMapper.selectByIds(orderedSongIds);
+            Set<Long> existingIds = new HashSet<>();
+            if (existingSongs != null) {
+                for (Song song : existingSongs) {
+                    if (song.getId() != null) {
+                        existingIds.add(song.getId());
+                    }
+                }
+            }
+
+            List<Long> failedIds = new ArrayList<>();
+            List<Long> syncedIds = new ArrayList<>();
+            int synced = 0;
+            double score = System.currentTimeMillis();
+            for (Long songId : orderedSongIds) {
+                if (!existingIds.contains(songId)) {
+                    failedIds.add(songId);
+                    continue;
+                }
+                stringRedisTemplate.opsForZSet().add(key, String.valueOf(songId), score++);
+                syncedIds.add(songId);
+                synced++;
+            }
+
+            return R.success("当前播放列表替换成功", Map.of(
+                    "playlistId", playlist.getId(),
+                    "requested", orderedSongIds.size(),
+                    "synced", synced,
+                    "syncedIds", syncedIds,
+                    "failedIds", failedIds
+            ));
+        } catch (Exception e) {
+            return R.error("替换当前播放列表失败" + e.getMessage());
+        }
+    }
+
     public R clearPlaylistSongs(Long playlistId, Long userId) {
         try {
             Playlist playlist = playlistMapper.selectById(playlistId);
@@ -439,6 +509,12 @@ public class PlaylistService {
 
     private boolean isDisplayType(Byte type) {
         return type != null && (type == Constants.PLAYLIST || type == Constants.ALBUM);
+    }
+
+    private boolean isCapacityLimited(Playlist playlist) {
+        return playlist == null
+                || playlist.getType() == null
+                || playlist.getType() != Constants.CURRENT_PLAYLIST;
     }
 
     /**

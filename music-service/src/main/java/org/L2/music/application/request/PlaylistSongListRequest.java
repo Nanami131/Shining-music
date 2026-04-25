@@ -9,6 +9,7 @@ import java.util.List;
 @Accessors(chain = true)
 public class PlaylistSongListRequest{
     private Long Id;
+    private Long userId;
     private Long playlistId;
     private List<Long> songIds;
 }

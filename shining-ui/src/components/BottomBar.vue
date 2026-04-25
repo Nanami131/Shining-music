@@ -92,12 +92,54 @@
               </div>
             </transition>
           </div>
+
         </div>
       </div>
 
-      <button class="toggle-lyrics" @click="toggleLyrics">
-        {{ showLyrics ? '收起歌词' : '展开歌词' }}
-      </button>
+      <div class="volume-area">
+        <div
+            class="volume-control"
+            @mouseenter="showVolumePanel = true"
+            @mouseleave="hideVolumePanel"
+            @focusin="showVolumePanel = true"
+            @focusout="hideVolumePanel"
+        >
+          <button
+              type="button"
+              class="icon-btn volume-btn"
+              :title="volume === 0 ? '取消静音' : '静音'"
+              :aria-label="volume === 0 ? '取消静音' : '静音'"
+              @click="toggleMute"
+          >
+            <span class="icon" :class="volumeIconClass"></span>
+          </button>
+          <transition name="volume-fade">
+            <div
+                v-if="showVolumePanel"
+                class="volume-panel"
+                :style="{ '--volume-percent': volumePercent + '%' }"
+            >
+              <span class="volume-value">{{ volumePercent }}%</span>
+              <input
+                  type="range"
+                  class="volume-slider"
+                  min="0"
+                  max="1"
+                  step="0.01"
+                  :value="volume"
+                  aria-label="音量"
+                  @input="setVolume($event.target.value)"
+              />
+            </div>
+          </transition>
+        </div>
+      </div>
+
+      <div class="player-tools">
+        <button class="toggle-lyrics" :class="{ open: showLyrics }" @click="toggleLyrics">
+          {{ showLyrics ? '收起歌词' : '展开歌词' }}
+        </button>
+      </div>
     </div>
 
     <div
@@ -286,18 +328,21 @@ export default {
       shuffleHistoryIndex: -1,
 
       // 歌词区域拖拽相关状态
-      lyricsPanelHeight: 200,
+      lyricsPanelHeight: 240,
       lyricsMinHeight: 130,
-      lyricsMaxHeight: 450,
+      lyricsMaxHeight: 520,
       isResizingLyrics: false,
       resizeStartY: 0,
-      resizeStartHeight: 200,
-      bottomFixedHeight: 90,
+      resizeStartHeight: 240,
+      bottomFixedHeight: 104,
       artistNameCache: {},
       playSource: 'unknown',
       audioContext: null,
       gainNode: null,
       audioSourceConnected: false,
+      volume: 1,
+      lastNonZeroVolume: 1,
+      showVolumePanel: false,
     };
   },
   computed: {
@@ -322,6 +367,14 @@ export default {
       if (this.playMode === 'sequential') return '列表循环';
       if (this.playMode === 'shuffle') return '随机播放';
       return '播完停止';
+    },
+    volumePercent() {
+      return Math.round(this.volume * 100);
+    },
+    volumeIconClass() {
+      if (this.volume <= 0) return 'volume-muted';
+      if (this.volume < 0.5) return 'volume-low';
+      return 'volume-high';
     },
     bottomBarStyle() {
       const base = this.bottomFixedHeight;
@@ -397,7 +450,7 @@ export default {
             this.playMode = state.playMode;
           }
           if (state.volume !== undefined && state.volume !== null) {
-            this.audio.volume = parseFloat(state.volume) || 1;
+            this.applyVolume(parseFloat(state.volume));
           }
           if (state.lastSongId) {
             const songId = parseInt(state.lastSongId);
@@ -425,7 +478,7 @@ export default {
         playMode: this.playMode,
         lastSongId: this.currentSong?.id ? String(this.currentSong.id) : '',
         lastPosition: String(this.audio.currentTime || 0),
-        volume: String(this.audio.volume ?? 1),
+        volume: String(this.volume),
       };
       musicApi.savePlaybackState(this.userId, state).catch(() => {});
     },
@@ -711,6 +764,38 @@ export default {
         this.debounceSavePlaybackState();
       }
       this.showPlayModeMenu = false;
+    },
+    clampVolume(value) {
+      const parsed = Number(value);
+      if (Number.isNaN(parsed)) return 1;
+      return Math.min(Math.max(parsed, 0), 1);
+    },
+    applyVolume(value) {
+      const nextVolume = this.clampVolume(value);
+      this.volume = nextVolume;
+      this.audio.volume = nextVolume;
+      if (nextVolume > 0) {
+        this.lastNonZeroVolume = nextVolume;
+      }
+    },
+    setVolume(value) {
+      this.applyVolume(value);
+      this.debounceSavePlaybackState();
+    },
+    toggleMute() {
+      if (this.volume > 0) {
+        this.applyVolume(0);
+      } else {
+        this.applyVolume(this.lastNonZeroVolume || 1);
+      }
+      this.showVolumePanel = true;
+      this.debounceSavePlaybackState();
+    },
+    hideVolumePanel(event) {
+      if (event && event.currentTarget && event.relatedTarget && event.currentTarget.contains(event.relatedTarget)) {
+        return;
+      }
+      this.showVolumePanel = false;
     },
     async loadCurrentPlaylist() {
       if (!this.userId) {
@@ -1205,7 +1290,7 @@ export default {
   bottom: 0;
   left: 0;
   right: 0;
-  height: 90px;
+  height: 104px;
   background: #fff;
   box-shadow: 0 -2px 4px rgba(0, 0, 0, 0.1);
   z-index: 1000;
@@ -1220,22 +1305,45 @@ export default {
 }
 
 .fixed-bar {
+  --bar-control-shift: 8px;
   position: absolute;
   bottom: 0;
   left: 0;
   right: 0;
   display: flex;
   align-items: center;
-  padding: 10px 20px;
-  gap: 20px;
-  height: 90px;
+  padding: 14px 24px;
+  gap: 22px;
+  height: 104px;
   z-index: 3;
+}
+.player-tools {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  flex: 0 0 160px;
+  transform: translate(-34px, var(--bar-control-shift));
+  z-index: 4;
+}
+.volume-area {
+  position: absolute;
+  right: 52px;
+  top: calc(50% + var(--bar-control-shift));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 46px;
+  height: 46px;
+  transform: translateY(-50%);
+  z-index: 8;
+  pointer-events: auto;
 }
 .song-info {
   display: flex;
   align-items: center;
   gap: 10px;
   flex: 1;
+  transform: translateY(var(--bar-control-shift));
 }
 .song-cover {
   width: 40px;
@@ -1290,6 +1398,7 @@ export default {
   display: flex;
   flex-direction: column;
   gap: 8px;
+  transform: translate(-14px, var(--bar-control-shift));
 }
 .progress-bar {
   display: flex;
@@ -1450,6 +1559,140 @@ export default {
   margin-top: 2px;
 }
 
+.volume-control {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 46px;
+  height: 46px;
+}
+.volume-control::before {
+  content: '';
+  position: absolute;
+  left: 50%;
+  bottom: 34px;
+  width: 58px;
+  height: 24px;
+  transform: translateX(-50%);
+}
+.volume-btn {
+  width: 38px;
+  height: 38px;
+  border-color: rgba(203, 213, 225, 0.9);
+  box-shadow: none;
+}
+.volume-btn:hover {
+  border-color: rgba(236, 65, 65, 0.75);
+  box-shadow: 0 0 12px rgba(236, 65, 65, 0.18);
+}
+.icon.volume-high,
+.icon.volume-low,
+.icon.volume-muted {
+  width: 21px;
+  height: 21px;
+}
+.icon.volume-high {
+  background-image: url("data:image/svg+xml,%3Csvg width='24' height='24' viewBox='0 0 24 24' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M4.8 9.6v4.8h3.35L13 18.2V5.8L8.15 9.6H4.8z' fill='%23374751'/%3E%3Cpath d='M16.1 8.25c1.3 1.78 1.3 5.72 0 7.5M18.7 6.15c2.25 3.05 2.25 8.65 0 11.7' stroke='%23374751' stroke-width='1.65' stroke-linecap='round'/%3E%3C/svg%3E");
+}
+.icon.volume-low {
+  background-image: url("data:image/svg+xml,%3Csvg width='24' height='24' viewBox='0 0 24 24' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M4.8 9.6v4.8h3.35L13 18.2V5.8L8.15 9.6H4.8z' fill='%23374751'/%3E%3Cpath d='M16.1 8.25c1.3 1.78 1.3 5.72 0 7.5' stroke='%23374751' stroke-width='1.65' stroke-linecap='round'/%3E%3C/svg%3E");
+}
+.icon.volume-muted {
+  background-image: url("data:image/svg+xml,%3Csvg width='24' height='24' viewBox='0 0 24 24' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M4.8 9.6v4.8h3.35L13 18.2V5.8L8.15 9.6H4.8z' fill='%23ec4141'/%3E%3Cpath d='M16.4 9.6l4.2 4.2M20.6 9.6l-4.2 4.2' stroke='%23ec4141' stroke-width='1.8' stroke-linecap='round'/%3E%3C/svg%3E");
+}
+.volume-panel {
+  position: absolute;
+  left: 50%;
+  bottom: 42px;
+  width: 44px;
+  height: 148px;
+  padding: 11px 0 13px;
+  border: 1px solid rgba(226, 232, 240, 0.95);
+  border-radius: 4px;
+  background: #ffffff;
+  box-shadow: 0 8px 22px rgba(15, 23, 42, 0.16);
+  transform: translateX(-50%);
+  z-index: 10000;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+.volume-panel::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  bottom: -6px;
+  width: 10px;
+  height: 10px;
+  border-right: 1px solid rgba(226, 232, 240, 0.95);
+  border-bottom: 1px solid rgba(226, 232, 240, 0.95);
+  background: #ffffff;
+  transform: translateX(-50%) rotate(45deg);
+}
+.volume-value {
+  height: 16px;
+  line-height: 16px;
+  color: #64748b;
+  font-size: 11px;
+  font-weight: 500;
+}
+.volume-slider {
+  position: absolute;
+  left: 50%;
+  bottom: 58px;
+  width: 96px;
+  height: 18px;
+  border-radius: 999px;
+  appearance: none;
+  background: linear-gradient(
+      to right,
+      #ec4141 0%,
+      #ec4141 var(--volume-percent),
+      #d7dce2 var(--volume-percent),
+      #d7dce2 100%
+  );
+  background-size: 100% 4px;
+  background-position: center;
+  background-repeat: no-repeat;
+  cursor: pointer;
+  touch-action: none;
+  transform: translateX(-50%) rotate(-90deg);
+  transform-origin: center;
+  z-index: 1;
+}
+.volume-slider:focus {
+  outline: none;
+}
+.volume-slider::-webkit-slider-thumb {
+  appearance: none;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  border: 3px solid #ec4141;
+  background: #ffffff;
+  box-shadow: 0 2px 6px rgba(236, 65, 65, 0.28);
+}
+.volume-slider::-moz-range-thumb {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  border: 3px solid #ec4141;
+  background: #ffffff;
+  box-shadow: 0 2px 6px rgba(236, 65, 65, 0.28);
+}
+
+.volume-fade-enter-active,
+.volume-fade-leave-active {
+  transition: opacity 0.15s ease, transform 0.15s ease;
+}
+.volume-fade-enter,
+.volume-fade-enter-from,
+.volume-fade-leave-to {
+  opacity: 0;
+  transform: translateX(-50%) translateY(4px);
+}
+
 .fade-enter-active,
 .fade-leave-active {
   transition: opacity 0.15s ease, transform 0.15s ease;
@@ -1461,13 +1704,53 @@ export default {
 }
 
 .toggle-lyrics {
-  padding: 6px 12px;
-  border: none;
-  border-radius: 4px;
-  background: linear-gradient(to right, #4facfe, #00f2fe);
-  color: white;
-  font-size: 14px;
+  position: relative;
+  height: 32px;
+  padding: 0 12px 0 14px;
+  border: 1px solid rgba(148, 163, 184, 0.32);
+  border-radius: 999px;
+  background:
+      radial-gradient(circle at 0 0, rgba(186, 230, 253, 0.72), transparent 58%),
+      radial-gradient(circle at 100% 100%, rgba(244, 219, 255, 0.72), transparent 58%),
+      rgba(255, 255, 255, 0.82);
+  color: #475569;
+  font-size: 13px;
+  line-height: 30px;
   cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.78),
+      0 5px 14px rgba(15, 23, 42, 0.08);
+  transition: color 0.18s ease, border-color 0.18s ease, box-shadow 0.18s ease, transform 0.18s ease;
+}
+.toggle-lyrics::after {
+  content: '';
+  width: 6px;
+  height: 6px;
+  border-right: 1.5px solid currentColor;
+  border-bottom: 1.5px solid currentColor;
+  transform: rotate(-135deg);
+  transform-origin: center;
+  margin-top: 3px;
+  transition: transform 0.18s ease, margin-top 0.18s ease;
+}
+.toggle-lyrics:hover {
+  color: #0f172a;
+  border-color: rgba(96, 165, 250, 0.68);
+  box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.9),
+      0 0 16px rgba(56, 189, 248, 0.22),
+      0 8px 20px rgba(15, 23, 42, 0.1);
+  transform: translateY(-1px);
+}
+.toggle-lyrics.open::after {
+  transform: rotate(45deg);
+  margin-top: -3px;
+}
+.toggle-lyrics.open {
+  border-color: rgba(244, 114, 182, 0.42);
 }
 
 /* 歌词区域和拖拽条 */

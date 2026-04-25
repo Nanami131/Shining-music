@@ -232,6 +232,15 @@ public class MusicController {
         return musicAppService.clearUserCurrentPlaylist(userId);
     }
 
+    @PostMapping("/playlist/current/replace")
+    public R replaceCurrentPlaylistSongs(@RequestBody PlaylistSongListRequest request) {
+        Long trustedUserId = UserContext.getUserId();
+        if (trustedUserId != null) {
+            request.setUserId(trustedUserId);
+        }
+        return musicAppService.replaceCurrentPlaylistSongs(request);
+    }
+
     @PostMapping("/playlist/clear-songs")
     public R clearPlaylistSongs(@RequestParam("playlistId") Long playlistId) {
         return musicAppService.clearPlaylistSongs(playlistId);
@@ -451,4 +460,3 @@ public class MusicController {
         return musicAppService.savePlaybackState(userId, state);
     }
 }
-
