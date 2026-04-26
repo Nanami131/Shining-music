@@ -420,36 +420,39 @@ export default {
         return;
       }
       this.songOperating = true;
-      try {
-        this.$bus.emit('playSong', {
-          songId: songIds[0],
-          playlist: songIds,
-          index: 0,
-          source: 'songs',
-        });
-
-        if (this.userId) {
+      let serverSynced = false;
+      if (this.userId) {
+        try {
           const response = await musicApi.replaceCurrentPlaylist(this.userId, songIds);
           if (!response.data?.passed) {
-            alert('播放队列同步失败：' + (response.data?.message || '未知错误'));
+            console.warn('播放队列同步失败', response.data?.message);
           } else {
             const result = response.data.data || {};
             const synced = Number(result.synced ?? songIds.length);
             const requested = Number(result.requested ?? songIds.length);
             this.currentPlaylistId = result.playlistId || this.currentPlaylistId;
             this.currentPlaylistSongIds = Array.isArray(result.syncedIds) ? result.syncedIds : songIds.slice(0, synced);
+            serverSynced = true;
             if (synced !== requested) {
               console.warn('播放队列存在未同步歌曲', result.failedIds || []);
-              alert(`播放队列同步不完整：成功 ${synced}/${requested} 首`);
             }
           }
+        } catch (error) {
+          console.error('播放全部服务端同步异常', error);
+        }
+        if (serverSynced) {
           this.$bus.emit('refreshCurrentPlaylist');
         }
-      } catch (error) {
-        console.error('播放全部服务端同步异常', error);
-      } finally {
-        this.songOperating = false;
       }
+
+      this.$bus.emit('playSong', {
+        songId: songIds[0],
+        playlist: songIds,
+        index: 0,
+        source: 'songs',
+        skipServerSync: serverSynced,
+      });
+      this.songOperating = false;
     },
     goToSong(songId) {
       this.$router.push(`/song/${songId}`);

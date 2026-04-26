@@ -560,7 +560,7 @@ export default {
       }
     },
 
-    async handlePlaySongEvent({ songId, playlist, index, source }) {
+    async handlePlaySongEvent({ songId, playlist, index, source, skipServerSync }) {
       this.playSource = source || 'unknown';
       if (this.userId) {
         await this.ensureCurrentPlaylistReady();
@@ -570,7 +570,7 @@ export default {
         this.playlist = playlist;
         this.currentIndex =
             typeof index === 'number' ? index : playlist.findIndex(id => id === songId);
-        if (this.userId && playlist.length > 1) {
+        if (this.userId && playlist.length > 1 && !skipServerSync) {
           this.batchLoadEventPlaylist(playlist);
         }
       } else if (this.userId && this.currentPlaylistSongs.length) {
@@ -955,6 +955,7 @@ export default {
       this.shuffleHistory = [];
       this.shuffleHistoryIndex = -1;
       this._playlistSetByEvent = false;
+      this.savePlaybackStateNow();
       try {
         const response = await musicApi.clearCurrentPlaylist(this.userId);
         if (!response.data || !response.data.passed) {

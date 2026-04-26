@@ -120,6 +120,8 @@ export default {
         return api.post('/music/playlist/current/replace', {
             userId,
             songIds,
+        }, {
+            timeout: 30000,
         });
     },
     clearPlaylistSongs(playlistId) {
