@@ -97,6 +97,8 @@ public class RecommendationService {
         return R.success("Item-CF 相似度矩阵构建完成", Map.of("songsWithSimilarity", count));
     }
 
+    private static final double CROSS_LANG_PENALTY = 0.30;
+
     public R findSimilarSongs(Long songId, int limit) {
         String cacheKey = SIMILAR_CACHE_PREFIX + songId;
         try {
@@ -118,6 +120,8 @@ public class RecommendationService {
             return R.error("该歌曲暂无标签向量，无法计算相似度");
         }
 
+        int targetLangDim = tagVectorService.getPrimaryLanguageDim(targetVector);
+
         List<Long> allSongIds = songTagMapper.selectAllDistinctSongIds();
         float[] weights = tagVectorService.getDimensionWeights();
         int[] nonLangDims = tagVectorService.getNonLanguageDimIndices();
@@ -137,8 +141,14 @@ public class RecommendationService {
 
         List<Map<String, Object>> scored = new ArrayList<>();
         for (int i = 0; i < vectorSongIds.size(); i++) {
-            double sim = adjustedWeightedCosine(targetVector, allVectors.get(i), globalMean, weights, nonLangDims);
+            float[] candidateVector = allVectors.get(i);
+            double sim = adjustedWeightedCosine(targetVector, candidateVector, globalMean, weights, nonLangDims);
             if (sim > 0) {
+                boolean sameLang = targetLangDim >= 0
+                        && tagVectorService.getPrimaryLanguageDim(candidateVector) == targetLangDim;
+                if (!sameLang) {
+                    sim *= (1.0 - CROSS_LANG_PENALTY);
+                }
                 Map<String, Object> m = new HashMap<>();
                 m.put("songId", vectorSongIds.get(i));
                 m.put("similarity", Math.round(sim * 10000.0) / 10000.0);
