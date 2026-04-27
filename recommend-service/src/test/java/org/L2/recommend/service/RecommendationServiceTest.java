@@ -68,7 +68,7 @@ class RecommendationServiceTest {
             String json = objectMapper.writeValueAsString(cached);
             when(valueOperations.get(startsWith("recommend:daily:cb:"))).thenReturn(json);
 
-            R result = recommendationService.recommendContentBased(1L, 10);
+            R result = recommendationService.recommendContentBased(1L, 10, false);
             assertTrue(result.getPassed());
             assertTrue(result.getMessage().contains("今日缓存"));
             verify(contentBasedStrategy, never()).recommend(anyLong(), anyInt(), anySet());
@@ -82,7 +82,7 @@ class RecommendationServiceTest {
             when(statisticsClient.getGlobalTopSongs(10)).thenReturn(
                     R.success("ok", List.of(Map.of("songId", 11, "playCount", 100))));
 
-            R result = recommendationService.recommendContentBased(1L, 10);
+            R result = recommendationService.recommendContentBased(1L, 10, false);
 
             assertTrue(result.getPassed());
             assertTrue(result.getMessage().contains("热门歌曲"));
@@ -99,7 +99,7 @@ class RecommendationServiceTest {
             when(contentBasedStrategy.recommend(eq(1L), eq(10), anySet()))
                     .thenReturn(List.of(Map.of("songId", 42L, "similarity", 0.8)));
 
-            R result = recommendationService.recommendContentBased(1L, 10);
+            R result = recommendationService.recommendContentBased(1L, 10, false);
             assertTrue(result.getPassed());
             assertTrue(result.getMessage().contains("内容推荐"));
             verify(valueOperations).set(anyString(), anyString(), any());
@@ -113,7 +113,7 @@ class RecommendationServiceTest {
             when(statisticsClient.getGlobalTopSongs(10)).thenReturn(
                     R.success("ok", List.of(Map.of("songId", 11, "playCount", 100))));
 
-            R result = recommendationService.recommendContentBased(1L, 10);
+            R result = recommendationService.recommendContentBased(1L, 10, false);
             assertTrue(result.getPassed());
             assertTrue(result.getMessage().contains("热门歌曲"));
         }
@@ -129,7 +129,7 @@ class RecommendationServiceTest {
             when(statisticsClient.getGlobalTopSongs(10)).thenReturn(
                     R.success("ok", List.of(Map.of("songId", 11, "playCount", 100))));
 
-            R result = recommendationService.recommendContentBased(1L, 10);
+            R result = recommendationService.recommendContentBased(1L, 10, false);
 
             assertTrue(result.getPassed());
             assertTrue(result.getMessage().contains("热门歌曲"));
@@ -148,7 +148,7 @@ class RecommendationServiceTest {
             String json = objectMapper.writeValueAsString(cached);
             when(valueOperations.get(startsWith("recommend:daily:cf:"))).thenReturn(json);
 
-            R result = recommendationService.recommendItemCF(1L, 10);
+            R result = recommendationService.recommendItemCF(1L, 10, false);
             assertTrue(result.getPassed());
             assertTrue(result.getMessage().contains("今日缓存"));
         }
@@ -159,7 +159,7 @@ class RecommendationServiceTest {
             when(valueOperations.get(anyString())).thenReturn(null);
             when(itemCFStrategy.isAvailable(1L)).thenReturn(false);
 
-            R result = recommendationService.recommendItemCF(1L, 10);
+            R result = recommendationService.recommendItemCF(1L, 10, false);
             assertFalse(result.getPassed());
             assertTrue(result.getMessage().contains("矩阵"));
         }
@@ -174,7 +174,7 @@ class RecommendationServiceTest {
             when(statisticsClient.getGlobalTopSongs(10)).thenReturn(
                     R.success("ok", List.of(Map.of("songId", 99, "playCount", 50))));
 
-            R result = recommendationService.recommendItemCF(1L, 10);
+            R result = recommendationService.recommendItemCF(1L, 10, false);
             assertTrue(result.getPassed());
             assertTrue(result.getMessage().contains("热门歌曲"));
         }
@@ -188,7 +188,7 @@ class RecommendationServiceTest {
             when(itemCFStrategy.recommend(eq(1L), eq(10), anySet()))
                     .thenReturn(List.of(Map.of("songId", 77L, "similarity", 0.6)));
 
-            R result = recommendationService.recommendItemCF(1L, 10);
+            R result = recommendationService.recommendItemCF(1L, 10, false);
             assertTrue(result.getPassed());
             assertTrue(result.getMessage().contains("协同过滤"));
         }
@@ -222,7 +222,7 @@ class RecommendationServiceTest {
             when(statisticsClient.getGlobalTopSongs(10)).thenReturn(
                     R.success("ok", Collections.emptyList()));
 
-            R result = recommendationService.recommend(1L, 10);
+            R result = recommendationService.recommend(1L, 10, false);
             assertTrue(result.getPassed());
             verify(contentBasedStrategy).isAvailable(1L);
         }

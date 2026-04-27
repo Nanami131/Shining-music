@@ -25,16 +25,38 @@ public class TagVectorService {
     private static final String SIMILAR_CACHE_PREFIX = "song:similar:";
 
     /**
-     * Ribecky, Abeßer & Lukashevich (2021) ISMIR — Triplet prediction accuracy per dimension.
-     * Language is handled as a pre-filter, so it gets weight 0 in vector similarity.
+     * Per-dimension weights for weighted cosine similarity.
+     * Language dims are 0 (handled as a pre-filter outside similarity).
      */
-    private static final Map<String, Double> RIBECKY_CATEGORY_SCORES = Map.of(
-            "language", 0.0,
-            "source",   0.7535,
-            "mood",     0.7535,
-            "vocal",    0.6901,
-            "audio",    0.5798,
-            "era",      0.7559
+    private static final Map<String, Double> DIMENSION_WEIGHTS = Map.ofEntries(
+            Map.entry("lang_ja",         0.00),
+            Map.entry("lang_zh",         0.00),
+            Map.entry("lang_en",         0.00),
+            Map.entry("instrumental",    0.00),
+            Map.entry("src_anime",       0.14),
+            Map.entry("src_game",        0.07),
+            Map.entry("src_vocaloid",    0.21),
+            Map.entry("src_original",    0.02),
+            Map.entry("src_cover",       0.06),
+            Map.entry("src_idol",        0.10),
+            Map.entry("mood_valence",    0.24),
+            Map.entry("mood_arousal",    0.54),
+            Map.entry("mood_dominance",  0.18),
+            Map.entry("mood_joy",        0.28),
+            Map.entry("mood_anger",      0.08),
+            Map.entry("mood_sadness",    0.36),
+            Map.entry("mood_fear",       0.04),
+            Map.entry("mood_disgust",    0.03),
+            Map.entry("vocal_male",      1.00),
+            Map.entry("vocal_female",    1.00),
+            Map.entry("vocal_synth",     0.32),
+            Map.entry("tempo",           0.62),
+            Map.entry("energy",          0.72),
+            Map.entry("danceability",    0.47),
+            Map.entry("acousticness",    0.41),
+            Map.entry("valence",         0.16),
+            Map.entry("speechiness",     0.12),
+            Map.entry("era_normalized",  0.05)
     );
 
     @Autowired
@@ -73,22 +95,13 @@ public class TagVectorService {
         List<Integer> langDims = new ArrayList<>();
         List<Integer> nonLangDims = new ArrayList<>();
 
-        Map<String, List<TagDefinition>> byCategory = dimensions.stream()
-                .collect(Collectors.groupingBy(TagDefinition::getCategory));
-
-        for (Map.Entry<String, List<TagDefinition>> entry : byCategory.entrySet()) {
-            String cat = entry.getKey();
-            List<TagDefinition> dims = entry.getValue();
-            double catScore = RIBECKY_CATEGORY_SCORES.getOrDefault(cat, 0.5);
-            double perDimWeight = dims.isEmpty() ? 0 : catScore / dims.size();
-
-            for (TagDefinition dim : dims) {
-                weights[dim.getDimIndex()] = (float) perDimWeight;
-                if ("language".equals(cat)) {
-                    langDims.add(dim.getDimIndex());
-                } else {
-                    nonLangDims.add(dim.getDimIndex());
-                }
+        for (TagDefinition dim : dimensions) {
+            double w = DIMENSION_WEIGHTS.getOrDefault(dim.getName(), 0.1);
+            weights[dim.getDimIndex()] = (float) w;
+            if ("language".equals(dim.getCategory())) {
+                langDims.add(dim.getDimIndex());
+            } else {
+                nonLangDims.add(dim.getDimIndex());
             }
         }
 
