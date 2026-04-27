@@ -53,14 +53,18 @@ public class RecommendationService {
     @Autowired
     private ObjectMapper objectMapper;
 
-    public R recommend(Long userId, int limit) {
-        return recommendContentBased(userId, limit);
+    public R recommend(Long userId, int limit, boolean force) {
+        return recommendContentBased(userId, limit, force);
     }
 
-    public R recommendContentBased(Long userId, int limit) {
+    public R recommendContentBased(Long userId, int limit, boolean force) {
         String cacheKey = CACHE_PREFIX_CB + userId;
-        R cached = tryReadCache(cacheKey, "内容推荐");
-        if (cached != null) return cached;
+        if (force) {
+            stringRedisTemplate.delete(cacheKey);
+        } else {
+            R cached = tryReadCache(cacheKey, "内容推荐");
+            if (cached != null) return cached;
+        }
 
         if (!contentBasedStrategy.isAvailable(userId)) {
             return fallbackToHotSongs(limit);
@@ -75,10 +79,14 @@ public class RecommendationService {
         return R.success("推荐成功（内容推荐）", results);
     }
 
-    public R recommendItemCF(Long userId, int limit) {
+    public R recommendItemCF(Long userId, int limit, boolean force) {
         String cacheKey = CACHE_PREFIX_CF + userId;
-        R cached = tryReadCache(cacheKey, "协同过滤");
-        if (cached != null) return cached;
+        if (force) {
+            stringRedisTemplate.delete(cacheKey);
+        } else {
+            R cached = tryReadCache(cacheKey, "协同过滤");
+            if (cached != null) return cached;
+        }
 
         if (!itemCFStrategy.isAvailable(userId)) {
             return R.error("Item-CF 相似度矩阵尚未构建，请先调用 /recommend/itemcf/rebuild");

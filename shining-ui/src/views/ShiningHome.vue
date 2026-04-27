@@ -98,7 +98,7 @@
         </div>
         <div class="panel-head-actions">
           <button class="ghost" @click="playAllCF" v-if="cfRecommendations.length">一键播放全部</button>
-          <button class="ghost" @click="refreshCFRecommendations" :disabled="cfLoading || cfRebuilding">重试</button>
+          <button class="ghost" @click="refreshCFRecommendations(true)" :disabled="cfLoading || cfRebuilding">重试</button>
           <button class="ghost" @click="rebuildCFMatrix" :disabled="cfLoading || cfRebuilding">
             {{ cfRebuilding ? '重建中...' : '重建矩阵' }}
           </button>
@@ -381,20 +381,20 @@ export default {
       }
       return enriched;
     },
-    async loadRecommendations(userId) {
+    async loadRecommendations(userId, force = false) {
       try {
-        const res = await recommendApi.getDailyRecommendations(userId, 10);
+        const res = await recommendApi.getDailyRecommendations(userId, 10, force);
         if (res?.data?.passed && Array.isArray(res.data.data)) {
           this.dailyRecommendations = await this.enrichRecommendations(res.data.data);
         }
       } catch (e) { /* silent */ }
     },
-    async loadCFRecommendations(userId) {
+    async loadCFRecommendations(userId, force = false) {
       this.cfLoading = true;
       this.cfError = '';
       this.cfMessage = '';
       try {
-        const res = await recommendApi.getItemCFRecommendations(userId, 10);
+        const res = await recommendApi.getItemCFRecommendations(userId, 10, force);
         if (res?.data?.passed && Array.isArray(res.data.data)) {
           this.cfRecommendations = await this.enrichRecommendations(res.data.data);
           if (!this.cfRecommendations.length) {
@@ -411,11 +411,11 @@ export default {
         this.cfLoading = false;
       }
     },
-    async refreshCFRecommendations() {
+    async refreshCFRecommendations(force = false) {
       let userBase = {};
       try { userBase = JSON.parse(localStorage.getItem('userBase') || '{}'); } catch (e) { /* ignore */ }
       if (!userBase.id) return;
-      await this.loadCFRecommendations(userBase.id);
+      await this.loadCFRecommendations(userBase.id, force);
     },
     async rebuildCFMatrix() {
       if (this.cfRebuilding) return;
@@ -463,7 +463,7 @@ export default {
       try { userBase = JSON.parse(localStorage.getItem('userBase') || '{}'); } catch (e) { /* ignore */ }
       if (userBase.id) {
         this.dailyRecommendations = [];
-        await this.loadRecommendations(userBase.id);
+        await this.loadRecommendations(userBase.id, true);
       }
     },
     playRecSong(rec, idx) {

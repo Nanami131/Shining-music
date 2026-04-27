@@ -7,11 +7,11 @@ export default {
     getSongTags(songId) {
         return api.get(`/recommend/songs/${songId}/tags`);
     },
-    getDailyRecommendations(userId, limit = 20) {
-        return api.get('/recommend/daily', { params: { userId, limit } });
+    getDailyRecommendations(userId, limit = 20, force = false) {
+        return api.get('/recommend/daily', { params: { userId, limit, force } });
     },
-    getItemCFRecommendations(userId, limit = 20) {
-        return api.get('/recommend/daily/item-cf', { params: { userId, limit } });
+    getItemCFRecommendations(userId, limit = 20, force = false) {
+        return api.get('/recommend/daily/item-cf', { params: { userId, limit, force } });
     },
     rebuildItemCFMatrix() {
         return api.post('/recommend/itemcf/rebuild');

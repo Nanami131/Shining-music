@@ -112,20 +112,23 @@ public class RecommendController {
 
     @GetMapping("/daily")
     public R getDailyRecommendation(@RequestParam("userId") Long userId,
-                                    @RequestParam(value = "limit", defaultValue = "20") int limit) {
-        return recommendationService.recommend(userId, limit);
+                                    @RequestParam(value = "limit", defaultValue = "20") int limit,
+                                    @RequestParam(value = "force", defaultValue = "false") boolean force) {
+        return recommendationService.recommend(userId, limit, force);
     }
 
     @GetMapping("/daily/content-based")
     public R getContentBasedRecommendation(@RequestParam("userId") Long userId,
-                                           @RequestParam(value = "limit", defaultValue = "20") int limit) {
-        return recommendationService.recommendContentBased(userId, limit);
+                                           @RequestParam(value = "limit", defaultValue = "20") int limit,
+                                           @RequestParam(value = "force", defaultValue = "false") boolean force) {
+        return recommendationService.recommendContentBased(userId, limit, force);
     }
 
     @GetMapping("/daily/item-cf")
     public R getItemCFRecommendation(@RequestParam("userId") Long userId,
-                                     @RequestParam(value = "limit", defaultValue = "20") int limit) {
-        return recommendationService.recommendItemCF(userId, limit);
+                                     @RequestParam(value = "limit", defaultValue = "20") int limit,
+                                     @RequestParam(value = "force", defaultValue = "false") boolean force) {
+        return recommendationService.recommendItemCF(userId, limit, force);
     }
 
     @PostMapping("/itemcf/rebuild")
