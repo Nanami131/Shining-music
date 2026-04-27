@@ -126,11 +126,15 @@ public class RecommendationService {
         float[] weights = tagVectorService.getDimensionWeights();
         int[] nonLangDims = tagVectorService.getNonLanguageDimIndices();
 
-        List<float[]> allVectors = new ArrayList<>();
-        List<Long> vectorSongIds = new ArrayList<>();
-        for (Long sid : allSongIds) {
-            if (sid.equals(songId)) continue;
-            float[] v = tagVectorService.getVector(sid);
+        List<Long> candidateIds = allSongIds.stream()
+                .filter(sid -> !sid.equals(songId))
+                .toList();
+        Map<Long, float[]> vectorMap = tagVectorService.getVectors(candidateIds);
+
+        List<float[]> allVectors = new ArrayList<>(vectorMap.size());
+        List<Long> vectorSongIds = new ArrayList<>(vectorMap.size());
+        for (Long sid : candidateIds) {
+            float[] v = vectorMap.get(sid);
             if (v != null) {
                 allVectors.add(v);
                 vectorSongIds.add(sid);

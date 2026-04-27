@@ -178,6 +178,30 @@ public class TagVectorService {
         }
     }
 
+    /**
+     * Batch-fetch vectors for multiple songs using Redis multiGet (single round-trip).
+     * Returns a map from songId to its vector; songs without vectors are omitted.
+     */
+    public Map<Long, float[]> getVectors(List<Long> songIds) {
+        if (songIds == null || songIds.isEmpty()) return Collections.emptyMap();
+        List<String> keys = songIds.stream()
+                .map(id -> VECTOR_KEY_PREFIX + id)
+                .collect(Collectors.toList());
+        List<String> values = stringRedisTemplate.opsForValue().multiGet(keys);
+        Map<Long, float[]> result = new HashMap<>();
+        if (values == null) return result;
+        for (int i = 0; i < songIds.size(); i++) {
+            String json = values.get(i);
+            if (json == null) continue;
+            try {
+                result.put(songIds.get(i), objectMapper.readValue(json, float[].class));
+            } catch (Exception e) {
+                log.warn("Failed to parse vector for songId={}", songIds.get(i), e);
+            }
+        }
+        return result;
+    }
+
     public float[] getDimensionWeights() {
         return dimensionWeights;
     }

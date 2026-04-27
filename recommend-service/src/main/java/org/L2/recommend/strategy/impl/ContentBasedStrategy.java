@@ -45,10 +45,11 @@ public class ContentBasedStrategy implements RecommendationStrategy {
         float[] weights = tagVectorService.getDimensionWeights();
         int[] nonLangDims = tagVectorService.getNonLanguageDimIndices();
 
-        List<float[]> allVectors = new ArrayList<>();
-        List<Long> vectorSongIds = new ArrayList<>();
+        Map<Long, float[]> vectorMap = tagVectorService.getVectors(allSongIds);
+        List<float[]> allVectors = new ArrayList<>(vectorMap.size());
+        List<Long> vectorSongIds = new ArrayList<>(vectorMap.size());
         for (Long songId : allSongIds) {
-            float[] sv = tagVectorService.getVector(songId);
+            float[] sv = vectorMap.get(songId);
             if (sv != null) {
                 allVectors.add(sv);
                 vectorSongIds.add(songId);
@@ -130,6 +131,18 @@ public class ContentBasedStrategy implements RecommendationStrategy {
                 }
             }
             quotas.put(bestDim, quotas.get(bestDim) + (limit - assigned));
+        } else if (assigned > limit) {
+            int excess = assigned - limit;
+            List<Map.Entry<Integer, Double>> sorted = userLangDist.entrySet().stream()
+                    .sorted(Comparator.comparingDouble(Map.Entry::getValue))
+                    .collect(Collectors.toList());
+            for (Map.Entry<Integer, Double> e : sorted) {
+                if (excess <= 0) break;
+                int cur = quotas.getOrDefault(e.getKey(), 0);
+                int reduce = Math.min(cur, excess);
+                quotas.put(e.getKey(), cur - reduce);
+                excess -= reduce;
+            }
         }
 
         List<Map<String, Object>> result = new ArrayList<>();
