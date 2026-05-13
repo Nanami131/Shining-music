@@ -1872,8 +1872,8 @@ export default {
   min-width: 0;
 }
 .playlist-item .info .name {
-  display: block;
-  width: 100%;
+  display: inline;
+  max-width: 100%;
   margin: 0;
   padding: 0;
   border: none;

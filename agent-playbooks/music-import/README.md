@@ -416,6 +416,8 @@ python3 agent-playbooks/music-import/create_singer.py \
 
 详细规则见 `agent-playbooks/song-tagging/README.md` Step 2: Vocal 章节。
 
+**注意**：singers.sex 仍需正确填写（用于元数据展示），但 Vocal 标签已改为 SVM 音频分析产生浮点值，不再使用 singers.sex 的二值映射。
+
 > **!!!!! 禁止一切批量操作！每首歌必须逐首手动处理并独立验证！禁止编写或运行任何批量循环脚本！ !!!!!**
 
 ### 2026-04-10 事故记录
@@ -827,7 +829,7 @@ POST /api/music/search/sync
 □ Step 5: 歌曲标签打标（⚠️ 必须严格遵守 song-tagging/README.md）
   □ 运行 batch_tag.py 或手动逐首打标
 > **!!!!! 禁止一切批量操作！每首歌必须逐首手动处理并独立验证！禁止编写或运行任何批量循环脚本！ !!!!!**
-  □ 确认 28 维标签全部写入（Language 4 + Source 6 + Vocal 3 + Audio 6 + Mood 8 + Era 1）
+  □ 确认 28 维标签全部写入（Language 4 + Source 6 + Vocal 3(SVM浮点) + Audio 6 + Mood 8 + Era 1）
   □ POST /recommend/songs/rebuild-all 重建向量
   □ 验证：SELECT song_id, COUNT(*) FROM song_tags WHERE song_id IN (...) GROUP BY song_id → 每首 28
 > **!!!!! 禁止一切批量操作！每首歌必须逐首手动处理并独立验证！禁止编写或运行任何批量循环脚本！ !!!!!**

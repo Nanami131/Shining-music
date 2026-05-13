@@ -46,3 +46,7 @@ docker-data/
 logs/
 agent-playbooks/download/
 sql/elasticsearch_music_search.json
+
+### Test files ###
+**/src/test/
+tests/

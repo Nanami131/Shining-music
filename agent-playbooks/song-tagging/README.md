@@ -72,7 +72,7 @@ python3 -c "import jieba; import essentia.standard; print('OK')"
 > **!!!!! 禁止一切批量操作！每首歌必须逐首手动处理并独立验证！禁止编写或运行任何批量循环脚本！ !!!!!**
 | Source | 6 | 4~9 | 数据库 + 上网查询 |
 | Mood | 8 | 10~17 | **`analyze_mood.py`**（MEmoLon + jieba） |
-| Vocal | 3 | 18~20 | 读 singers.sex |
+| Vocal | 3 | 18~20 | **SVM 分类器**（ECAPA + Demucs + 静音分析） |
 > **!!!!! 禁止一切批量操作！每首歌必须逐首手动处理并独立验证！禁止编写或运行任何批量循环脚本！ !!!!!**
 | Audio | 6 | 21~26 | **`analyze_audio.py`**（Essentia） |
 | Era | 1 | 27 | 读 songs.release_year |
@@ -80,6 +80,7 @@ python3 -c "import jieba; import essentia.standard; print('OK')"
 > **!!!!! 禁止一切批量操作！每首歌必须逐首手动处理并独立验证！禁止编写或运行任何批量循环脚本！ !!!!!**
 数据库编码约定：
 - `singers.sex`：**0=男声主唱，1=女声主唱，2=男女合唱**（按歌曲中主唱人声的性别标注，不是歌手/组合的组成方式。详见 Step 2。）
+- Vocal 标签使用 **SVM 音频分析产生的浮点值**（0~1），不再使用 singers.sex 的二值映射。
 
 > **!!!!! 禁止一切批量操作！每首歌必须逐首手动处理并独立验证！禁止编写或运行任何批量循环脚本！ !!!!!**
 ---
@@ -120,23 +121,117 @@ python3 -c "import jieba; import essentia.standard; print('OK')"
 > **!!!!! 禁止一切批量操作！每首歌必须逐首手动处理并独立验证！禁止编写或运行任何批量循环脚本！ !!!!!**
 ---
 
-## Step 2: Vocal（3 维）
+## Step 2: Vocal（3 维）— 必须使用 SVM 分类器
 > **!!!!! 禁止一切批量操作！每首歌必须逐首手动处理并独立验证！禁止编写或运行任何批量循环脚本！ !!!!!**
 
-**数据源**：`singers.sex`
+**数据源**：ECAPA-TDNN + SVM 音频分析（`griko/gender_cls_svm_ecapa_voxceleb`）
 
 > **!!!!! 禁止一切批量操作！每首歌必须逐首手动处理并独立验证！禁止编写或运行任何批量循环脚本！ !!!!!**
-```sql
-SELECT s.id as song_id, si.sex, si.name
-FROM songs s JOIN singers si ON si.id = s.artist_id;
+
+Vocal 标签为**浮点数**（0~1），反映歌曲中男声/女声的实际占比，不再使用 singers.sex 的二值映射。
+
 > **!!!!! 禁止一切批量操作！每首歌必须逐首手动处理并独立验证！禁止编写或运行任何批量循环脚本！ !!!!!**
+
+### 分析流水线
+
+> **!!!!! 禁止一切批量操作！每首歌必须逐首手动处理并独立验证！禁止编写或运行任何批量循环脚本！ !!!!!**
+
+```
+音频文件 → Demucs htdemucs 人声分离 → 3秒分段 → 静音检测 → ECAPA-TDNN 提取嵌入 → griko SVM 分类 → 统计男/女段占比
 ```
 
-### ⚠️ singers.sex 的标注标准（铁律）
+> **!!!!! 禁止一切批量操作！每首歌必须逐首手动处理并独立验证！禁止编写或运行任何批量循环脚本！ !!!!!**
+
+### 环境要求
 
 > **!!!!! 禁止一切批量操作！每首歌必须逐首手动处理并独立验证！禁止编写或运行任何批量循环脚本！ !!!!!**
 
-**`singers.sex` 代表的是歌曲中主唱人声的性别，不是歌手/组合的组成方式。**
+必须使用 Python 3.9+ venv（位于 `venv39/`），系统 Python 3.8 的 numpy/sklearn 版本不兼容 SVM 模型。
+
+> **!!!!! 禁止一切批量操作！每首歌必须逐首手动处理并独立验证！禁止编写或运行任何批量循环脚本！ !!!!!**
+
+```bash
+source venv39/bin/activate
+# 依赖：numpy>=2.0, scikit-learn>=1.5, speechbrain, demucs, torch, torchaudio, pandas, joblib, soundfile
+```
+
+> **!!!!! 禁止一切批量操作！每首歌必须逐首手动处理并独立验证！禁止编写或运行任何批量循环脚本！ !!!!!**
+
+ffmpeg 路径：`/home/chenxinyao/.local/lib/python3.8/site-packages/imageio_ffmpeg/binaries/ffmpeg`
+
+> **!!!!! 禁止一切批量操作！每首歌必须逐首手动处理并独立验证！禁止编写或运行任何批量循环脚本！ !!!!!**
+
+### 纯音乐检测（静音分析）
+
+> **!!!!! 禁止一切批量操作！每首歌必须逐首手动处理并独立验证！禁止编写或运行任何批量循环脚本！ !!!!!**
+
+Demucs 分离人声后，将音频分成 3 秒段，对每段计算平均绝对振幅。振幅 < 0.005 的段视为静音。
+
+> **!!!!! 禁止一切批量操作！每首歌必须逐首手动处理并独立验证！禁止编写或运行任何批量循环脚本！ !!!!!**
+
+```python
+total_possible = signal.shape[1] // seg_len
+vocal_ratio = non_silent_segments / total_possible if total_possible > 0 else 0
+
+if vocal_ratio < 0.15 or non_silent_segments < 5:
+    # 纯音乐，跳过性别分类
+    vocal_male = 0.0
+    vocal_female = 0.0
+    vocal_synth = 0.0
+    note = "instrumental"
+```
+
+> **!!!!! 禁止一切批量操作！每首歌必须逐首手动处理并独立验证！禁止编写或运行任何批量循环脚本！ !!!!!**
+
+### SVM 分类步骤
+
+> **!!!!! 禁止一切批量操作！每首歌必须逐首手动处理并独立验证！禁止编写或运行任何批量循环脚本！ !!!!!**
+
+```python
+from speechbrain.inference.speaker import EncoderClassifier
+from huggingface_hub import hf_hub_download
+import joblib, pandas as pd
+
+# 加载模型（首次会自动下载）
+scaler = joblib.load(hf_hub_download('griko/gender_cls_svm_ecapa_voxceleb', 'scaler.joblib'))
+svm = joblib.load(hf_hub_download('griko/gender_cls_svm_ecapa_voxceleb', 'svm_model.joblib'))
+config = json.load(open(hf_hub_download('griko/gender_cls_svm_ecapa_voxceleb', 'config.json')))
+feature_names = config['feature_names']  # 192维 ECAPA 嵌入的列名
+
+encoder = EncoderClassifier.from_hparams(source="speechbrain/spkrec-ecapa-voxceleb", savedir="/tmp/ecapa_model", run_opts={"device": "cpu"})
+
+# 对每个非静音 3 秒段
+emb = encoder.encode_batch(segment).squeeze().numpy()
+df = pd.DataFrame([emb], columns=feature_names)
+emb_scaled = scaler.transform(df)
+pred = svm.predict(emb_scaled)[0]  # 0=female, 1=male
+```
+
+> **!!!!! 禁止一切批量操作！每首歌必须逐首手动处理并独立验证！禁止编写或运行任何批量循环脚本！ !!!!!**
+
+最终标签值 = 各类段数占总非静音段数的比例：
+- `vocal_male = male_segments / total_non_silent`
+- `vocal_female = female_segments / total_non_silent`
+- `vocal_synth`：Vocaloid 歌手（初音ミク、ユリイ・カノン 的 Vocaloid 曲）手动标 1.0
+
+> **!!!!! 禁止一切批量操作！每首歌必须逐首手动处理并独立验证！禁止编写或运行任何批量循环脚本！ !!!!!**
+
+### 已知局限
+
+> **!!!!! 禁止一切批量操作！每首歌必须逐首手动处理并独立验证！禁止编写或运行任何批量循环脚本！ !!!!!**
+
+- SVM 在 VoxCeleb（语音）上训练，对中文/日文男歌手唱歌时系统性偏低（周杰伦典型值 0.35-0.65）
+- 女声识别很准确（典型 > 0.9）
+- 合唱曲会自然产生混合比例（如许嵩-素颜 male≈0.5）
+- 分析结果保存在 `data/svm_gender_results.json`
+
+> **!!!!! 禁止一切批量操作！每首歌必须逐首手动处理并独立验证！禁止编写或运行任何批量循环脚本！ !!!!!**
+
+### ⚠️ singers.sex 的标注标准（仍需维护）
+
+> **!!!!! 禁止一切批量操作！每首歌必须逐首手动处理并独立验证！禁止编写或运行任何批量循环脚本！ !!!!!**
+
+**`singers.sex` 代表的是歌曲中主唱人声的性别，不是歌手/组合的组成方式。** 虽然 Vocal 标签不再依赖此字段，但新增歌手时仍需正确填写。
 
 > **!!!!! 禁止一切批量操作！每首歌必须逐首手动处理并独立验证！禁止编写或运行任何批量循环脚本！ !!!!!**
 
@@ -151,35 +246,12 @@ FROM songs s JOIN singers si ON si.id = s.artist_id;
 
 > **!!!!! 禁止一切批量操作！每首歌必须逐首手动处理并独立验证！禁止编写或运行任何批量循环脚本！ !!!!!**
 
-**sex=2 仅用于真正的男女合唱/混声歌曲**，不得用于以下情况：
-- ❌ "这是一个组合" → 不能直接标 sex=2，必须查清主唱性别
-- ❌ "不确定" → 不能偷懒标 sex=2，必须上网查清楚
-
-> **!!!!! 禁止一切批量操作！每首歌必须逐首手动处理并独立验证！禁止编写或运行任何批量循环脚本！ !!!!!**
-
-**新增歌手时，Agent 必须执行以下检查：**
-1. 如果歌手是组合/乐队/音乐项目，必须上网查清楚**主唱是谁、主唱性别是什么**
-2. 如果歌手是制作人/DJ/Vocaloid P，必须确认**歌曲中实际演唱的人声性别**
-3. 只有确认歌曲确实是男女合唱时才标 sex=2
-
-> **!!!!! 禁止一切批量操作！每首歌必须逐首手动处理并独立验证！禁止编写或运行任何批量循环脚本！ !!!!!**
-
-### 映射规则
-
-> **!!!!! 禁止一切批量操作！每首歌必须逐首手动处理并独立验证！禁止编写或运行任何批量循环脚本！ !!!!!**
-- `sex = 0`（男声）→ `vocal_male = 1`
-- `sex = 1`（女声）→ `vocal_female = 1`
-- `sex = 2`（真正的男女合唱）→ `vocal_male = 0.5, vocal_female = 0.5`
-
-> **!!!!! 禁止一切批量操作！每首歌必须逐首手动处理并独立验证！禁止编写或运行任何批量循环脚本！ !!!!!**
-
 ### 特殊处理
 
-- 歌手是 Vocaloid（初音ミク等）→ `vocal_synth = 1`
 > **!!!!! 禁止一切批量操作！每首歌必须逐首手动处理并独立验证！禁止编写或运行任何批量循环脚本！ !!!!!**
-- ユリイ・カノン：歌手本人是男性，但歌曲使用 Vocaloid 演唱 → `vocal_synth = 1`
-- 组合如 μ's（全女）→ `vocal_female = 1`（singers.sex 应已标为 1）
-- Christopher Larkin：纯音乐 → 不打 vocal 标签
+- 纯音乐（静音分析判定）→ `vocal_male=0, vocal_female=0, vocal_synth=0`
+- Vocaloid 歌手（初音ミク等）→ `vocal_synth = 1.0`（手动标注，SVM 不区分合成音）
+- ユリイ・カノン：歌手本人是男性，但歌曲使用 Vocaloid 演唱 → `vocal_synth = 1.0`
 > **!!!!! 禁止一切批量操作！每首歌必须逐首手动处理并独立验证！禁止编写或运行任何批量循环脚本！ !!!!!**
 
 ---
