@@ -71,19 +71,29 @@ for i in "${!SERVICES[@]}"; do
     echo $! > "$LOG_DIR/$svc.pid"
 done
 
-info "Waiting for backend services..."
+info "Waiting for backend services (max 90s)..."
+DEADLINE=$(( $(date +%s) + 90 ))
+PENDING=()
 for i in "${!SERVICES[@]}"; do
-    svc="${SERVICES[$i]}"
-    port="${PORTS[$i]}"
-    for j in $(seq 1 40); do
-        ss -tlnp 2>/dev/null | grep -q ":$port " && break
-        sleep 2
+    PENDING+=("$i")
+done
+
+while [[ ${#PENDING[@]} -gt 0 && $(date +%s) -lt $DEADLINE ]]; do
+    STILL_PENDING=()
+    for i in "${PENDING[@]}"; do
+        port="${PORTS[$i]}"
+        if ss -tlnp 2>/dev/null | grep -q ":$port "; then
+            ok "${SERVICES[$i]} :$port ready"
+        else
+            STILL_PENDING+=("$i")
+        fi
     done
-    if ss -tlnp 2>/dev/null | grep -q ":$port "; then
-        ok "$svc :$port ready"
-    else
-        err "$svc :$port failed to start — check $LOG_DIR/$svc.log"
-    fi
+    PENDING=("${STILL_PENDING[@]+"${STILL_PENDING[@]}"}")
+    [[ ${#PENDING[@]} -gt 0 ]] && sleep 2
+done
+
+for i in "${PENDING[@]+"${PENDING[@]}"}"; do
+    err "${SERVICES[$i]} :${PORTS[$i]} failed to start — check $LOG_DIR/${SERVICES[$i]}.log"
 done
 
 # ---------- 3. Frontend ----------

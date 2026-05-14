@@ -573,8 +573,33 @@ UPDATE songs SET genre = 'J-Pop', release_year = 2023, duration = 226 WHERE id =
 | `release_year` | 发行年份（用于 Era 标签计算） | ✅ |
 > **!!!!! 禁止一切批量操作！每首歌必须逐首手动处理并独立验证！禁止编写或运行任何批量循环脚本！ !!!!!**
 | `duration` | 时长（秒），从 mutagen 读取 | ✅ |
+| `volume_gain` | 响度补偿增益（dB），uploadSong 上传时自动计算 | 自动 |
+| `lufs` | 积分响度（LUFS），uploadSong 上传时自动写入 | 自动 |
 
 不填 `genre` 和 `release_year` 会导致标签系统的 Source 和 Era 维度无法自动补全。
+`volume_gain` 和 `lufs` 由 uploadSong API 自动填充，无需手动设置。
+
+> **!!!!! 禁止一切批量操作！每首歌必须逐首手动处理并独立验证！禁止编写或运行任何批量循环脚本！ !!!!!**
+
+### volume_gain 与 LUFS（响度归一化）
+
+前端播放器通过 WebAudio GainNode 应用 `volume_gain`（dB），使所有歌曲播放响度趋于一致。
+
+**自动处理**：`uploadSong` API 上传音频时，后端 `LufsAnalyzer` 自动用 ffmpeg loudnorm 测量积分响度（LUFS），写入 `songs.lufs` 列，并以当前库均值 LUFS 为目标计算 `volume_gain = AVG(lufs) - lufs`。**新导入的歌曲不需要手动计算 volume_gain。**
+
+**全库重算 API**：当库均值因新歌加入发生漂移时，调用 `POST /music/recalc-volume-gain`（直连 8082）或 `POST /api/music/recalc-volume-gain`（走 gateway，需鉴权）可一键重算所有歌曲的 volume_gain。
+
+**手动测量**（仅在音源不经过 uploadSong API 时需要）:
+
+```bash
+# 测量音频的积分响度
+ffmpeg -hide_banner -nostats -i "<audio_file_or_url>" -af loudnorm=print_format=json -f null /dev/null 2>&1
+# 输出 JSON 中的 "input_i" 字段即为 LUFS 值
+# volume_gain = 库均值LUFS - input_i_lufs
+```
+
+**⚠️ 替换音源后 volume_gain 会自动更新**（通过 uploadSong API 上传时），无需手动处理。
+
 > **!!!!! 禁止一切批量操作！每首歌必须逐首手动处理并独立验证！禁止编写或运行任何批量循环脚本！ !!!!!**
 
 ---
@@ -872,8 +897,10 @@ POST /api/music/search/sync
 
 □ Step 3: 补全元数据
   □ UPDATE songs SET genre, release_year, duration WHERE id IN (...)
+  □ volume_gain 已由 uploadSong API 自动计算写入，无需手动处理
+  □ 若需全库重算（新歌导致均值漂移）：POST /music/recalc-volume-gain
 > **!!!!! 禁止一切批量操作！每首歌必须逐首手动处理并独立验证！禁止编写或运行任何批量循环脚本！ !!!!!**
-  □ 验证：SELECT id, title, genre, release_year, duration FROM songs WHERE ...
+  □ 验证：SELECT id, title, genre, release_year, duration, volume_gain FROM songs WHERE ...
 
 □ Step 4: POST /api/music/search/sync 全量同步 ES
 > **!!!!! 禁止一切批量操作！每首歌必须逐首手动处理并独立验证！禁止编写或运行任何批量循环脚本！ !!!!!**

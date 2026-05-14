@@ -19,6 +19,7 @@ public class Song {
     private Integer duration;
     private Byte status;
     private Float volumeGain;
+    private Float lufs;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 

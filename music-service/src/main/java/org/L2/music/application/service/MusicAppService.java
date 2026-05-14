@@ -562,6 +562,14 @@ public class MusicAppService {
         }
     }
 
+    public R recalcVolumeGain() {
+        int rows = songService.recalcVolumeGain();
+        if (rows < 0) {
+            return R.error("库中无 LUFS 数据，请先上传歌曲");
+        }
+        return R.success("重算完成，更新 " + rows + " 首歌曲", rows);
+    }
+
     private R verifyMd5(MultipartFile file, String md5) {
         if (md5 == null || md5.isBlank()) {
             return null;

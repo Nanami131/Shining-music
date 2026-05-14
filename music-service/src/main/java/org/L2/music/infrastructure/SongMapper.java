@@ -21,4 +21,8 @@ public interface SongMapper {
     List<Song> query(Song song);
 
     void deleteBySingerId(Long singerId);
+
+    Float selectAvgLufs();
+
+    int recalcVolumeGain(@Param("targetLufs") float targetLufs);
 }

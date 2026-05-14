@@ -28,6 +28,8 @@ import java.util.Set;
 @Service
 public class SongService {
 
+    private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(SongService.class);
+
     @Autowired
     private SongMapper songMapper;
     @Autowired
@@ -40,6 +42,8 @@ public class SongService {
     private SimpleMinioService simpleMinioService;
     @Autowired
     private StringRedisTemplate stringRedisTemplate;
+    @Autowired
+    private LufsAnalyzer lufsAnalyzer;
 
     private void migrateSetToZSetIfNeeded(String key) {
         DataType type = stringRedisTemplate.type(key);
@@ -121,6 +125,17 @@ public class SongService {
         String fileName = FileNameGenerateService.defineNamePath(originalFilename, "/song/", id, 5);
         String fileUrl = minioProperties.getEndpoint() + "/" + minioProperties.getBucketName() + fileName;
         Song song = new Song().setId(id).setFileUrl(fileUrl).setUpdatedAt(LocalDateTime.now());
+
+        Float lufs = lufsAnalyzer.measure(file);
+        if (lufs != null) {
+            song.setLufs(lufs);
+            Float avgLufs = songMapper.selectAvgLufs();
+            if (avgLufs != null) {
+                float gain = Math.round((avgLufs - lufs) * 100f) / 100f;
+                song.setVolumeGain(gain);
+            }
+        }
+
         String result = simpleMinioService.uploadFile(file, fileName);
         if (!"上传成功".equals(result)) {
             return R.error(result);
@@ -215,6 +230,20 @@ public class SongService {
 
     public List<Song> listSongs() {
         return songMapper.query(new Song());
+    }
+
+    /**
+     * 以库均值 LUFS 为目标重新计算所有已测 LUFS 歌曲的 volume_gain。
+     *
+     * @return 受影响的行数；库中无 LUFS 数据时返回 -1
+     */
+    public int recalcVolumeGain() {
+        Float avgLufs = songMapper.selectAvgLufs();
+        if (avgLufs == null) {
+            return -1;
+        }
+        log.info("Recalculating volume_gain with target LUFS = {}", avgLufs);
+        return songMapper.recalcVolumeGain(avgLufs);
     }
 }
 

@@ -399,6 +399,11 @@ public class MusicController {
         return musicAppService.fullSyncToEs();
     }
 
+    @PostMapping("/recalc-volume-gain")
+    public R recalcVolumeGain() {
+        return musicAppService.recalcVolumeGain();
+    }
+
     /**
      * 测试接口，用于初期测试
      * @return 测试结果
