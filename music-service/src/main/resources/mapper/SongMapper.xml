@@ -41,7 +41,7 @@
             <if test="fileUrl != null and fileUrl != ''">file_url = #{fileUrl},</if>
             <if test="coverUrl != null and coverUrl != ''">cover_url = #{coverUrl},</if>
             <if test="duration != null">duration = #{duration},</if>
-            <if test="status != null and status != ''">status = #{status},</if>
+            <if test="status != null">status = #{status},</if>
             <if test="volumeGain != null">volume_gain = #{volumeGain},</if>
             <if test="lufs != null">lufs = #{lufs},</if>
             <if test="createdAt != null">created_at = #{createdAt},</if>

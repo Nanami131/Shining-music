@@ -51,11 +51,11 @@ public class UserPreferenceService {
      *
      * @param weight 播放权重（完整播放=1.0，未完成=0.3）
      */
-    public void incrementalUpdate(Long userId, Long songId, double weight) {
+    public boolean incrementalUpdate(Long userId, Long songId, double weight) {
         float[] songVector = tagVectorService.getVector(songId);
         if (songVector == null) {
             log.warn("Song vector not found for songId={}, skipping preference update", songId);
-            return;
+            return false;
         }
 
         int dims = songVector.length;
@@ -73,6 +73,7 @@ public class UserPreferenceService {
         saveToRedis(key, newVector, current.playCount + weight);
         log.debug("Updated preference for userId={}, playCount={}, effectiveCap={}",
                 userId, current.playCount + weight, effectiveOldCount);
+        return true;
     }
 
     /**
@@ -175,7 +176,7 @@ public class UserPreferenceService {
             return 0;
         }
 
-        R historyResult = statisticsClient.getPlayHistory(userId, 50);
+        R historyResult = statisticsClient.getPlayHistory(userId, 5000);
         if (historyResult == null || historyResult.getPassed() == null || !historyResult.getPassed()) {
             log.warn("Failed to get play history for userId={}", userId);
             return 0;

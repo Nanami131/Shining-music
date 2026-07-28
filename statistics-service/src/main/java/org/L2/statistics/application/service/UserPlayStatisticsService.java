@@ -163,7 +163,7 @@ public class UserPlayStatisticsService {
         if (userId == null) {
             return R.error("用户ID不能为空");
         }
-        int size = Math.min(Math.max(limit, 1), 50);
+        int size = Math.min(Math.max(limit, 1), 5000);
         var records = userPlayRecordDomainService.recentPlaysByUser(userId, size);
         return R.success("获取播放历史成功", records);
     }

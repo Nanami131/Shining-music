@@ -37,7 +37,9 @@
     </delete>
 
     <select id="selectAllDistinctSongIds" resultType="java.lang.Long">
-        SELECT DISTINCT song_id FROM song_tags
+        SELECT DISTINCT st.song_id FROM song_tags st
+        INNER JOIN songs s ON st.song_id = s.id
+        WHERE s.status = 1
     </select>
 
 </mapper>

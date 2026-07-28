@@ -12,7 +12,6 @@ import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 
 import java.util.*;
-import java.util.concurrent.TimeUnit;
 
 /**
  * Item-based Collaborative Filtering (Sarwar et al., 2001).
@@ -182,8 +181,7 @@ public class ItemCFStrategy implements RecommendationStrategy {
                 }
                 try {
                     String json = objectMapper.writeValueAsString(simMap);
-                    stringRedisTemplate.opsForValue().set(
-                            SIM_KEY_PREFIX + songA, json, 7, TimeUnit.DAYS);
+                    stringRedisTemplate.opsForValue().set(SIM_KEY_PREFIX + songA, json);
                     count++;
                 } catch (Exception e) {
                     log.error("Failed to store similarity for song {}", songA, e);
@@ -192,7 +190,7 @@ public class ItemCFStrategy implements RecommendationStrategy {
         }
 
         stringRedisTemplate.opsForValue().set(MATRIX_VERSION_KEY,
-                String.valueOf(System.currentTimeMillis()), 7, TimeUnit.DAYS);
+                String.valueOf(System.currentTimeMillis()));
 
         log.info("Item-CF similarity matrix built: {} songs with similarities", count);
         return count;

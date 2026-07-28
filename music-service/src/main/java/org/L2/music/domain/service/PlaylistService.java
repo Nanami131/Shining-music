@@ -18,8 +18,6 @@ import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
-import org.springframework.data.redis.connection.DataType;
-
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -43,20 +41,6 @@ public class PlaylistService {
     @Autowired
     private SimpleMinioService simpleMinioService;
 
-    private void migrateSetToZSetIfNeeded(String key) {
-        DataType type = stringRedisTemplate.type(key);
-        if (type == DataType.SET) {
-            Set<String> members = stringRedisTemplate.opsForSet().members(key);
-            stringRedisTemplate.delete(key);
-            if (members != null && !members.isEmpty()) {
-                double score = System.currentTimeMillis();
-                for (String member : members) {
-                    stringRedisTemplate.opsForZSet().add(key, member, score++);
-                }
-            }
-        }
-    }
-
     public R managePlaylistSong(Long playlistId, Long songId) throws Exception {
         return managePlaylistSong(playlistId, songId, null);
     }
@@ -77,7 +61,6 @@ public class PlaylistService {
             return ownerCheck;
         }
         String key = "playlist:" + playlistId;
-        migrateSetToZSetIfNeeded(key);
         String songKey = String.valueOf(songId);
         Double score = stringRedisTemplate.opsForZSet().score(key, songKey);
         boolean exists = score != null;
@@ -116,7 +99,6 @@ public class PlaylistService {
             return false;
         }
         String key = "playlist:" + favorite.getId();
-        migrateSetToZSetIfNeeded(key);
         Double score = stringRedisTemplate.opsForZSet().score(key, String.valueOf(songId));
         return score != null;
     }
@@ -130,7 +112,6 @@ public class PlaylistService {
             return Set.of();
         }
         String key = "playlist:" + favorite.getId();
-        migrateSetToZSetIfNeeded(key);
         Set<String> rawIds = stringRedisTemplate.opsForZSet().range(key, 0, -1);
         if (rawIds == null || rawIds.isEmpty()) {
             return Set.of();
@@ -157,7 +138,6 @@ public class PlaylistService {
             return R.error("初始化收藏歌单失败");
         }
         String key = "playlist:" + favorite.getId();
-        migrateSetToZSetIfNeeded(key);
         String songKey = String.valueOf(songId);
         Double score = stringRedisTemplate.opsForZSet().score(key, songKey);
         boolean favoriteNow;

@@ -14,7 +14,6 @@ import org.springframework.stereotype.Service;
 
 import jakarta.annotation.PostConstruct;
 import java.util.*;
-import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 @Service
@@ -149,7 +148,7 @@ public class TagVectorService {
 
         try {
             String json = objectMapper.writeValueAsString(vector);
-            stringRedisTemplate.opsForValue().set(VECTOR_KEY_PREFIX + songId, json, 7, TimeUnit.DAYS);
+            stringRedisTemplate.opsForValue().set(VECTOR_KEY_PREFIX + songId, json);
         } catch (Exception e) {
             log.error("Failed to store vector for song {}", songId, e);
             throw new RuntimeException("向量写入 Redis 失败: " + e.getMessage(), e);

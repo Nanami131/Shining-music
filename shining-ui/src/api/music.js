@@ -60,6 +60,9 @@ export default {
         }
         return api.get('/music/songs', { params });
     },
+    getRandomSongs(limit = 20) {
+        return api.get('/music/songs/random', { params: { limit } });
+    },
     getSingers() {
         return api.get('/music/singers');
     },

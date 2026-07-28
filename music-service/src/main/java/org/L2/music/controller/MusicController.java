@@ -73,6 +73,11 @@ public class MusicController {
     public R listSongs(@RequestParam(value = "userId", required = false) Long userId) {
         return musicAppService.listSongs(userId);
     }
+
+    @GetMapping("/songs/random")
+    public R randomSongs(@RequestParam(value = "limit", defaultValue = "20") int limit) {
+        return musicAppService.randomSongs(limit);
+    }
     /**
      * 下载歌曲
      * @param songId 歌曲ID
@@ -124,6 +129,12 @@ public class MusicController {
     public R updateSongDuration(@PathVariable("songId") Long songId,
                                 @RequestParam("duration") Integer duration) {
         return musicAppService.updateSongDuration(songId, duration);
+    }
+
+    @PostMapping("/song/{songId}/status")
+    public R updateSongStatus(@PathVariable("songId") Long songId,
+                              @RequestParam("status") Byte status) {
+        return musicAppService.updateSongStatus(songId, status);
     }
 
     @PostMapping("/play/end")

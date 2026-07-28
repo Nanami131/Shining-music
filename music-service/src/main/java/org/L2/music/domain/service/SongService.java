@@ -14,7 +14,6 @@ import org.L2.music.infrastructure.PlaylistMapper;
 import org.L2.music.infrastructure.SingerMapper;
 import org.L2.music.infrastructure.SongMapper;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.data.redis.connection.DataType;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
@@ -45,20 +44,6 @@ public class SongService {
     @Autowired
     private LufsAnalyzer lufsAnalyzer;
 
-    private void migrateSetToZSetIfNeeded(String key) {
-        DataType type = stringRedisTemplate.type(key);
-        if (type == DataType.SET) {
-            Set<String> members = stringRedisTemplate.opsForSet().members(key);
-            stringRedisTemplate.delete(key);
-            if (members != null && !members.isEmpty()) {
-                double score = System.currentTimeMillis();
-                for (String member : members) {
-                    stringRedisTemplate.opsForZSet().add(key, member, score++);
-                }
-            }
-        }
-    }
-
     public R getSongInfo(Long songId) {
         // TODO: 可考虑增加热度统计和缓存
         try {
@@ -84,7 +69,6 @@ public class SongService {
     public R getPlaylistSongs(Long playlistId) {
         try {
             String key = "playlist:" + playlistId;
-            migrateSetToZSetIfNeeded(key);
             Set<String> songIdSet = stringRedisTemplate.opsForZSet().range(key, 0, -1);
             if (songIdSet == null || songIdSet.isEmpty()) {
                 return R.success("获取歌单歌曲成功", new ArrayList<>());
@@ -229,7 +213,22 @@ public class SongService {
     }
 
     public List<Song> listSongs() {
-        return songMapper.query(new Song());
+        Song filter = new Song();
+        filter.setStatus((byte) 1);
+        return songMapper.query(filter);
+    }
+
+    public R updateSongStatus(Long songId, byte status) {
+        Song existing = songMapper.selectById(songId);
+        if (existing == null) {
+            return R.error("歌曲不存在");
+        }
+        Song update = new Song()
+                .setId(songId)
+                .setStatus(status)
+                .setUpdatedAt(LocalDateTime.now());
+        songMapper.update(update);
+        return R.success(status == 1 ? "歌曲已启用" : "歌曲已禁用", songId);
     }
 
     /**

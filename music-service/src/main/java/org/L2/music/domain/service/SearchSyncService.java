@@ -51,7 +51,9 @@ public class SearchSyncService {
      */
     public void fullSync() {
         log.info("Starting full sync to ES...");
-        List<Song> allSongs = songMapper.query(new Song());
+        Song filter = new Song();
+        filter.setStatus((byte) 1);
+        List<Song> allSongs = songMapper.query(filter);
         if (allSongs.isEmpty()) {
             log.info("No songs found, skip sync");
             return;
@@ -116,7 +118,7 @@ public class SearchSyncService {
      */
     public void syncSong(Long songId) {
         Song song = songMapper.selectById(songId);
-        if (song == null) {
+        if (song == null || song.getStatus() == null || song.getStatus() == 0) {
             searchService.deleteDoc(songId);
             return;
         }

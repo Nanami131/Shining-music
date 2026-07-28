@@ -59,13 +59,17 @@ public class PlayEventConsumer {
         double effectiveWeight = baseWeight * decayMultiplier;
 
         try {
-            userPreferenceService.incrementalUpdate(userId, songId, effectiveWeight);
-            log.info("Preference updated: userId={}, songId={}, baseWeight={}, playCount={}, decay={}, effective={}",
-                    userId, songId,
-                    String.format("%.2f", baseWeight),
-                    playCount,
-                    String.format("%.3f", decayMultiplier),
-                    String.format("%.3f", effectiveWeight));
+            boolean updated = userPreferenceService.incrementalUpdate(userId, songId, effectiveWeight);
+            if (updated) {
+                log.info("Preference updated: userId={}, songId={}, baseWeight={}, playCount={}, decay={}, effective={}",
+                        userId, songId,
+                        String.format("%.2f", baseWeight),
+                        playCount,
+                        String.format("%.3f", decayMultiplier),
+                        String.format("%.3f", effectiveWeight));
+            } else {
+                log.warn("Preference update skipped: userId={}, songId={} (song vector missing)", userId, songId);
+            }
         } catch (Exception e) {
             log.error("Failed to update preference for userId={}, songId={}", userId, songId, e);
             throw e;

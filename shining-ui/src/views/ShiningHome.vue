@@ -137,6 +137,49 @@
       </div>
     </section>
 
+    <section class="recommend-panel random-panel">
+      <div class="panel-head">
+        <div>
+          <h2>随机漫游 · 20首随机歌曲</h2>
+          <p>从全部曲库中随机抽取，发现意想不到的好歌。</p>
+        </div>
+        <div class="panel-head-actions">
+          <button class="ghost" @click="playAllRandom" v-if="randomSongs.length">一键播放全部</button>
+          <button class="ghost" @click="saveRandomAsPlaylist" v-if="randomSongs.length" :disabled="randomSaving">
+            {{ randomSaving ? '保存中...' : '保存为歌单' }}
+          </button>
+          <button class="ghost" @click="refreshRandom" :disabled="randomLoading">
+            {{ randomLoading ? '加载中...' : '换一批' }}
+          </button>
+        </div>
+      </div>
+      <div v-if="randomSongs.length" class="recommend-grid">
+        <article
+          v-for="(song, idx) in randomSongs"
+          :key="'rand-' + song.id"
+          class="recommend-card"
+          @click="goTo(`/song/${song.id}`)"
+        >
+          <div class="rec-rank random-rank">{{ idx + 1 }}</div>
+          <div class="rec-cover" :style="{ backgroundImage: song.coverUrl ? `url(${song.coverUrl})` : '' }">
+            <span v-if="!song.coverUrl" class="rec-icon">♪</span>
+          </div>
+          <div class="rec-info">
+            <h4>{{ song.title }}</h4>
+            <p class="rec-artist">{{ song.artistName || '未知歌手' }}</p>
+          </div>
+          <button
+            class="rec-play-btn"
+            title="播放"
+            @click.stop="playRandomSong(song, idx)"
+          >▶</button>
+        </article>
+      </div>
+      <div v-else class="recommend-placeholder">
+        <p>{{ randomLoading ? '正在加载随机推荐...' : '暂无数据' }}</p>
+      </div>
+    </section>
+
     <section class="featured-panel">
       <div class="panel-head">
         <div>
@@ -224,6 +267,9 @@ export default {
         { value: '--', label: '曲库收录' },
         { value: '--', label: '平均完播率' },
       ],
+      randomSongs: [],
+      randomLoading: false,
+      randomSaving: false,
       discoverList: [],
       featuredVideos: [],
       sparkPoints: [
@@ -244,6 +290,7 @@ export default {
     this.isLoggedIn = !!userBase.id;
     await this.loadDynamicContent();
     this.loadFeaturedVideos();
+    this.loadRandomSongs();
     if (this.isLoggedIn) {
       this.loadRecommendations(userBase.id);
       this.loadCFRecommendations(userBase.id);
@@ -505,6 +552,66 @@ export default {
           this.$bus.emit('refreshCurrentPlaylist');
         }
       } catch (e) { /* silent */ }
+    },
+    async loadRandomSongs() {
+      this.randomLoading = true;
+      try {
+        const res = await musicApi.getRandomSongs(20);
+        if (res.data?.passed) {
+          this.randomSongs = res.data.data || [];
+        }
+      } catch (e) { /* silent */ }
+      this.randomLoading = false;
+    },
+    async refreshRandom() {
+      await this.loadRandomSongs();
+    },
+    playRandomSong(song, idx) {
+      const songIds = this.randomSongs.map(s => s.id);
+      this.$bus.emit('playSong', {
+        songId: song.id,
+        playlist: songIds,
+        index: idx,
+        source: 'random',
+      });
+    },
+    playAllRandom() {
+      if (!this.randomSongs.length) return;
+      const songIds = this.randomSongs.map(s => s.id);
+      this.$bus.emit('playSong', {
+        songId: songIds[0],
+        playlist: songIds,
+        index: 0,
+        source: 'random',
+      });
+    },
+    async saveRandomAsPlaylist() {
+      let userBase = {};
+      try { userBase = JSON.parse(localStorage.getItem('userBase') || '{}'); } catch (e) { /* ignore */ }
+      const userId = userBase.id;
+      if (!userId) { alert('请先登录'); return; }
+      this.randomSaving = true;
+      try {
+        const createRes = await musicApi.createPlaylist({
+          id: userId,
+          name: '随机漫游 · ' + new Date().toLocaleDateString('zh-CN'),
+          description: '由随机推荐生成的歌单',
+        });
+        if (createRes.data?.passed) {
+          const playlistId = createRes.data.data?.id || createRes.data.data;
+          for (const song of this.randomSongs) {
+            await musicApi.managePlaylistSong({
+              playlistId,
+              songId: song.id,
+              action: 'add',
+            });
+          }
+          alert('歌单保存成功！');
+        }
+      } catch (e) {
+        alert('保存失败：' + (e.message || '未知错误'));
+      }
+      this.randomSaving = false;
     },
     goTo(path) {
       this.$router.push(path);
@@ -1097,6 +1204,15 @@ export default {
 
 .cf-fill {
   background: linear-gradient(90deg, #22c55e, #06b6d4);
+}
+
+.random-panel {
+  background: linear-gradient(135deg, rgba(251, 146, 60, 0.1), rgba(245, 158, 11, 0.08));
+  border-color: rgba(251, 146, 60, 0.2);
+}
+
+.random-rank {
+  background: linear-gradient(135deg, #fb923c, #f59e0b);
 }
 
 .cf-pct {

@@ -28,11 +28,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
+import java.util.stream.Collectors;
 
 @Service
 public class MusicAppService {
@@ -132,6 +129,20 @@ public class MusicAppService {
         return R.success("获取歌曲列表成功", dtoList);
     }
 
+    public R randomSongs(int limit) {
+        List<Song> all = new ArrayList<>(songService.listSongs());
+        Collections.shuffle(all);
+        List<SongBaseDTO> result = all.stream()
+                .limit(Math.min(limit, 20))
+                .map(song -> {
+                    SongBaseDTO dto = new SongBaseDTO();
+                    BeanUtils.copyProperties(song, dto);
+                    return dto;
+                })
+                .collect(Collectors.toList());
+        return R.success("随机推荐成功", result);
+    }
+
     /**
      * 前端点击播放歌曲时的统一入口：记录播放事件并返回歌曲详情。
      */
@@ -160,6 +171,17 @@ public class MusicAppService {
             return R.error("参数无效");
         }
         return songService.updateDuration(songId, duration);
+    }
+
+    public R updateSongStatus(Long songId, Byte status) {
+        if (songId == null || status == null || (status != 0 && status != 1)) {
+            return R.error("参数无效，status 只能为 0（禁用）或 1（启用）");
+        }
+        R result = songService.updateSongStatus(songId, status);
+        if (result.getPassed()) {
+            searchSyncService.syncSong(songId);
+        }
+        return result;
     }
 
     public R reportPlayEnd(java.util.Map<String, Object> body) {
