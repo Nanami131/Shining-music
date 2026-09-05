@@ -19,6 +19,7 @@ public class SongDetailsDTO {
     private Integer duration;
     private Float volumeGain;
     private Byte status;
+    private Byte randomEnabled;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
     private Boolean favorite;

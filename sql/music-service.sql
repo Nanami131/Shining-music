@@ -21,6 +21,7 @@ CREATE TABLE songs (
     cover_url VARCHAR(500) COMMENT '封面URL',
     duration INT DEFAULT NULL COMMENT '歌曲时长(秒)',
     status TINYINT NOT NULL COMMENT '歌曲状态',
+    random_enabled TINYINT NOT NULL DEFAULT 1 COMMENT '是否启用随机推荐：1启用，0禁用',
     created_at DATETIME COMMENT '创建时间',
     updated_at DATETIME COMMENT '更新时间'
 ) COMMENT '歌曲表';

@@ -197,6 +197,9 @@ export default {
     updateSongDuration(songId, duration) {
         return api.post(`/music/song/${songId}/duration`, null, { params: { duration } });
     },
+    updateSongRandomEnabled(songId, enabled) {
+        return api.post(`/music/song/${songId}/random-enabled`, null, { params: { enabled } });
+    },
     reportPlayEnd(data) {
         return api.post('/music/play/end', data);
     },

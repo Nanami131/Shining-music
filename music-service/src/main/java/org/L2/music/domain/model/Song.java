@@ -18,6 +18,7 @@ public class Song {
     private String coverUrl;
     private Integer duration;
     private Byte status;
+    private Byte randomEnabled;
     private Float volumeGain;
     private Float lufs;
     private LocalDateTime createdAt;

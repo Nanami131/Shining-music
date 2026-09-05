@@ -130,7 +130,7 @@ public class MusicAppService {
     }
 
     public R randomSongs(int limit) {
-        List<Song> all = new ArrayList<>(songService.listSongs());
+        List<Song> all = new ArrayList<>(songService.listRandomEnabledSongs());
         Collections.shuffle(all);
         List<SongBaseDTO> result = all.stream()
                 .limit(Math.min(limit, 20))
@@ -182,6 +182,13 @@ public class MusicAppService {
             searchSyncService.syncSong(songId);
         }
         return result;
+    }
+
+    public R updateSongRandomEnabled(Long songId, Boolean enabled) {
+        if (songId == null || enabled == null) {
+            return R.error("参数无效");
+        }
+        return songService.updateRandomEnabled(songId, enabled);
     }
 
     public R reportPlayEnd(java.util.Map<String, Object> body) {

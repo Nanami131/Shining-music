@@ -185,7 +185,9 @@ public class SongService {
                     return R.error("对应专辑不存在");
                 }
             }
-            songMapper.insert(song.setStatus((byte) 1));
+            songMapper.insert(song
+                    .setStatus((byte) 1)
+                    .setRandomEnabled((byte) 1));
             return R.success("创建歌曲成功", song);
         } catch (Exception e) {
             return R.error("创建歌曲失败" + e.getMessage());
@@ -218,6 +220,26 @@ public class SongService {
         return songMapper.query(filter);
     }
 
+    public List<Song> listRandomEnabledSongs() {
+        Song filter = new Song()
+                .setStatus((byte) 1)
+                .setRandomEnabled((byte) 1);
+        return songMapper.query(filter);
+    }
+
+    public R updateRandomEnabled(Long songId, boolean enabled) {
+        Song existing = songMapper.selectById(songId);
+        if (existing == null) {
+            return R.error("歌曲不存在");
+        }
+        Song update = new Song()
+                .setId(songId)
+                .setRandomEnabled(enabled ? (byte) 1 : (byte) 0)
+                .setUpdatedAt(LocalDateTime.now());
+        songMapper.update(update);
+        return R.success(enabled ? "歌曲已启用" : "歌曲已禁用", update);
+    }
+
     public R updateSongStatus(Long songId, byte status) {
         Song existing = songMapper.selectById(songId);
         if (existing == null) {
@@ -245,4 +267,3 @@ public class SongService {
         return songMapper.recalcVolumeGain(avgLufs);
     }
 }
-

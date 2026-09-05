@@ -137,6 +137,12 @@ public class MusicController {
         return musicAppService.updateSongStatus(songId, status);
     }
 
+    @PostMapping("/song/{songId}/random-enabled")
+    public R updateSongRandomEnabled(@PathVariable("songId") Long songId,
+                                     @RequestParam("enabled") Boolean enabled) {
+        return musicAppService.updateSongRandomEnabled(songId, enabled);
+    }
+
     @PostMapping("/play/end")
     public R reportPlayEnd(@RequestBody java.util.Map<String, Object> body) {
         Long trustedUserId = UserContext.getUserId();

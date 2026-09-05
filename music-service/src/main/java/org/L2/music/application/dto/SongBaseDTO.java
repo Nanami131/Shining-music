@@ -14,5 +14,6 @@ public class SongBaseDTO {
     private String coverUrl;
     private Integer duration;
     private Float volumeGain;
+    private Byte randomEnabled;
     private Boolean favorite;
 }

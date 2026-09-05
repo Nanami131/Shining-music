@@ -10,6 +10,7 @@
         <result property="coverUrl" column="cover_url"/>
         <result property="duration" column="duration"/>
         <result property="status" column="status"/>
+        <result property="randomEnabled" column="random_enabled"/>
         <result property="volumeGain" column="volume_gain"/>
         <result property="lufs" column="lufs"/>
         <result property="createdAt" column="created_at"/>
@@ -28,8 +29,8 @@
     </select>
 
     <insert id="insert" parameterType="org.L2.music.domain.model.Song" useGeneratedKeys="true" keyProperty="id">
-        INSERT INTO songs (title, artist_id, album_id, file_url, cover_url, duration, status, created_at, updated_at)
-        VALUES (#{title}, #{artistId}, #{albumId}, #{fileUrl}, #{coverUrl}, #{duration}, #{status}, #{createdAt}, #{updatedAt})
+        INSERT INTO songs (title, artist_id, album_id, file_url, cover_url, duration, status, random_enabled, created_at, updated_at)
+        VALUES (#{title}, #{artistId}, #{albumId}, #{fileUrl}, #{coverUrl}, #{duration}, #{status}, #{randomEnabled}, #{createdAt}, #{updatedAt})
     </insert>
 
     <update id="update" parameterType="org.L2.music.domain.model.Song">
@@ -42,6 +43,7 @@
             <if test="coverUrl != null and coverUrl != ''">cover_url = #{coverUrl},</if>
             <if test="duration != null">duration = #{duration},</if>
             <if test="status != null">status = #{status},</if>
+            <if test="randomEnabled != null">random_enabled = #{randomEnabled},</if>
             <if test="volumeGain != null">volume_gain = #{volumeGain},</if>
             <if test="lufs != null">lufs = #{lufs},</if>
             <if test="createdAt != null">created_at = #{createdAt},</if>
@@ -81,6 +83,9 @@
             </if>
             <if test="status != null">
                 AND status = #{status}
+            </if>
+            <if test="randomEnabled != null">
+                AND random_enabled = #{randomEnabled}
             </if>
             <if test="createdAt != null">
                 AND created_at >= #{createdAt}

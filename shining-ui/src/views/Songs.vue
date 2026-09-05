@@ -146,6 +146,15 @@
                 >
                   {{ isSongInCurrentPlaylist(song.id) ? '✓' : '+' }}
                 </button>
+                <button
+                  class="song-action-btn random-status-btn"
+                  :class="{ enabled: isRandomEnabled(song) }"
+                  :disabled="randomStatusUpdating[song.id]"
+                  :title="isRandomEnabled(song) ? '禁用' : '启用'"
+                  @click.stop="toggleRandomEnabled(song)"
+                >
+                  {{ randomStatusUpdating[song.id] ? '...' : (isRandomEnabled(song) ? '禁用' : '启用') }}
+                </button>
               </div>
               <button
                 class="favorite-btn"
@@ -189,6 +198,7 @@ export default {
       showHistory: false,
       currentPlaylistId: null,
       currentPlaylistSongIds: [],
+      randomStatusUpdating: {},
     };
   },
   created() {
@@ -267,6 +277,28 @@ export default {
     },
     playSongFromList(song) {
       this.playSongOnly(song.id, 'songs');
+    },
+    isRandomEnabled(song) {
+      return song?.randomEnabled !== 0 && song?.randomEnabled !== false;
+    },
+    async toggleRandomEnabled(song) {
+      if (!song?.id || this.randomStatusUpdating[song.id]) {
+        return;
+      }
+      const enabled = !this.isRandomEnabled(song);
+      this.randomStatusUpdating[song.id] = true;
+      try {
+        const response = await musicApi.updateSongRandomEnabled(song.id, enabled);
+        if (response.data?.passed) {
+          song.randomEnabled = enabled ? 1 : 0;
+        } else {
+          alert((enabled ? '启用' : '禁用') + '失败：' + (response.data?.message || '未知错误'));
+        }
+      } catch (error) {
+        alert((enabled ? '启用' : '禁用') + '失败：' + error.message);
+      } finally {
+        this.randomStatusUpdating[song.id] = false;
+      }
     },
     async addSongToCurrentPlaylist(song) {
       const songId = Number(song?.id ?? song?.songId);
@@ -413,6 +445,7 @@ export default {
         return;
       }
       const songIds = this.songs
+        .filter(song => this.isRandomEnabled(song))
         .map(song => Number(song.id))
         .filter(id => !Number.isNaN(id) && id > 0);
       if (!songIds.length) {
@@ -777,6 +810,19 @@ export default {
 }
 .add-action-btn.added {
   background: linear-gradient(135deg, #34d399, #059669);
+}
+.random-status-btn {
+  width: 52px;
+  border-radius: 16px;
+  background: linear-gradient(135deg, #34d399, #059669);
+  font-size: 12px;
+}
+.random-status-btn.enabled {
+  background: linear-gradient(135deg, #fb7185, #e11d48);
+}
+.random-status-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
 }
 .favorite-btn {
   position: absolute;
