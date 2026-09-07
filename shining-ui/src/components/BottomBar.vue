@@ -19,6 +19,15 @@
         >
           <span class="heart-icon"></span>
         </button>
+        <button
+            class="player-share-btn"
+            type="button"
+            title="分享"
+            :disabled="!currentSong || !currentSong.id"
+            @click.stop="openSongShare"
+        >
+          ↗
+        </button>
       </div>
 
       <div class="player-controls">
@@ -1019,6 +1028,14 @@ export default {
       }
       this.$router.push({ name: 'song-detail', params: { id: songId } });
     },
+    openSongShare() {
+      if (!this.currentSong?.id) return;
+      this.$bus.emit('openSongShare', {
+        songId: this.currentSong.id,
+        currentTime: this.currentTime,
+        preferredLanguage: this.selectedLang,
+      });
+    },
     async toggleFavoriteFromPlayer() {
       if (!this.currentSong || !this.currentSong.id) {
         return;
@@ -1393,6 +1410,23 @@ export default {
 .favorite-btn:hover {
   transform: translateY(-2px);
   box-shadow: 0 8px 18px rgba(255, 99, 132, 0.3);
+}
+.player-share-btn {
+  display: grid;
+  width: 36px;
+  height: 36px;
+  flex: 0 0 auto;
+  place-items: center;
+  border: none;
+  border-radius: 50%;
+  color: #fff;
+  background: linear-gradient(135deg, #818cf8, #7c3aed);
+  box-shadow: 0 4px 12px rgba(99, 102, 241, 0.24);
+  cursor: pointer;
+}
+.player-share-btn:disabled {
+  opacity: 0.42;
+  cursor: not-allowed;
 }
 .player-controls {
   flex: 2;

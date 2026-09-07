@@ -1,9 +1,10 @@
 <template>
-  <div id="app" :class="{ 'has-bar': !isAuthRoute }">
+  <div id="app" :class="{ 'has-bar': showAppChrome }">
     <CursorTrail />
-    <Header v-if="!isAuthRoute" />
+    <Header v-if="showAppChrome" />
     <router-view />
-    <bottom-bar v-if="!isAuthRoute" />
+    <bottom-bar v-if="showAppChrome" />
+    <SongShareDialog />
   </div>
 </template>
 
@@ -11,6 +12,7 @@
 import Header from '@/components/Header.vue';
 import BottomBar from '@/components/BottomBar.vue';
 import CursorTrail from '@/components/CursorTrail.vue';
+import SongShareDialog from '@/components/SongShareDialog.vue';
 
 export default {
   name: 'App',
@@ -18,10 +20,14 @@ export default {
     Header,
     BottomBar,
     CursorTrail,
+    SongShareDialog,
   },
   computed: {
     isAuthRoute() {
       return ['/login', '/register'].includes(this.$route.path);
+    },
+    showAppChrome() {
+      return !this.isAuthRoute;
     },
   },
 };

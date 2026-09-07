@@ -55,6 +55,9 @@ public class LoginInterceptor implements GlobalFilter, Ordered {
         exchange = exchange.mutate().request(cleanedRequest).build();
 
         String path = exchange.getRequest().getURI().getPath();
+        if (isPublicSongShareRequest(exchange.getRequest().getMethod(), path)) {
+            return chain.filter(exchange);
+        }
         for (String skip : SKIP_PATHS) {
             if (path.endsWith(skip)) {
                 return chain.filter(exchange);
@@ -97,6 +100,26 @@ public class LoginInterceptor implements GlobalFilter, Ordered {
         } catch (JwtException e) {
             return unauthorizedResponse(exchange, "无效的 Token: " + e.getMessage());
         }
+    }
+
+    private boolean isPublicSongShareRequest(HttpMethod method, String path) {
+        if (!HttpMethod.GET.equals(method)) {
+            return false;
+        }
+        return hasNumericPathVariable(path, "/api/music/share/song/")
+                || hasNumericPathVariable(path, "/music/share/song/");
+    }
+
+    private boolean hasNumericPathVariable(String path, String prefix) {
+        if (!path.startsWith(prefix) || path.length() == prefix.length()) {
+            return false;
+        }
+        for (int index = prefix.length(); index < path.length(); index++) {
+            if (!Character.isDigit(path.charAt(index))) {
+                return false;
+            }
+        }
+        return true;
     }
 
     private Mono<Void> unauthorizedResponse(ServerWebExchange exchange, String message) {

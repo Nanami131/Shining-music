@@ -17,6 +17,7 @@
             >
               {{ addedToPlaylist ? '✓ 已加入' : '+ 加入歌单' }}
             </button>
+            <button class="share-btn" @click="openSongShare">分享</button>
             <button
               class="favorite-btn"
               :class="{ active: song && song.favorite }"
@@ -528,6 +529,14 @@ export default {
     playSong() {
       this.$bus.emit('playSong', { songId: this.song.id, source: 'songDetail' });
     },
+    openSongShare() {
+      if (!this.song?.id) return;
+      this.$bus.emit('openSongShare', {
+        songId: this.song.id,
+        currentTime: this.isCurrentPlaybackSong ? this.playbackCurrentTime : null,
+        preferredLanguage: this.selectedLang,
+      });
+    },
     async addToCurrentPlaylist() {
       if (!this.song || !this.song.id || this.addedToPlaylist) return;
       if (!this.userId) return;
@@ -684,6 +693,17 @@ h2 {
   cursor: pointer;
 }
 .play-btn:hover {
+  transform: scale(1.05);
+}
+.share-btn {
+  padding: 10px 16px;
+  border: none;
+  border-radius: 4px;
+  color: white;
+  background: linear-gradient(135deg, #818cf8, #7c3aed);
+  cursor: pointer;
+}
+.share-btn:hover {
   transform: scale(1.05);
 }
 .add-playlist-btn {

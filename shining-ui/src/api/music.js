@@ -53,6 +53,9 @@ export default {
         }
         return api.get(`/music/details/song/${songId}`, { params });
     },
+    getSongShareInfo(songId) {
+        return api.get(`/music/share/song/${songId}`);
+    },
     getSongs(userId) {
         const params = {};
         if (userId !== null && userId !== undefined) {

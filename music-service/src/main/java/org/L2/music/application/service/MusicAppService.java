@@ -97,6 +97,53 @@ public class MusicAppService {
         return R.success("获取成功", songDetailsDTO);
     }
 
+    public R getSongShareInfo(Long songId) {
+        if (songId == null || songId <= 0) {
+            return R.error("歌曲ID无效");
+        }
+
+        R songResult = songService.getSongInfo(songId);
+        if (!songResult.getPassed()) {
+            return songResult;
+        }
+        if (!(songResult.getData() instanceof Song song)) {
+            return R.error("歌曲信息无效");
+        }
+        if (!Byte.valueOf((byte) 1).equals(song.getStatus())) {
+            return R.error("歌曲暂不可用");
+        }
+
+        String artistName = null;
+        if (song.getArtistId() != null) {
+            R singerResult = singerService.getSingerInfo(song.getArtistId());
+            if (singerResult.getPassed() && singerResult.getData() instanceof Singer singer) {
+                artistName = singer.getName();
+            }
+        }
+
+        List<SongShareLyricDTO> lyricDTOs = new ArrayList<>();
+        R lyricsResult = lyricsService.getAllLyricsBySongId(songId);
+        if (lyricsResult.getPassed() && lyricsResult.getData() instanceof List<?> lyricsList) {
+            for (Object item : lyricsList) {
+                if (item instanceof Lyrics lyrics) {
+                    lyricDTOs.add(new SongShareLyricDTO()
+                            .setLanguageMsg(lyrics.getLanguageMsg())
+                            .setContent(lyrics.getContent()));
+                }
+            }
+        }
+
+        SongShareDTO shareDTO = new SongShareDTO()
+                .setId(song.getId())
+                .setTitle(song.getTitle())
+                .setArtistId(song.getArtistId())
+                .setArtistName(artistName)
+                .setCoverUrl(song.getCoverUrl())
+                .setDuration(song.getDuration())
+                .setLyrics(lyricDTOs);
+        return R.success("获取歌曲分享信息成功", shareDTO);
+    }
+
     public R uploadLyrics(Long songId, MultipartFile file, String msg) {
         R result = lyricsService.uploadLyrics(songId, file, msg);
         if (result.getPassed()) {

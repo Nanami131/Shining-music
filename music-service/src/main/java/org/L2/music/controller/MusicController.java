@@ -110,6 +110,11 @@ public class MusicController {
         return musicAppService.getSongDetailsInfo(songId, userId);
     }
 
+    @GetMapping("/share/song/{songId}")
+    public R getSongShareInfo(@PathVariable("songId") Long songId) {
+        return musicAppService.getSongShareInfo(songId);
+    }
+
     /**
      * 用户播放歌曲：
      * 1. 发送一条播放记录到 RabbitMQ（目前只包含 userId）

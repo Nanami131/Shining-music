@@ -63,6 +63,13 @@
                 >
                   {{ isSongInCurrentPlaylist(item.songId) ? '✓' : '+' }}
                 </button>
+                <button
+                  class="song-action-btn share-action-btn"
+                  title="分享"
+                  @click.stop="openSongShare(item.songId)"
+                >
+                  ↗
+                </button>
               </div>
             </div>
           </div>
@@ -98,6 +105,13 @@
                   @click.stop="addSongToCurrentPlaylist(song)"
                 >
                   {{ isSongInCurrentPlaylist(song.id) ? '✓' : '+' }}
+                </button>
+                <button
+                  class="song-action-btn share-action-btn"
+                  title="分享"
+                  @click.stop="openSongShare(song.id)"
+                >
+                  ↗
                 </button>
               </div>
             </div>
@@ -145,6 +159,13 @@
                   @click.stop="addSongToCurrentPlaylist(song)"
                 >
                   {{ isSongInCurrentPlaylist(song.id) ? '✓' : '+' }}
+                </button>
+                <button
+                  class="song-action-btn share-action-btn"
+                  title="分享"
+                  @click.stop="openSongShare(song.id)"
+                >
+                  ↗
                 </button>
                 <button
                   class="song-action-btn random-status-btn"
@@ -490,6 +511,9 @@ export default {
     goToSong(songId) {
       this.$router.push(`/song/${songId}`);
     },
+    openSongShare(songId) {
+      this.$bus.emit('openSongShare', { songId });
+    },
     async loadSearchHistory() {
       if (!this.userId) return;
       try {
@@ -810,6 +834,9 @@ export default {
 }
 .add-action-btn.added {
   background: linear-gradient(135deg, #34d399, #059669);
+}
+.share-action-btn {
+  background: linear-gradient(135deg, #818cf8, #7c3aed);
 }
 .random-status-btn {
   width: 52px;
