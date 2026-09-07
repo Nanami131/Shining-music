@@ -6,11 +6,19 @@
   >
     <div class="fixed-bar">
       <div class="song-info">
-        <img :src="currentSong.coverUrl || defaultCover" class="song-cover" alt="歌曲封面" />
-        <div class="song-details">
-          <span>{{ currentSong.title || '未知歌曲' }}</span>
-          <span class="artist">歌手：{{ getArtistName(currentSong.artistId) }}</span>
-        </div>
+        <button
+            type="button"
+            class="current-song-link"
+            :disabled="!currentSong || !currentSong.id"
+            :title="currentSong && currentSong.id ? '查看歌曲详情' : ''"
+            @click="goToSongDetail(currentSong.id)"
+        >
+          <img :src="currentSong.coverUrl || defaultCover" class="song-cover" alt="歌曲封面" />
+          <span class="song-details">
+            <span>{{ currentSong.title || '未知歌曲' }}</span>
+            <span class="artist">歌手：{{ getArtistName(currentSong.artistId) }}</span>
+          </span>
+        </button>
         <button
             class="favorite-btn"
             :class="{ active: currentSong && currentSong.favorite }"
@@ -1362,6 +1370,31 @@ export default {
   gap: 10px;
   flex: 1;
   transform: translateY(var(--bar-control-shift));
+}
+.current-song-link {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  padding: 0;
+  border: none;
+  color: inherit;
+  background: transparent;
+  font-family: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.current-song-link:disabled {
+  cursor: default;
+}
+.current-song-link:not(:disabled):hover .song-details > span:first-child {
+  color: #2563eb;
+  text-decoration: underline;
+}
+.current-song-link:focus-visible {
+  border-radius: 4px;
+  outline: 2px solid #60a5fa;
+  outline-offset: 3px;
 }
 .song-cover {
   width: 40px;
