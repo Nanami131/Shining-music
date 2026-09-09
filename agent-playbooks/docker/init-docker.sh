@@ -52,7 +52,7 @@ ok "docker-data prepared"
 # ---------- start containers ----------
 info "Starting Docker containers..."
 cd "$PROJECT_ROOT"
-docker compose up -d
+docker compose up -d mysql redis rabbitmq minio elasticsearch sentinel nacos
 
 info "Waiting for MySQL to be healthy..."
 wait_for "MySQL" "docker exec shining-mysql mysqladmin ping -h localhost -uroot -ppassword" 60 3

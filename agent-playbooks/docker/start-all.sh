@@ -1,122 +1,65 @@
 #!/usr/bin/env bash
-# ================================================================
-# Agent 使用须知：
-#   脚本启动成功 ≠ 服务可用。Agent 必须在脚本完成后自主验证：
-#   1. curl localhost:8080/api/music/test → 确认 gateway 可达
-#   2. curl localhost:8848/nacos → 确认 Nacos 可达
-#   3. 检查 Nacos 服务列表 → 确认所有微服务已注册
-#   4. curl localhost:9200 → 确认 ES 可达
-#   5. curl localhost:9000/minio/health/live → 确认 MinIO 可达
-#   验证不通过的服务，Agent 必须检查日志排错，不要报告 "启动完成"
-# ================================================================
 set -euo pipefail
 
 PROJECT_ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
-JDK18_HOME="${JDK18_HOME:-${JDK21_HOME:-$HOME/.local/java/jdk-18}}"
-JAVA="$JDK18_HOME/bin/java"
 LOG_DIR="$PROJECT_ROOT/logs"
 
 info()  { echo -e "\033[1;34m[INFO]\033[0m  $*"; }
 ok()    { echo -e "\033[1;32m[OK]\033[0m    $*"; }
 err()   { echo -e "\033[1;31m[ERROR]\033[0m $*" >&2; }
 
-if [[ ! -x "$JAVA" ]]; then
-    err "JDK 18 not found at $JDK18_HOME"
-    err "Set JDK18_HOME env var or install JDK 18 to ~/.local/java/"
+mkdir -p "$LOG_DIR"
+
+info "Stopping legacy host processes..."
+LEGACY_PROCESSES=(frontend gateway-service user-service music-service community-service statistics-service recommend-service)
+for process_name in "${LEGACY_PROCESSES[@]}"; do
+    pid_file="$LOG_DIR/$process_name.pid"
+    [[ -f "$pid_file" ]] || continue
+    pid="$(cat "$pid_file")"
+    if [[ "$pid" =~ ^[0-9]+$ ]] && kill -0 "$pid" 2>/dev/null; then
+        kill "$pid"
+    fi
+    rm -f "$pid_file"
+done
+
+cd "$PROJECT_ROOT"
+info "Building and starting the complete Docker stack..."
+docker compose build gateway-service frontend elasticsearch
+docker compose up -d --no-build --remove-orphans
+
+info "Waiting for the frontend..."
+for _ in $(seq 1 60); do
+    if curl -fsS http://localhost:5173/healthz >/dev/null; then
+        ok "Frontend ready on :5173"
+        break
+    fi
+    sleep 2
+done
+
+if ! curl -fsS http://localhost:5173/healthz >/dev/null; then
+    err "Frontend failed to start"
+    docker compose ps
     exit 1
 fi
 
-mkdir -p "$LOG_DIR"
-
-# ---------- 1. Docker middleware ----------
-info "Starting Docker middleware..."
-cd "$PROJECT_ROOT"
-docker compose up -d
-
-info "Waiting for MySQL..."
-for i in $(seq 1 30); do
-    docker exec shining-mysql mysqladmin ping -h localhost -uroot -ppassword &>/dev/null && break
+TUNNEL_URL=""
+for _ in $(seq 1 45); do
+    TUNNEL_LOGS="$(docker compose logs cloudflared 2>&1)"
+    if grep -q "Registered tunnel connection" <<< "$TUNNEL_LOGS"; then
+        TUNNEL_URL="$(sed -n 's#.*\(https://[-a-z0-9]*\.trycloudflare\.com\).*#\1#p' <<< "$TUNNEL_LOGS" | tail -n 1)"
+        [[ -n "$TUNNEL_URL" ]] && break
+    fi
     sleep 2
 done
-info "Waiting for Nacos..."
-for i in $(seq 1 20); do
-    curl -sf "http://localhost:8848/nacos/v1/cs/configs?dataId=common.yaml&group=Shining&tenant=Shining" &>/dev/null && break
-    sleep 3
-done
-ok "Middleware ready"
 
-# ---------- 2. Backend services ----------
-SERVICES=(gateway-service user-service music-service community-service statistics-service recommend-service)
-PORTS=(8080 8081 8082 8083 8084 8085)
-
-for i in "${!SERVICES[@]}"; do
-    svc="${SERVICES[$i]}"
-    port="${PORTS[$i]}"
-    jar="$PROJECT_ROOT/$svc/target/$svc-1.0-SNAPSHOT.jar"
-
-    if [[ ! -f "$jar" ]]; then
-        info "JAR not found for $svc, building..."
-        cd "$PROJECT_ROOT"
-        JAVA_HOME="$JDK18_HOME" PATH="$JDK18_HOME/bin:$PATH" \
-            mvn package -DskipTests -pl common,"$svc" -am -q
-    fi
-
-    if ss -tlnp 2>/dev/null | grep -q ":$port "; then
-        ok "$svc already running on :$port"
-        continue
-    fi
-
-    info "Starting $svc on :$port ..."
-    nohup "$JAVA" -jar "$jar" > "$LOG_DIR/$svc.log" 2>&1 &
-    echo $! > "$LOG_DIR/$svc.pid"
-done
-
-info "Waiting for backend services (max 90s)..."
-DEADLINE=$(( $(date +%s) + 90 ))
-PENDING=()
-for i in "${!SERVICES[@]}"; do
-    PENDING+=("$i")
-done
-
-while [[ ${#PENDING[@]} -gt 0 && $(date +%s) -lt $DEADLINE ]]; do
-    STILL_PENDING=()
-    for i in "${PENDING[@]}"; do
-        port="${PORTS[$i]}"
-        if ss -tlnp 2>/dev/null | grep -q ":$port "; then
-            ok "${SERVICES[$i]} :$port ready"
-        else
-            STILL_PENDING+=("$i")
-        fi
-    done
-    PENDING=("${STILL_PENDING[@]+"${STILL_PENDING[@]}"}")
-    [[ ${#PENDING[@]} -gt 0 ]] && sleep 2
-done
-
-for i in "${PENDING[@]+"${PENDING[@]}"}"; do
-    err "${SERVICES[$i]} :${PORTS[$i]} failed to start — check $LOG_DIR/${SERVICES[$i]}.log"
-done
-
-# ---------- 3. Frontend ----------
-if ss -tlnp 2>/dev/null | grep -q ":5173 "; then
-    ok "Frontend already running on :5173"
-else
-    info "Starting frontend..."
-    cd "$PROJECT_ROOT/shining-ui"
-    nohup npm run dev > "$LOG_DIR/frontend.log" 2>&1 &
-    echo $! > "$LOG_DIR/frontend.pid"
-    sleep 5
-    if ss -tlnp 2>/dev/null | grep -q ":5173 "; then
-        ok "Frontend :5173 ready"
-    else
-        err "Frontend failed to start — check $LOG_DIR/frontend.log"
-    fi
+if [[ -z "$TUNNEL_URL" ]]; then
+    err "Cloudflare Tunnel failed to connect"
+    docker compose logs --tail=80 cloudflared
+    exit 1
 fi
 
 echo ""
 ok "=== All services started ==="
 echo "   Frontend:   http://localhost:5173"
-echo "   Gateway:    http://localhost:8080"
-echo "   Nacos:      http://localhost:8848/nacos"
-echo "   MinIO:      http://localhost:9090"
-echo "   RabbitMQ:   http://localhost:15672"
-echo "   Logs:       $LOG_DIR/"
+echo "   Public:     $TUNNEL_URL"
+echo "   Logs:       docker compose logs -f"

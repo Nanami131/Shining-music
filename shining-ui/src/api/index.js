@@ -7,16 +7,17 @@ const api = axios.create({
 
 const LOGIN_EXPIRED_TEXT = '登录已过期，请重新登录';
 
-// MinIO 地址统一替换：把 http://localhost:9000 换成 /minio
-const MINIO_LOCAL_PREFIX = 'http://localhost:9000';
+// MinIO 地址统一替换：兼容宿主机和 Docker 内部返回的地址
+const MINIO_SOURCE_PREFIXES = ['http://localhost:9000', 'http://minio:9000'];
 const MINIO_PROXY_PREFIX = '/minio';
 
 function replaceMinioUrlDeep(data) {
     if (!data) return data;
 
     if (typeof data === 'string') {
-        if (data.startsWith(MINIO_LOCAL_PREFIX)) {
-            return data.replace(MINIO_LOCAL_PREFIX, MINIO_PROXY_PREFIX);
+        const sourcePrefix = MINIO_SOURCE_PREFIXES.find(prefix => data.startsWith(prefix));
+        if (sourcePrefix) {
+            return data.replace(sourcePrefix, MINIO_PROXY_PREFIX);
         }
         return data;
     }

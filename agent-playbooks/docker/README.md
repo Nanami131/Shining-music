@@ -9,14 +9,12 @@
 | 脚本 | 用途 |
 |------|------|
 | `init-docker.sh` | 从迁移包初始化 Docker 环境（MySQL / Redis / MinIO / Nacos / ES / RabbitMQ） |
-| `start-all.sh` | 一键启动全部服务（Docker 中间件 → 后端 Java 服务 → 前端） |
-| `stop-all.sh` | 一键停止全部服务（前端 → 后端 → Docker） |
+| `start-all.sh` | 构建并一键启动全部 Docker 服务（中间件、后端、前端、Cloudflare Tunnel） |
+| `stop-all.sh` | 一键停止全部 Docker 服务，保留 `docker-data/` 数据 |
 
 ## 前置要求
 
 - Docker & Docker Compose
-- JDK 18（默认路径 `~/.local/java/jdk-18`，可通过 `JDK18_HOME` 环境变量覆盖；脚本仍兼容旧的 `JDK21_HOME`）
-- Node.js & npm（前端构建）
 - 项目根目录下已有 `docker-compose.yml`
 
 ## 使用方式
@@ -66,6 +64,10 @@ bash agent-playbooks/docker/stop-all.sh
 | RabbitMQ Management | 15672 |
 | Elasticsearch | 9200 |
 
+前端、后端和 Cloudflare 运行在容器内。浏览器只通过前端的 `5173` 端口访问应用；后端服务端口只在 Docker 网络内开放。`dnsproxy` 只为 Cloudflare Tunnel 提供 DNS-over-HTTPS 解析，不发布宿主机端口。
+
+Cloudflare Quick Tunnel 的公网地址会由 `start-all.sh` 输出，网站继续使用项目原有登录。
+
 ## 日志
 
-所有服务日志输出到 `项目根目录/logs/` 下，每个服务一个 `.log` 和 `.pid` 文件。
+使用 `docker compose logs -f` 查看全部服务日志，或使用 `docker compose logs -f <服务名>` 查看单个服务。
