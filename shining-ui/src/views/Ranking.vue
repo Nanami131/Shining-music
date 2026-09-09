@@ -3,6 +3,14 @@
     <h1>热门排行榜</h1>
     <p class="ranking-subtitle">基于全站播放数据实时统计</p>
 
+    <button
+      class="play-all-btn"
+      :disabled="songOperating || loading || !songs.length"
+      @click="playAllSongs"
+    >
+      {{ songOperating ? '处理中...' : '播放全部' }}
+    </button>
+
     <div v-if="loading" class="loading-text">加载中...</div>
     <div v-else-if="!songs.length" class="placeholder-text">暂无排行数据</div>
     <div v-else class="ranking-list">
@@ -41,6 +49,7 @@ export default {
       loading: true,
       defaultCover,
       userId: null,
+      songOperating: false,
     };
   },
   created() {
@@ -64,6 +73,7 @@ export default {
                   const s = songRes.data.data;
                   out.title = s.title;
                   out.coverUrl = s.coverUrl;
+                  out.randomEnabled = s.randomEnabled;
                   if (s.artistId) {
                     const singerRes = await musicApi.getSingerBaseInfo(s.artistId);
                     if (singerRes.data?.passed && singerRes.data.data) {
@@ -89,6 +99,52 @@ export default {
     playSong(songId) {
       this.$bus.emit('playSong', { songId, userId: this.userId });
     },
+    isRandomEnabled(song) {
+      return song?.randomEnabled !== 0 && song?.randomEnabled !== false;
+    },
+    async playAllSongs() {
+      const songIds = this.songs
+        .filter(song => this.isRandomEnabled(song))
+        .map(song => Number(song.songId))
+        .filter(id => !Number.isNaN(id) && id > 0);
+      if (!songIds.length) {
+        alert('当前没有可播放歌曲');
+        return;
+      }
+
+      this.songOperating = true;
+      let serverSynced = false;
+      if (this.userId) {
+        try {
+          const response = await musicApi.replaceCurrentPlaylist(this.userId, songIds);
+          if (!response.data?.passed) {
+            console.warn('播放队列同步失败', response.data?.message);
+          } else {
+            const result = response.data.data || {};
+            const synced = Number(result.synced ?? songIds.length);
+            const requested = Number(result.requested ?? songIds.length);
+            serverSynced = true;
+            if (synced !== requested) {
+              console.warn('播放队列存在未同步歌曲', result.failedIds || []);
+            }
+          }
+        } catch (error) {
+          console.error('播放全部服务端同步异常', error);
+        }
+        if (serverSynced) {
+          this.$bus.emit('refreshCurrentPlaylist');
+        }
+      }
+
+      this.$bus.emit('playSong', {
+        songId: songIds[0],
+        playlist: songIds,
+        index: 0,
+        source: 'ranking',
+        skipServerSync: serverSynced,
+      });
+      this.songOperating = false;
+    },
   },
 };
 </script>
@@ -111,7 +167,23 @@ export default {
 .ranking-subtitle {
   font-size: 13px;
   color: #94a3b8;
-  margin-bottom: 24px;
+  margin-bottom: 12px;
+}
+
+.play-all-btn {
+  border: none;
+  border-radius: 8px;
+  background: #0ea5e9;
+  color: #fff;
+  padding: 9px 14px;
+  margin-bottom: 12px;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.play-all-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
 }
 
 .loading-text,
