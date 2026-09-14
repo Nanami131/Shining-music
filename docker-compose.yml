@@ -12,7 +12,7 @@ x-backend-environment: &backend-environment
 x-backend-service: &backend-service
   image: shining-backend:local
   pull_policy: never
-  restart: unless-stopped
+  restart: "no"
   environment: *backend-environment
   depends_on:
     mysql:
@@ -253,7 +253,7 @@ services:
       context: .
       dockerfile: docker/frontend/Dockerfile
     container_name: shining-frontend
-    restart: unless-stopped
+    restart: "no"
     ports:
       - "5173:8080"
     depends_on:
@@ -268,7 +268,7 @@ services:
   dnsproxy:
     image: adguard/dnsproxy:latest
     container_name: shining-dnsproxy
-    restart: unless-stopped
+    restart: "no"
     command:
       - --listen=0.0.0.0
       - --port=53
@@ -284,7 +284,7 @@ services:
   cloudflared:
     image: cloudflare/cloudflared:latest
     container_name: shining-cloudflared
-    restart: unless-stopped
+    restart: "no"
     dns:
       - 172.29.53.53
     command:

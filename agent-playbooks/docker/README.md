@@ -48,6 +48,8 @@ bash agent-playbooks/docker/start-all.sh
 bash agent-playbooks/docker/stop-all.sh
 ```
 
+项目容器采用手动生命周期管理。系统或 Docker 重启后不会自动恢复 Shining-music 容器；需要运行 `start-all.sh` 才会启动整套服务，避免依赖未就绪时业务容器反复重启并造成 Docker veth 网络接口抖动。
+
 ## 服务端口
 
 | 服务 | 端口 |
