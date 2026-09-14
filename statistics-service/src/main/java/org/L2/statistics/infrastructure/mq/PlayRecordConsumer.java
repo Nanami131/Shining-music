@@ -2,6 +2,7 @@ package org.L2.statistics.infrastructure.mq;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.L2.common.context.RequestTraceContext;
 import org.L2.common.event.PlaybackEventMessage;
 import org.L2.common.mq.config.RabbitMQConfig;
 import org.L2.statistics.application.service.UserPlayStatisticsService;
@@ -26,12 +27,17 @@ public class PlayRecordConsumer {
      */
     @RabbitListener(queues = RabbitMQConfig.PLAY_RECORD_QUEUE)
     public void onMessage(PlaybackEventMessage message) {
+        String requestId = RequestTraceContext.resolveOrCreate(
+                message != null && message.getEvent() != null ? message.getEvent().getTraceId() : null);
+        RequestTraceContext.bind(requestId);
         try {
-            log.info("Received playback event from MQ: {}", message);
+            log.info("Received playback event from MQ, requestId={}, message={}", requestId, message);
             userPlayStatisticsService.saveFromEvent(message);
         } catch (Exception e) {
-            log.error("Handle playback event failed, message={}", message, e);
+            log.error("Handle playback event failed, requestId={}, message={}", requestId, message, e);
             throw e;
+        } finally {
+            RequestTraceContext.clear();
         }
     }
 }

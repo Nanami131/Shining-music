@@ -3,6 +3,7 @@ package org.L2.common.mq;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.L2.common.constant.EventType;
+import org.L2.common.context.RequestTraceContext;
 import org.L2.common.event.EventInfo;
 import org.L2.common.event.PlaybackEventMessage;
 import org.L2.common.event.PlaybackInfo;
@@ -44,7 +45,7 @@ public class PlayRecordProducer {
                 .setEventCategory(EventType.EVENT_CATEGORY_PLAYBACK)
                 .setEventName(eventName)
                 .setOccurredAt(LocalDateTime.now())
-                .setTraceId(UUID.randomUUID().toString());
+                .setTraceId(RequestTraceContext.currentOrCreate());
 
         UserInfo userInfo = new UserInfo()
                 .setUserId(userId);
@@ -58,16 +59,16 @@ public class PlayRecordProducer {
                 .setPlayback(playbackInfo);
 
         try {
-            log.info("Sending {} event to RabbitMQ, userId={}, songId={}",
-                    eventName, userId, songId);
+            log.info("Sending {} event to RabbitMQ, requestId={}, userId={}, songId={}",
+                    eventName, eventInfo.getTraceId(), userId, songId);
             rabbitTemplate.convertAndSend(
                     RabbitMQConfig.PLAY_RECORD_EXCHANGE,
                     RabbitMQConfig.PLAY_RECORD_ROUTING_KEY,
                     message
             );
         } catch (Exception e) {
-            log.error("Failed to send {} event, userId={}, songId={}",
-                    eventName, userId, songId, e);
+            log.error("Failed to send {} event, requestId={}, userId={}, songId={}",
+                    eventName, eventInfo.getTraceId(), userId, songId, e);
             throw e;
         }
     }

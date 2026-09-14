@@ -18,3 +18,7 @@ spring:
         namespace: Shining
   elasticsearch:
     uris: http://127.0.0.1:9200
+
+logging:
+  pattern:
+    level: "%5p [requestId:%X{requestId:-}]"
