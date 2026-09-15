@@ -855,7 +855,7 @@ def _update_singer_profile(singer_id, artist, sex, token):
 # !!!!! 禁止一切批量操作！每首歌必须逐首手动处理并独立验证！禁止编写或运行任何批量循环脚本！ !!!!!
 def _put_tag(song_id, tag_id, value, confidence, source, evidence="{}"):
     import urllib.request
-    url = f"http://localhost:8085/recommend/songs/{song_id}/tags/{tag_id}"
+    url = f"{RECOMMEND_API}/songs/{song_id}/tags/{tag_id}"
 # !!!!! 禁止一切批量操作！每首歌必须逐首手动处理并独立验证！禁止编写或运行任何批量循环脚本！ !!!!!
     data = json.dumps({
         "value": value, "confidence": confidence,
@@ -1304,8 +1304,15 @@ def main():
         ids_str = ','.join(str(i) for i in imported_ids)
         script = os.path.join(PROJECT_ROOT, 'agent-playbooks/song-tagging/batch_tag.py')
 # !!!!! 禁止一切批量操作！每首歌必须逐首手动处理并独立验证！禁止编写或运行任何批量循环脚本！ !!!!!
-        subprocess.run(['python3', script, f'--song-ids={ids_str}'],
-                       capture_output=True, text=True, cwd=PROJECT_ROOT, timeout=300)
+        tag_env = os.environ.copy()
+        tag_env['RECOMMEND_API'] = RECOMMEND_API
+        tag_result = subprocess.run(['python3', script, f'--song-ids={ids_str}'],
+                                    capture_output=True, text=True, cwd=PROJECT_ROOT,
+                                    timeout=300, env=tag_env)
+        if tag_result.returncode != 0:
+            err(f"batch_tag.py failed (exit {tag_result.returncode}): {tag_result.stderr[-500:]}")
+        elif tag_result.stderr.strip():
+            warn(f"batch_tag.py stderr: {tag_result.stderr[-500:]}")
 
 # !!!!! 禁止一切批量操作！每首歌必须逐首手动处理并独立验证！禁止编写或运行任何批量循环脚本！ !!!!!
         _complete_missing_tags(imported_ids, results)
@@ -1346,10 +1353,12 @@ def main():
         for r in results:
 # !!!!! 禁止一切批量操作！每首歌必须逐首手动处理并独立验证！禁止编写或运行任何批量循环脚本！ !!!!!
             sid = r['song_id']
+            picked_up = sid in rec_map
             actual_sim = rec_map.get(sid, 0)
+            r['recommendation_picked_up'] = picked_up
             r['actual_similarity'] = actual_sim
 # !!!!! 禁止一切批量操作！每首歌必须逐首手动处理并独立验证！禁止编写或运行任何批量循环脚本！ !!!!!
-            if actual_sim < args.final_threshold:
+            if ((not picked_up) if args.songs else (actual_sim < args.final_threshold)):
                 warn(f"  BELOW THRESHOLD: {r['artist']} - {r['title']} "
                      f"(sim={actual_sim:.4f} < {args.final_threshold})")
 # !!!!! 禁止一切批量操作！每首歌必须逐首手动处理并独立验证！禁止编写或运行任何批量循环脚本！ !!!!!
@@ -1366,8 +1375,9 @@ def main():
 
 # !!!!! 禁止一切批量操作！每首歌必须逐首手动处理并独立验证！禁止编写或运行任何批量循环脚本！ !!!!!
     print(f"\n{'='*60}")
-    kept_results = [r for r in results if r.get('actual_similarity', 0) >= args.final_threshold]
-    removed_results = [r for r in results if r.get('actual_similarity', 0) < args.final_threshold]
+    kept_results = [r for r in results if (r.get('recommendation_picked_up', False)
+                    if args.songs else r.get('actual_similarity', 0) >= args.final_threshold)]
+    removed_results = [r for r in results if r not in kept_results]
 # !!!!! 禁止一切批量操作！每首歌必须逐首手动处理并独立验证！禁止编写或运行任何批量循环脚本！ !!!!!
     print(f"  Imported and kept: {len(kept_results)} songs")
     for r in kept_results:

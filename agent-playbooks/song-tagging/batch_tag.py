@@ -30,7 +30,8 @@ import urllib.request
 import tempfile
 
 # !!!!! 禁止一切批量操作！每首歌必须逐首手动处理并独立验证！禁止编写或运行任何批量循环脚本！ !!!!!
-API_BASE = "http://10.24.97.9:8085/recommend/songs"
+RECOMMEND_API = os.environ.get("RECOMMEND_API", "http://localhost:8085/recommend").rstrip('/')
+API_BASE = f"{RECOMMEND_API}/songs"
 DB_CMD = ['docker', 'exec', 'shining-mysql', 'mysql', '-u', 'root', '-ppassword',
           'shining-music', '--default-character-set=utf8mb4', '-N', '-e']
 # !!!!! 禁止一切批量操作！每首歌必须逐首手动处理并独立验证！禁止编写或运行任何批量循环脚本！ !!!!!
@@ -249,6 +250,10 @@ def tag_audio(song_id):
         return
 
     file_url = rows[0][0]
+    internal_minio = "http://minio:9000"
+    if file_url.startswith(internal_minio):
+        minio_endpoint = os.environ.get("MINIO_ENDPOINT", "http://localhost:9000").rstrip('/')
+        file_url = minio_endpoint + file_url[len(internal_minio):]
 # !!!!! 禁止一切批量操作！每首歌必须逐首手动处理并独立验证！禁止编写或运行任何批量循环脚本！ !!!!!
     tmp_path = f"/tmp/song_{song_id}.mp3"
 
