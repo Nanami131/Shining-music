@@ -30,6 +30,14 @@ public class UserPlayRecordDomainService {
         userSongPlayRecordMapper.insert(record);
     }
 
+    public void upsertPlayStartRecord(UserSongPlayRecord record) {
+        userSongPlayRecordMapper.upsertPlayStartRecord(record);
+    }
+
+    public void upsertPlayEndRecord(UserSongPlayRecord record) {
+        userSongPlayRecordMapper.upsertPlayEndRecord(record);
+    }
+
     public void updatePlayEndRecord(Long userId, Long songId, String playSessionId,
                                      Integer durationSec, Integer totalDuration,
                                      Boolean completed, String source) {

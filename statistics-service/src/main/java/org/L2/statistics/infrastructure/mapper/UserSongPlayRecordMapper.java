@@ -15,6 +15,10 @@ public interface UserSongPlayRecordMapper {
 
     void insert(UserSongPlayRecord record);
 
+    void upsertPlayStartRecord(UserSongPlayRecord record);
+
+    void upsertPlayEndRecord(UserSongPlayRecord record);
+
     Long countByUserAndTimeRange(@Param("userId") Long userId,
                                  @Param("start") LocalDateTime start,
                                  @Param("end") LocalDateTime end);

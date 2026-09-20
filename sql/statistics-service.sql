@@ -10,7 +10,8 @@ CREATE TABLE user_song_play_record (
     completed TINYINT(1) DEFAULT 0 COMMENT '是否播完',
     source VARCHAR(32) DEFAULT NULL COMMENT '播放来源',
     INDEX idx_user_time (user_id, played_at),
-    INDEX idx_song_time (song_id, played_at)
+    INDEX idx_song_time (song_id, played_at),
+    UNIQUE KEY uq_user_play_session (user_id, play_session_id)
 ) COMMENT '用户听歌播放记录';
 
 -- 用户行为事件日志

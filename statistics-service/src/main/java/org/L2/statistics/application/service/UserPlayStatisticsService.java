@@ -3,6 +3,7 @@ package org.L2.statistics.application.service;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.L2.common.R;
+import org.L2.common.constant.EventType;
 import org.L2.common.event.PlaybackEventMessage;
 import org.L2.statistics.application.dto.UserPlayCountByDateDTO;
 import org.L2.statistics.application.dto.UserTopSongDTO;
@@ -53,25 +54,38 @@ public class UserPlayStatisticsService {
 
         String playSessionId = message.getPlayback().getPlaySessionId();
 
-        if ("SONG_PLAY_END".equals(eventName)) {
-            userPlayRecordDomainService.updatePlayEndRecord(
-                    userId, songId, playSessionId,
-                    message.getPlayback().getDurationSec(),
-                    message.getPlayback().getTotalDurationSec(),
-                    message.getPlayback().getCompleted(),
-                    message.getPlayback().getSource()
-            );
-            log.info("Updated play end record, userId={}, songId={}, sessionId={}, duration={}s",
-                    userId, songId, playSessionId, message.getPlayback().getDurationSec());
-            return;
-        }
-
-        LocalDateTime playedAt = null;
-        if (message.getEvent() != null) {
+        LocalDateTime playedAt = message.getPlayback().getPlayedAt();
+        if (playedAt == null && message.getEvent() != null) {
             playedAt = message.getEvent().getOccurredAt();
         }
         if (playedAt == null) {
             playedAt = LocalDateTime.now();
+        }
+
+        if (EventType.EVENT_NAME_SONG_PLAY_END.equals(eventName)) {
+            if (playSessionId == null || playSessionId.isBlank()) {
+                // 没有会话 ID 的历史客户端沿用既有的结束记录匹配方式。
+                userPlayRecordDomainService.updatePlayEndRecord(
+                        userId, songId, null,
+                        message.getPlayback().getDurationSec(),
+                        message.getPlayback().getTotalDurationSec(),
+                        message.getPlayback().getCompleted(),
+                        message.getPlayback().getSource());
+            } else {
+                UserSongPlayRecord record = new UserSongPlayRecord()
+                        .setUserId(userId)
+                        .setSongId(songId)
+                        .setPlaySessionId(playSessionId)
+                        .setPlayedAt(playedAt)
+                        .setDurationSec(message.getPlayback().getDurationSec())
+                        .setTotalDuration(message.getPlayback().getTotalDurationSec())
+                        .setCompleted(message.getPlayback().getCompleted())
+                        .setSource(message.getPlayback().getSource());
+                userPlayRecordDomainService.upsertPlayEndRecord(record);
+            }
+            log.info("Updated play end record, userId={}, songId={}, sessionId={}, duration={}s",
+                    userId, songId, playSessionId, message.getPlayback().getDurationSec());
+            return;
         }
 
         UserSongPlayRecord record = new UserSongPlayRecord()
@@ -79,7 +93,11 @@ public class UserPlayStatisticsService {
                 .setSongId(songId)
                 .setPlaySessionId(playSessionId)
                 .setPlayedAt(playedAt);
-        userPlayRecordDomainService.saveFullRecord(record);
+        if (playSessionId == null || playSessionId.isBlank()) {
+            userPlayRecordDomainService.saveFullRecord(record);
+        } else {
+            userPlayRecordDomainService.upsertPlayStartRecord(record);
+        }
     }
 
     /**

@@ -130,6 +130,12 @@ public class MusicController {
         return musicAppService.playSong(songId, userId);
     }
 
+    /** 客户端独立上报播放开始，不查询歌曲详情。 */
+    @PostMapping("/play/start")
+    public R reportPlayStart(@RequestBody PlayStartRequest body) {
+        return musicAppService.reportPlayStart(UserContext.getUserId(), body);
+    }
+
     @PostMapping("/song/{songId}/duration")
     public R updateSongDuration(@PathVariable("songId") Long songId,
                                 @RequestParam("duration") Integer duration) {

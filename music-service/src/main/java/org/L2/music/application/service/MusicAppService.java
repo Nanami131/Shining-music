@@ -29,6 +29,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.util.*;
+import java.time.Instant;
+import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.stream.Collectors;
 
 @Service
@@ -213,6 +216,39 @@ public class MusicAppService {
         return result;
     }
 
+    /** 独立上报开始事件，复用既有 MQ 发送链路。 */
+    public R reportPlayStart(Long userId, PlayStartRequest body) {
+        if (userId == null) {
+            return R.error("用户未登录");
+        }
+        if (body == null || body.getSongId() == null || body.getSongId() <= 0
+                || !validPlaySessionId(body.getPlaySessionId())) {
+            return R.error("songId 或 playSessionId 无效");
+        }
+        LocalDateTime playedAt;
+        try {
+            playedAt = convertPlayedAt(body.getPlayedAt());
+        } catch (RuntimeException e) {
+            return R.error("playedAt 无效");
+        }
+        try {
+            playRecordProducer.sendPlayRecord(userId, body.getSongId(), body.getPlaySessionId(), playedAt);
+            return R.success("播放开始事件已发送", body.getPlaySessionId());
+        } catch (Exception e) {
+            log.error("Failed to send play start record, userId={}, songId={}", userId, body.getSongId(), e);
+            return R.error("播放开始事件发送失败");
+        }
+    }
+
+    private boolean validPlaySessionId(String playSessionId) {
+        return playSessionId != null && !playSessionId.isBlank() && playSessionId.length() <= 36;
+    }
+
+    private LocalDateTime convertPlayedAt(Long timestamp) {
+        return timestamp == null ? null : LocalDateTime.ofInstant(
+                Instant.ofEpochMilli(timestamp), ZoneId.systemDefault());
+    }
+
     public R updateSongDuration(Long songId, Integer duration) {
         if (songId == null || duration == null || duration <= 0) {
             return R.error("参数无效");
@@ -253,10 +289,26 @@ public class MusicAppService {
 
         String playSessionId = (String) body.get("playSessionId");
 
+        // 旧客户端没有会话 ID 或开始时间，保持原有请求格式兼容。
+        if (playSessionId != null && !validPlaySessionId(playSessionId)) {
+            return R.error("playSessionId 无效");
+        }
+        LocalDateTime playedAt;
+        try {
+            Object timestamp = body.get("playedAt");
+            if (timestamp != null && !(timestamp instanceof Number)) {
+                return R.error("playedAt 无效");
+            }
+            playedAt = convertPlayedAt(timestamp == null ? null : ((Number) timestamp).longValue());
+        } catch (RuntimeException e) {
+            return R.error("playedAt 无效");
+        }
+
         try {
             org.L2.common.event.PlaybackInfo playbackInfo = new org.L2.common.event.PlaybackInfo()
                     .setSongId(songId)
                     .setPlaySessionId(playSessionId)
+                    .setPlayedAt(playedAt)
                     .setDurationSec(durationSec)
                     .setTotalDurationSec(totalDuration)
                     .setActualListenedTime(actualListenedTime)

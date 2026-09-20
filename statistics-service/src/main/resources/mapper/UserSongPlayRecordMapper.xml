@@ -35,6 +35,30 @@
         )
     </insert>
 
+    <!-- 会话唯一键保证重投和并发上报只生成一条记录；晚到的 START 可校正 END 先到时的播放时间。 -->
+    <insert id="upsertPlayStartRecord" parameterType="org.L2.statistics.domain.model.UserSongPlayRecord">
+        INSERT INTO user_song_play_record (user_id, song_id, play_session_id, played_at)
+        VALUES (#{userId}, #{songId}, #{playSessionId}, #{playedAt})
+        ON DUPLICATE KEY UPDATE
+            played_at = IF(song_id = VALUES(song_id), LEAST(played_at, VALUES(played_at)), played_at)
+    </insert>
+
+    <!-- END 可独立落库；同一会话的重复 END 不重复计算播放时长或覆盖首次结束记录。 -->
+    <insert id="upsertPlayEndRecord" parameterType="org.L2.statistics.domain.model.UserSongPlayRecord">
+        INSERT INTO user_song_play_record (
+            user_id, song_id, play_session_id, played_at, duration_sec, total_duration, completed, source
+        ) VALUES (
+            #{userId}, #{songId}, #{playSessionId}, #{playedAt},
+            #{durationSec}, #{totalDuration}, #{completed}, #{source}
+        )
+        ON DUPLICATE KEY UPDATE
+            played_at = IF(song_id = VALUES(song_id), LEAST(played_at, VALUES(played_at)), played_at),
+            total_duration = IF(song_id = VALUES(song_id) AND duration_sec IS NULL, VALUES(total_duration), total_duration),
+            completed = IF(song_id = VALUES(song_id) AND duration_sec IS NULL, VALUES(completed), completed),
+            source = IF(song_id = VALUES(song_id) AND duration_sec IS NULL, VALUES(source), source),
+            duration_sec = IF(song_id = VALUES(song_id) AND duration_sec IS NULL, VALUES(duration_sec), duration_sec)
+    </insert>
+
     <select id="countByUserAndTimeRange" resultType="java.lang.Long">
         SELECT COUNT(*) AS cnt
         FROM user_song_play_record

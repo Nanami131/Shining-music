@@ -3,6 +3,8 @@ package org.L2.common.event;
 import lombok.Data;
 import lombok.experimental.Accessors;
 
+import java.time.LocalDateTime;
+
 /**
  * 播放相关信息。
  * 目前只记录歌曲ID，后续可以在此扩展专辑、歌单、播放模式等字段。
@@ -13,6 +15,7 @@ public class PlaybackInfo {
 
     private Long songId;
     private String playSessionId;
+    private LocalDateTime playedAt;
     private Integer durationSec;
     private Integer totalDurationSec;
     private Integer actualListenedTime;
