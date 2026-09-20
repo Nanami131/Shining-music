@@ -1,5 +1,10 @@
 {
   "appId": "com.shiningmusic.app",
   "appName": "Shining Music",
-  "webDir": "dist"
+  "webDir": "dist",
+  "server": {
+    "androidScheme": "http",
+    "hostname": "localhost",
+    "cleartext": true
+  }
 }

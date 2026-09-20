@@ -1,7 +1,9 @@
 import axios from 'axios';
+import { getAndroidServer } from '@/utils/androidServer';
 
+const androidServer = getAndroidServer();
 const api = axios.create({
-    baseURL: '/api',
+    baseURL: `${androidServer}/api`,
     timeout: 5000,
 });
 
@@ -9,15 +11,18 @@ const LOGIN_EXPIRED_TEXT = '登录已过期，请重新登录';
 
 // MinIO 地址统一替换：兼容宿主机和 Docker 内部返回的地址
 const MINIO_SOURCE_PREFIXES = ['http://localhost:9000', 'http://minio:9000'];
-const MINIO_PROXY_PREFIX = '/minio';
+const MINIO_PROXY_PREFIX = `${androidServer}/minio`;
 
 function replaceMinioUrlDeep(data) {
     if (!data) return data;
 
     if (typeof data === 'string') {
-        const sourcePrefix = MINIO_SOURCE_PREFIXES.find(prefix => data.startsWith(prefix));
+        const sourcePrefix = MINIO_SOURCE_PREFIXES.find(prefix => data === prefix || data.startsWith(`${prefix}/`));
         if (sourcePrefix) {
             return data.replace(sourcePrefix, MINIO_PROXY_PREFIX);
+        }
+        if (androidServer && data.startsWith('/minio/')) {
+            return `${androidServer}${data}`;
         }
         return data;
     }

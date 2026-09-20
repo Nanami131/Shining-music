@@ -5,6 +5,7 @@
     <router-view />
     <bottom-bar v-if="showAppChrome" />
     <SongShareDialog />
+    <AndroidServerSettings v-if="isAndroidApp" :with-player="showAppChrome" />
   </div>
 </template>
 
@@ -13,6 +14,8 @@ import Header from '@/components/Header.vue';
 import BottomBar from '@/components/BottomBar.vue';
 import CursorTrail from '@/components/CursorTrail.vue';
 import SongShareDialog from '@/components/SongShareDialog.vue';
+import AndroidServerSettings from '@/components/AndroidServerSettings.vue';
+import { isAndroidApp } from '@/utils/androidServer';
 
 export default {
   name: 'App',
@@ -21,8 +24,12 @@ export default {
     BottomBar,
     CursorTrail,
     SongShareDialog,
+    AndroidServerSettings,
   },
   computed: {
+    isAndroidApp() {
+      return isAndroidApp;
+    },
     isAuthRoute() {
       return ['/login', '/register'].includes(this.$route.path);
     },
