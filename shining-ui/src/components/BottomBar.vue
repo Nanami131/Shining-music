@@ -161,14 +161,19 @@
 
     <div
         class="lyrics-panel"
+        :class="{ 'mobile-lyrics-panel': isMobileAndroid }"
         v-if="showLyrics"
         :style="{ height: lyricsPanelHeight + 'px' }"
     >
       <!-- 顶部拖拽区域 -->
       <div class="lyrics-resize-handle" @mousedown="startLyricsResize"></div>
 
+      <div v-if="isMobileAndroid" class="mobile-lyrics-tabs">
+        <button type="button" :class="{ active: mobileLyricsTab === 'lyrics' }" @click="mobileLyricsTab = 'lyrics'">歌词</button>
+        <button type="button" :class="{ active: mobileLyricsTab === 'playlist' }" @click="mobileLyricsTab = 'playlist'">播放列表</button>
+      </div>
       <div class="panel-content">
-        <div class="playlist-panel">
+        <div class="playlist-panel" :class="{ 'mobile-hidden': isMobileAndroid && mobileLyricsTab !== 'playlist' }">
           <div class="playlist-header">
             <div class="title">当前播放列表</div>
             <div class="playlist-header-right">
@@ -216,7 +221,7 @@
           <p v-else-if="userId" class="playlist-empty">播放任意歌曲后会自动加入此处～</p>
           <p v-else class="playlist-empty">登录账号后可同步播放列表</p>
         </div>
-        <div class="lyrics-right">
+        <div class="lyrics-right" :class="{ 'mobile-hidden': isMobileAndroid && mobileLyricsTab !== 'lyrics' }">
           <div class="lyric-header">
             <div class="title">歌词</div>
             <div class="controls">
@@ -285,6 +290,7 @@
 import musicApi from '@/api/music';
 import statisticsApi from '@/api/statistics';
 import defaultCover from '@/assets/default-cover.png';
+import { isAndroidApp } from '@/utils/androidServer';
 import {
   parseLyrics as parseLrc,
   timeToSeconds,
@@ -332,6 +338,8 @@ export default {
       actualListenedTime: 0,
       lastKnownAudioTime: 0,
       showLyrics: false,
+      isMobileAndroid: isAndroidApp && window.innerWidth <= 768,
+      mobileLyricsTab: 'lyrics',
       defaultCover,
       highlightColor: 'pink',
       userId: null,
@@ -351,7 +359,7 @@ export default {
       isResizingLyrics: false,
       resizeStartY: 0,
       resizeStartHeight: 240,
-      bottomFixedHeight: 104,
+      bottomFixedHeight: isAndroidApp && window.innerWidth <= 768 ? 136 : 104,
       artistNameCache: {},
       playSource: 'unknown',
       audioContext: null,
@@ -2173,5 +2181,50 @@ export default {
   text-align: center;
   font-size: 18px;
   color: #666;
+}
+
+.mobile-lyrics-tabs {
+  display: flex;
+  flex-shrink: 0;
+  gap: 8px;
+  padding: 0 12px 6px;
+  background: #fff;
+}
+.mobile-lyrics-tabs button {
+  flex: 1;
+  padding: 6px;
+  border: 0;
+  border-radius: 8px;
+  background: #f1f5f9;
+  color: #475569;
+}
+.mobile-lyrics-tabs button.active {
+  background: #dbeafe;
+  color: #1d4ed8;
+}
+.mobile-lyrics-panel .panel-content {
+  min-width: 0;
+  overflow: hidden;
+}
+.mobile-lyrics-panel .playlist-panel,
+.mobile-lyrics-panel .lyrics-right {
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+  flex: 1 1 auto;
+}
+.mobile-lyrics-panel .mobile-hidden {
+  display: none;
+}
+.mobile-lyrics-panel .playlist-header,
+.mobile-lyrics-panel .lyric-header {
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.mobile-lyrics-panel .lyric-header {
+  padding: 6px 12px;
+}
+.mobile-lyrics-panel .lyric-header .controls {
+  flex-wrap: wrap;
 }
 </style>

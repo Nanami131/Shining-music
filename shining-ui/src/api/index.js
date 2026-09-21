@@ -82,7 +82,8 @@ api.interceptors.response.use(
         return response;
     },
     (error) => {
-        if (error.response?.status === 401) {
+        // 未登录访问受保护接口时不应被误判为已登录会话过期。
+        if (error.response?.status === 401 && localStorage.getItem('token')) {
             handleLoginExpiredOnce();
         }
         return Promise.reject(error);
