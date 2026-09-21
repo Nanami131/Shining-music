@@ -124,13 +124,13 @@ export default {
     gap: 4px 6px;
     padding: 8px;
   }
-  #app.android-app .song-info {
+  #app.android-app .fixed-bar > .song-info {
     flex: 1 1 110px;
     min-width: 0;
     order: 1;
     transform: none;
   }
-  #app.android-app .song-details {
+  #app.android-app .fixed-bar .song-details {
     min-width: 0;
     max-width: 86px;
     overflow: hidden;
@@ -157,6 +157,18 @@ export default {
   }
   #app.android-app .android-server-settings.with-player {
     bottom: 144px;
+  }
+  #app.android-app .my-music-container .quick-links {
+    gap: 6px;
+  }
+  #app.android-app .my-music-container .quick-link-card {
+    flex: 1 1 0;
+    min-width: 0;
+    flex-direction: column;
+    gap: 4px;
+    padding: 10px 4px;
+    white-space: nowrap;
+    font-size: 12px;
   }
 }
 </style>

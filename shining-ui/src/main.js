@@ -2,6 +2,8 @@ import { createApp } from 'vue';
 import App from './App.vue';
 import router from './router';
 import mitt from 'mitt';
+import { App as CapacitorApp } from '@capacitor/app';
+import { isAndroidApp } from './utils/androidServer';
 function applyCustomCursors() {
   if (typeof document === 'undefined') return;
 
@@ -58,3 +60,15 @@ const app = createApp(App);
 app.config.devtools = false;
 app.config.globalProperties.$bus = mitt();
 app.use(router).mount('#app');
+
+if (isAndroidApp) {
+  CapacitorApp.addListener('backButton', () => {
+    if (router.currentRoute.value.path === '/') {
+      CapacitorApp.minimizeApp();
+    } else if (router.options.history.state.back) {
+      router.back();
+    } else {
+      router.replace('/');
+    }
+  });
+}
