@@ -427,6 +427,9 @@ export default {
     this.audio.addEventListener('timeupdate', this.updateProgress);
     this.audio.addEventListener('loadedmetadata', this.updateDuration);
     this.audio.addEventListener('ended', this.handleEnded);
+    this.audio.addEventListener('play', this.syncAudioPlayState);
+    this.audio.addEventListener('pause', this.syncAudioPlayState);
+    this.audio.addEventListener('error', this.syncAudioPlayState);
     this.$bus.on('playSong', this.handlePlaySongEvent);
     this.$bus.on('refreshCurrentPlaylist', this.loadCurrentPlaylist);
     window.addEventListener('userBaseUpdated', this.handleUserStateChange);
@@ -438,6 +441,9 @@ export default {
     this.audio.removeEventListener('timeupdate', this.updateProgress);
     this.audio.removeEventListener('loadedmetadata', this.updateDuration);
     this.audio.removeEventListener('ended', this.handleEnded);
+    this.audio.removeEventListener('play', this.syncAudioPlayState);
+    this.audio.removeEventListener('pause', this.syncAudioPlayState);
+    this.audio.removeEventListener('error', this.syncAudioPlayState);
     this.$bus.off('playSong', this.handlePlaySongEvent);
     this.$bus.off('refreshCurrentPlaylist', this.loadCurrentPlaylist);
     this.audio.pause();
@@ -453,6 +459,9 @@ export default {
     if (this._saveStateTimer) clearTimeout(this._saveStateTimer);
   },
   methods: {
+    syncAudioPlayState() {
+      this.isPlaying = !this.audio.paused && !this.audio.ended && !this.audio.error;
+    },
     broadcastPlaybackState() {
       const state = {
         songId: this.currentSong?.id ? Number(this.currentSong.id) : null,
@@ -1171,10 +1180,9 @@ export default {
         }
       }
     },
-    togglePlay() {
+    async togglePlay() {
       if (this.isPlaying) {
         this.audio.pause();
-        this.isPlaying = false;
       } else {
         if (!this.audio.src && this.currentSong && this.currentSong.fileUrl) {
           this.audio.src = this.currentSong.fileUrl;
@@ -1183,9 +1191,13 @@ export default {
           return;
         }
         this.ensureAudioContext();
-        this.audio.play();
-        this.isPlaying = true;
+        try {
+          await this.audio.play();
+        } catch (error) {
+          console.warn('Audio play blocked:', error.message);
+        }
       }
+      this.syncAudioPlayState();
     },
     updateProgress() {
       const now = this.audio.currentTime || 0;
