@@ -1,5 +1,6 @@
 <template>
   <div class="playlist-detail-container">
+    <p v-if="offlineLocal && offlineError" role="alert">{{ offlineError }}</p>
     <div v-if="isLoaded && playlist">
       <h2>{{ playlist.name || '未知歌单' }}</h2>
 
@@ -7,19 +8,19 @@
         <img :src="playlist.coverUrl || defaultCover" class="playlist-cover" alt="歌单封面" />
         <div class="playlist-info">
           <p><strong>简介：</strong>{{ playlist.description || '暂无简介' }}</p>
-          <p v-if="playlist.nickName || playlist.userId"><strong>创建者：</strong>{{ creatorName }}</p>
-          <p><strong>类型：</strong>{{ formatType(playlist.type) }}</p>
-          <p>
+          <p v-if="!offlineLocal && (playlist.nickName || playlist.userId)"><strong>创建者：</strong>{{ creatorName }}</p>
+          <p v-if="!offlineLocal"><strong>类型：</strong>{{ formatType(playlist.type) }}</p>
+          <p v-if="!offlineLocal">
             <strong>可见性：</strong>
             <span class="visibility-badge" :class="playlist.visibility === 1 ? 'private' : 'public'">
               {{ formatVisibility(playlist.visibility) }}
             </span>
           </p>
-          <p><strong>创建时间：</strong>{{ playlist.createdAt || '未知' }}</p>
+          <p v-if="!offlineLocal"><strong>创建时间：</strong>{{ playlist.createdAt || '未知' }}</p>
         </div>
       </div>
 
-      <section v-if="isOwner" class="editor-section">
+      <section v-if="isOwner && !offlineLocal" class="editor-section">
         <h3>歌单信息编辑</h3>
         <div class="editor-row">
           <label>名称</label>
@@ -66,14 +67,16 @@
           </button>
         </div>
         <div class="songs-list">
-          <div v-for="song in playlistSongs" :key="song.id" class="song-card">
+          <div v-for="(song, index) in playlistSongs" :key="song.id" class="song-card">
             <img :src="song.coverUrl || defaultCover" class="song-cover" alt="歌曲封面" @click="goToSong(song.id)" />
             <div class="song-info">
               <h4 @click="goToSong(song.id)">{{ song.title || '未知歌曲' }}</h4>
             </div>
-            <button class="btn primary mini" :disabled="songOperating" @click.stop="playSingleSong(song.id)">
+            <button class="btn primary mini" :disabled="songOperating || (offlineLocal && !favoriteSongs.some(cached => String(cached.id) === String(song.id)))" @click.stop="playSingleSong(song.id)">
               播放
             </button>
+            <button v-if="offlineLocal" class="btn mini" :disabled="songOperating || index === 0" @click.stop="localCommand('move', song.id, index - 1)">上移</button>
+            <button v-if="offlineLocal" class="btn mini" :disabled="songOperating || index === playlistSongs.length - 1" @click.stop="localCommand('move', song.id, index + 1)">下移</button>
             <button v-if="isOwner" class="btn danger mini" :disabled="songOperating" @click.stop="removeSong(song.id)">
               移除
             </button>
@@ -85,7 +88,7 @@
         <h3>添加歌曲到歌单</h3>
         <div class="editor-row favorites-actions">
           <button class="btn" @click="toggleSongSelector">
-            {{ showSongSelector ? '收起可选歌曲' : '从我喜欢的歌曲选择' }}
+            {{ showSongSelector ? '收起可选歌曲' : (offlineLocal ? '从本机已缓存歌曲选择' : '从我喜欢的歌曲选择') }}
           </button>
           <button
             v-if="showSongSelector && availableSongs.length"
@@ -130,7 +133,7 @@
         </div>
       </section>
 
-      <section v-if="isOwner" class="editor-section danger-zone">
+      <section v-if="isOwner && !offlineLocal" class="editor-section danger-zone">
         <h3>危险操作</h3>
         <button class="btn danger" :disabled="deletingPlaylist" @click="deletePlaylist">
           {{ deletingPlaylist ? '删除中...' : '删除歌单' }}
@@ -148,6 +151,7 @@
 <script>
 import musicApi from '@/api/music';
 import defaultCover from '@/assets/default-cover.png';
+import { isOfflineSelected, localPlaylist, localQueue, localSongs } from '@/offline/localLibrary';
 
 export default {
   name: 'PlaylistDetail',
@@ -171,6 +175,8 @@ export default {
       isLoaded: false,
       hasError: false,
       userId: null,
+      offlineLocal: isOfflineSelected(),
+      offlineError: '',
     };
   },
   computed: {
@@ -181,24 +187,34 @@ export default {
       return this.playlist.userId ? `用户${this.playlist.userId}` : '未知用户';
     },
     isOwner() {
+      if (this.offlineLocal) return true;
       return !!this.userId && !!this.playlist && this.playlist.userId === this.userId;
     },
     playlistSongs() {
       return Array.isArray(this.playlist?.songs) ? this.playlist.songs : [];
     },
     availableSongs() {
-      const inPlaylist = new Set(this.playlistSongs.map(song => song.id));
-      return (this.favoriteSongs || []).filter(song => !inPlaylist.has(song.id));
+      const inPlaylist = new Set(this.playlistSongs.map(song => String(song.id)));
+      return (this.favoriteSongs || []).filter(song => !inPlaylist.has(String(song.id)));
     },
     isAllAvailableSelected() {
       return this.availableSongs.length > 0 && this.selectedSongIds.length === this.availableSongs.length;
     },
   },
   created() {
+    window.addEventListener('offlineModeChanged', this.onOfflineModeChanged);
+    this.$bus.on('offlineLibrary:state', this.onOfflineLibraryState);
     let userBase = {};
     try { userBase = JSON.parse(localStorage.getItem('userBase') || '{}'); } catch (e) { /* ignore */ }
     this.userId = userBase.id ?? null;
     this.loadPageData();
+  },
+  mounted() {
+    if (this.offlineLocal) this.$bus.emit('offlineLibrary:request');
+  },
+  beforeUnmount() {
+    window.removeEventListener('offlineModeChanged', this.onOfflineModeChanged);
+    this.$bus.off('offlineLibrary:state', this.onOfflineLibraryState);
   },
   watch: {
     '$route.params.id'() {
@@ -206,15 +222,50 @@ export default {
     },
   },
   methods: {
+    onOfflineModeChanged() {
+      this.offlineLocal = isOfflineSelected();
+      if (!this.offlineLocal && this.$route.params.id === 'local') this.$router.replace('/my-music');
+    },
+    onOfflineLibraryState(state) {
+      if (!this.offlineLocal || !state?.offlineMode || String(state.accountId) !== String(this.userId) || !this.playlist) return;
+      const byId = new Map(this.favoriteSongs.map(song => [String(song.id), song]));
+      this.playlist = {
+        ...this.playlist,
+        description: localPlaylist(this.userId).description,
+        songs: state.queue.map(id => byId.get(String(id)) || { id, title: `歌曲 ${id}（本机缓存不可用）` }),
+      };
+      if (state.error) this.offlineError = state.error;
+    },
+    localCommand(action, songId, index) {
+      this.offlineError = '';
+      this.$bus.emit('offlineLibrary:command', { accountId: String(this.userId), action, songId, index });
+    },
     async loadPageData() {
       this.isLoaded = false;
       this.hasError = false;
       try {
+        if (this.offlineLocal) {
+          if (this.$route.params.id !== 'local' || this.userId == null) {
+            this.$router.replace('/playlists');
+            return;
+          }
+          const accountId = this.userId;
+          const songs = await localSongs(accountId);
+          if (!this.offlineLocal || String(this.userId) !== String(accountId)) return;
+          this.favoriteSongs = songs;
+          const byId = new Map(songs.map(song => [String(song.id), song]));
+          this.playlist = { ...localPlaylist(accountId),
+            songs: localQueue(accountId).map(id => byId.get(id) || { id, title: `歌曲 ${id}（本机缓存不可用）` }) };
+          this.isLoaded = true;
+          this.$bus.emit('offlineLibrary:request');
+          return;
+        }
         await Promise.all([this.loadPlaylistDetails(), this.loadFavoriteSongs()]);
         this.isLoaded = true;
       } catch (error) {
         this.hasError = true;
-        alert('加载页面失败：' + error.message);
+        if (this.offlineLocal) this.offlineError = `读取本机歌单失败：${error.message}`;
+        else alert('加载页面失败：' + error.message);
       }
     },
     async loadPlaylistDetails() {
@@ -314,6 +365,12 @@ export default {
       }
     },
     async addSongsToPlaylist() {
+      if (this.offlineLocal) {
+        for (const id of this.selectedSongIds) this.localCommand('add', id);
+        this.selectedSongIds = [];
+        this.showSongSelector = false;
+        return;
+      }
       if (!this.isOwner) {
         alert('只有歌单创建者可以编辑歌曲');
         return;
@@ -345,6 +402,10 @@ export default {
       }
     },
     async clearAllSongs() {
+      if (this.offlineLocal) {
+        if (window.confirm('确定清空本机离线播放列表吗？已缓存的歌曲文件不会删除。')) this.localCommand('clear');
+        return;
+      }
       if (!this.isOwner) {
         alert('只有歌单创建者可以操作');
         return;
@@ -367,6 +428,7 @@ export default {
       }
     },
     async removeSong(songId) {
+      if (this.offlineLocal) { this.localCommand('remove', songId); return; }
       if (!this.isOwner) {
         alert('只有歌单创建者可以编辑歌曲');
         return;
@@ -390,6 +452,12 @@ export default {
       }
     },
     async playAllSongs() {
+      if (this.offlineLocal) {
+        const first = this.playlistSongs.find(song => this.favoriteSongs.some(cached => String(cached.id) === String(song.id)));
+        if (first) this.localCommand('play', first.id);
+        else this.offlineError = '离线播放列表中没有可播放的歌曲';
+        return;
+      }
       if (!this.playlistSongs.length) {
         alert('当前歌单没有歌曲');
         return;
@@ -425,6 +493,11 @@ export default {
       }
     },
     playSingleSong(songId) {
+      if (this.offlineLocal) {
+        if (this.favoriteSongs.some(song => String(song.id) === String(songId))) this.localCommand('play', songId);
+        else this.offlineError = `歌曲 ${songId} 的本机缓存不可用`;
+        return;
+      }
       if (!songId) {
         return;
       }
@@ -472,6 +545,7 @@ export default {
       return '未知';
     },
     goToSong(songId) {
+      if (this.offlineLocal) return this.playSingleSong(songId);
       this.$router.push(`/song/${songId}`);
     },
   },

@@ -5,7 +5,7 @@
       请先登录查看你的音乐内容
     </div>
     <div v-else>
-      <div class="quick-links">
+      <div v-if="!offlineSelected" class="quick-links">
         <div class="quick-link-card" @click="$router.push('/play-history')">
           <span class="ql-icon">&#9654;</span>
           <span>播放历史</span>
@@ -21,15 +21,16 @@
       </div>
       <section class="favorites-section">
         <div class="section-header">
-          <h3>我的收藏</h3>
+          <h3>{{ offlineSelected ? '本机已缓存歌曲' : '我的收藏' }}</h3>
           <button class="refresh-btn" @click="loadFavorites" :disabled="loading">
             {{ loading ? '加载中...' : '刷新' }}
           </button>
         </div>
-        <div v-if="loading" class="empty-tip">正在加载收藏歌曲，请稍候</div>
+        <div v-if="loading" class="empty-tip">{{ offlineSelected ? '正在读取本机缓存，请稍候' : '正在加载收藏歌曲，请稍候' }}</div>
         <div v-else-if="favorites.length === 0" class="empty-tip">
-          你还没有收藏任何歌曲
+          {{ offlineSelected ? '当前账户没有完整的本机缓存歌曲' : '你还没有收藏任何歌曲' }}
         </div>
+        <p v-if="offlineSelected && offlineError" class="empty-tip" role="alert">{{ offlineError }}</p>
         <div v-else class="songs-list">
           <div
             v-for="song in favorites"
@@ -48,7 +49,13 @@
                 }}
               </p>
             </div>
-            <button
+            <button v-if="offlineSelected" class="favorite-btn" type="button"
+              :disabled="offlineQueue.includes(String(song.id))"
+              @click.stop="addOfflineSong(song.id)"
+              :title="offlineQueue.includes(String(song.id)) ? '已在离线播放列表' : '加入离线播放列表'"
+              :aria-label="offlineQueue.includes(String(song.id)) ? '已在离线播放列表' : '加入离线播放列表'"
+            >{{ offlineQueue.includes(String(song.id)) ? '✓' : '＋' }}</button>
+            <button v-else
               class="favorite-btn"
               :class="{ active: song.favorite }"
               @click.stop="toggleFavorite(song)"
@@ -71,7 +78,7 @@
           正在加载歌单，请稍候
         </div>
         <div v-else-if="myPlaylists.length === 0" class="empty-tip">
-          你还没有创建任何歌单
+          {{ offlineSelected ? '本机离线播放列表不可用' : '你还没有创建任何歌单' }}
         </div>
         <div v-else class="playlists-list">
           <div
@@ -91,9 +98,10 @@
             </div>
           </div>
         </div>
+        <p v-if="offlineSelected" class="empty-tip">离线模式只读取本机独立播放列表；原有线上歌单未缓存到手机，不会自动同步。</p>
       </section>
 
-      <section v-if="userProfile" class="profile-section">
+      <section v-if="!offlineSelected && userProfile" class="profile-section">
         <div class="section-header">
           <h3>听歌报告</h3>
           <button class="refresh-btn" @click="refreshProfile" :disabled="profileLoading">
@@ -128,7 +136,7 @@
         </div>
       </section>
 
-      <section class="statistics-section">
+      <section v-if="!offlineSelected" class="statistics-section">
         <div class="section-header statistics-header">
           <h3>最多播放</h3>
           <div class="dimension-tabs">
@@ -177,11 +185,16 @@
 import musicApi from '@/api/music';
 import statisticsApi from '@/api/statistics';
 import defaultCover from '@/assets/default-cover.png';
+import { isOfflineSelected, localQueue, localSongs, localPlaylist } from '@/offline/localLibrary';
 
 export default {
   name: 'MyMusic',
   data() {
     return {
+      offlineSelected: isOfflineSelected(),
+      offlineQueue: [],
+      offlineError: '',
+      libraryLoadEpoch: 0,
       favorites: [],
       loading: false,
       userId: null,
@@ -204,24 +217,80 @@ export default {
     };
   },
   created() {
+    window.addEventListener('offlineModeChanged', this.onOfflineModeChanged);
+    this.$bus.on('offlineLibrary:state', this.onOfflineLibraryState);
     let userBase = {};
     try { userBase = JSON.parse(localStorage.getItem('userBase') || '{}'); } catch (e) { /* ignore */ }
     this.userId = userBase.id ?? null;
-    if (this.userId) {
+    if (this.offlineSelected) {
+      this.offlineQueue = localQueue(this.userId);
+      this.loadFavorites();
+      this.loadMyPlaylists();
+    } else if (this.userId) {
       this.loadFavorites();
       this.loadMyPlaylists();
       this.loadTopSongs();
       this.loadUserProfile();
     }
   },
+  beforeUnmount() {
+    this.libraryLoadEpoch++;
+    window.removeEventListener('offlineModeChanged', this.onOfflineModeChanged);
+    this.$bus.off('offlineLibrary:state', this.onOfflineLibraryState);
+  },
   methods: {
+    onOfflineLibraryState(state) {
+      if (!this.offlineSelected || !state?.offlineMode || String(state.accountId) !== String(this.userId)) return;
+      this.offlineQueue = state.queue.map(String);
+      this.myPlaylists = [localPlaylist(this.userId)];
+      if (state.error) this.offlineError = state.error;
+    },
+    offlineCommand(action, songId) {
+      this.offlineError = '';
+      this.$bus.emit('offlineLibrary:command', { accountId: String(this.userId), action, songId });
+    },
+    addOfflineSong(songId) { this.offlineCommand('add', songId); },
+    onOfflineModeChanged() {
+      const previous = this.offlineSelected;
+      this.offlineSelected = isOfflineSelected();
+      this.libraryLoadEpoch++;
+      if (!previous && this.offlineSelected) {
+        this.offlineQueue = localQueue(this.userId);
+        this.loadFavorites();
+        this.loadMyPlaylists();
+      }
+      if (previous && !this.offlineSelected && this.userId) {
+        this.loadFavorites();
+        this.loadMyPlaylists();
+        this.loadTopSongs();
+        this.loadUserProfile();
+      }
+    },
     async loadFavorites() {
       if (!this.userId) {
+        return;
+      }
+      const epoch = this.libraryLoadEpoch;
+      if (this.offlineSelected) {
+        this.loading = true;
+        this.offlineError = '';
+        try {
+          const songs = await localSongs(this.userId);
+          if (this.offlineSelected && epoch === this.libraryLoadEpoch) {
+            this.favorites = songs;
+            this.artistNameMap = Object.fromEntries(songs.map(song => [song.artistId, song.artistName]));
+          }
+        } catch (error) {
+          if (epoch === this.libraryLoadEpoch) this.offlineError = `读取本机歌曲失败：${error.message}`;
+        } finally {
+          if (epoch === this.libraryLoadEpoch) this.loading = false;
+        }
         return;
       }
       this.loading = true;
       try {
         const response = await musicApi.getUserFavoriteSongs(this.userId);
+        if (this.offlineSelected || epoch !== this.libraryLoadEpoch) return;
         if (response.data && response.data.passed) {
           this.favorites = response.data.data || [];
           await this.loadFavoriteArtistNames();
@@ -230,12 +299,13 @@ export default {
           alert('获取收藏列表失败：' + msg);
         }
       } catch (error) {
-        alert('获取收藏列表失败：' + error.message);
+        if (!this.offlineSelected && epoch === this.libraryLoadEpoch) alert('获取收藏列表失败：' + error.message);
       } finally {
-        this.loading = false;
+        if (epoch === this.libraryLoadEpoch) this.loading = false;
       }
     },
     async loadFavoriteArtistNames() {
+      if (this.offlineSelected) return;
       const ids = Array.from(
         new Set(
           this.favorites
@@ -254,24 +324,31 @@ export default {
       if (!this.userId) {
         return;
       }
+      if (this.offlineSelected) {
+        this.offlineQueue = localQueue(this.userId);
+        this.myPlaylists = [localPlaylist(this.userId)];
+        return;
+      }
+      const epoch = this.libraryLoadEpoch;
       this.loadingPlaylists = true;
       try {
         const response = await musicApi.discoverPlaylists(this.userId);
+        if (this.offlineSelected || epoch !== this.libraryLoadEpoch) return;
         if (response.data && response.data.passed) {
           const all = response.data.data || [];
-          this.myPlaylists = all.filter(p => p.userId === this.userId);
+          this.myPlaylists = all.filter(p => String(p.userId) === String(this.userId));
         } else {
           const msg = response.data ? response.data.message : '未知错误';
           alert('获取歌单列表失败：' + msg);
         }
       } catch (error) {
-        alert('获取歌单列表失败：' + error.message);
+        if (!this.offlineSelected && epoch === this.libraryLoadEpoch) alert('获取歌单列表失败：' + error.message);
       } finally {
-        this.loadingPlaylists = false;
+        if (epoch === this.libraryLoadEpoch) this.loadingPlaylists = false;
       }
     },
     async loadTopSongs() {
-      if (!this.userId) {
+      if (!this.userId || this.offlineSelected) {
         return;
       }
       this.topSongsLoading = true;
@@ -280,6 +357,7 @@ export default {
           dimension: this.selectedTopSongDimension,
           limit: 5,
         });
+        if (this.offlineSelected) return;
         if (response.data && response.data.passed) {
           const list = response.data.data || [];
           const enriched = await Promise.all(
@@ -292,13 +370,14 @@ export default {
               };
             })
           );
+          if (this.offlineSelected) return;
           this.topSongs = enriched;
         } else {
           const msg = response.data ? response.data.message : '未知错误';
           alert('获取播放统计失败：' + msg);
         }
       } catch (error) {
-        alert('获取播放统计失败：' + error.message);
+        if (!this.offlineSelected) alert('获取播放统计失败：' + error.message);
       } finally {
         this.topSongsLoading = false;
       }
@@ -311,8 +390,10 @@ export default {
       this.loadTopSongs();
     },
     async loadUserProfile() {
+      if (this.offlineSelected) return;
       try {
         const res = await statisticsApi.getUserProfile(this.userId);
+        if (this.offlineSelected) return;
         if (res.data?.passed && res.data.data) {
           this.userProfile = res.data.data;
           if (this.userProfile.topSingerId) {
@@ -335,8 +416,10 @@ export default {
       }
     },
     async loadTopSingerName(singerId) {
+      if (this.offlineSelected) return;
       try {
         const res = await musicApi.getSingerBaseInfo(singerId);
+        if (this.offlineSelected) return;
         if (res.data?.passed && res.data.data) {
           this.topSingerName = res.data.data.name || `歌手 ${singerId}`;
         }
@@ -352,6 +435,7 @@ export default {
       return `${minutes}分钟`;
     },
     async fetchArtistName(artistId) {
+      if (this.offlineSelected) return this.artistNameMap[artistId] || `歌手 ${artistId}`;
       if (!artistId) {
         return '';
       }
@@ -373,11 +457,12 @@ export default {
       }
     },
     async fetchSongBaseInfo(songId) {
-      if (!songId) {
+      if (!songId || this.offlineSelected) {
         return {};
       }
       try {
         const res = await musicApi.getSongBaseInfo(songId, this.userId);
+        if (this.offlineSelected) return {};
         if (res.data && res.data.passed) {
           const song = res.data.data || {};
           if (song.artistId) {
@@ -425,9 +510,14 @@ export default {
       }
     },
     goToSong(songId) {
+      if (this.offlineSelected) {
+        this.offlineCommand('addAndPlay', songId);
+        return;
+      }
       this.$router.push(`/song/${songId}`);
     },
     goToPlaylist(playlistId) {
+      if (this.offlineSelected) return this.$router.push('/playlist/local');
       this.$router.push(`/playlist/${playlistId}`);
     },
   },

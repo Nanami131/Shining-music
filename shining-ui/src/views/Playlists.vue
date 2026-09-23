@@ -9,7 +9,7 @@
             <input type="text" v-model="searchQuery" placeholder="搜索歌单名称、简介…" />
           </div>
           <button
-            v-if="userId"
+            v-if="userId && !offlineSelected"
             class="btn primary create-toggle-btn"
             @click="toggleCreatePanel"
           >
@@ -18,7 +18,7 @@
         </div>
 
         <!-- 创建歌单，仅在点击按钮后展示 -->
-        <section class="section section-create" v-if="userId && showCreatePanel">
+        <section class="section section-create" v-if="userId && showCreatePanel && !offlineSelected">
           <h2>创建歌单</h2>
           <div class="create-form">
             <div class="field-row">
@@ -85,7 +85,7 @@
           </div>
         </section>
 
-        <section v-if="discoverList.length" class="section section-recommend">
+        <section v-if="!offlineSelected && discoverList.length" class="section section-recommend">
           <h2>发现歌单</h2>
           <div class="playlists-list">
             <div
@@ -105,7 +105,8 @@
 
         <!-- 全部歌单 -->
         <section class="section section-more">
-          <h2>全部歌单</h2>
+          <h2>{{ offlineSelected ? '我的歌单 · 本机离线列表' : '全部歌单' }}</h2>
+          <p v-if="offlineSelected">此处显示手机上实际保存的离线播放列表。服务器上的其他歌单尚无本机副本，离线时不会请求或自动同步。</p>
           <div class="playlists-list">
             <div
               v-for="playlist in filteredPlaylists"
@@ -121,7 +122,7 @@
               <div class="playlist-info">
                 <h3>{{ playlist.name || '未知歌单' }}</h3>
                 <p>{{ playlist.description || '暂无简介' }}</p>
-                <p class="creator" v-if="playlist.nickName || playlist.userId !== undefined">
+                <p class="creator" v-if="!offlineSelected && (playlist.nickName || playlist.userId !== undefined)">
                   创建者：{{ getCreatorName(playlist) }}
                 </p>
               </div>
@@ -137,6 +138,7 @@
 import musicApi from '@/api/music';
 import defaultCover from '@/assets/default-cover.png';
 import StormFrontRain from '@/components/StormFrontRain.vue';
+import { isOfflineSelected, localPlaylist } from '@/offline/localLibrary';
 
 export default {
   name: 'Playlists',
@@ -146,6 +148,8 @@ export default {
   data() {
     return {
       playlists: [],
+      offlineSelected: isOfflineSelected(),
+      libraryLoadEpoch: 0,
       discoverList: [],
       userId: null,
       searchQuery: '',
@@ -178,24 +182,53 @@ export default {
     },
   },
   created() {
+    window.addEventListener('offlineModeChanged', this.onOfflineModeChanged);
+    this.$bus.on('offlineLibrary:state', this.onOfflineLibraryState);
     let userBase = {};
     try { userBase = JSON.parse(localStorage.getItem('userBase') || '{}'); } catch (e) { /* ignore */ }
     this.userId = userBase.id ?? null;
     this.loadPlaylists();
-    this.loadDiscover();
+    if (!this.offlineSelected) this.loadDiscover();
+  },
+  beforeUnmount() {
+    this.libraryLoadEpoch++;
+    window.removeEventListener('offlineModeChanged', this.onOfflineModeChanged);
+    this.$bus.off('offlineLibrary:state', this.onOfflineLibraryState);
   },
   methods: {
+    onOfflineModeChanged() {
+      this.libraryLoadEpoch++;
+      this.offlineSelected = isOfflineSelected();
+      this.showCreatePanel = false;
+      this.discoverList = [];
+      this.loadPlaylists();
+      if (!this.offlineSelected) this.loadDiscover();
+    },
+    onOfflineLibraryState(state) {
+      if (this.offlineSelected && state?.offlineMode && String(state.accountId) === String(this.userId)) {
+        this.playlists = [localPlaylist(this.userId)];
+      }
+    },
     async loadDiscover() {
+      if (this.offlineSelected) return;
+      const epoch = this.libraryLoadEpoch;
       try {
         const res = await musicApi.discoverPlaylists(this.userId);
+        if (this.offlineSelected || epoch !== this.libraryLoadEpoch) return;
         if (res.data?.passed) {
           this.discoverList = (res.data.data || []).slice(0, 6);
         }
       } catch (e) { /* silent */ }
     },
     async loadPlaylists() {
+      if (this.offlineSelected) {
+        this.playlists = this.userId == null ? [] : [localPlaylist(this.userId)];
+        return;
+      }
+      const epoch = this.libraryLoadEpoch;
       try {
         const response = await musicApi.getPlaylists(this.userId);
+        if (this.offlineSelected || epoch !== this.libraryLoadEpoch) return;
         if (response.data && response.data.passed) {
           const list = response.data.data || [];
           // 兜底：私密歌单（visibility=1）不展示
@@ -205,7 +238,7 @@ export default {
           alert('获取歌单列表失败：' + msg);
         }
       } catch (error) {
-        alert('获取歌单列表失败：' + error.message);
+        if (!this.offlineSelected && epoch === this.libraryLoadEpoch) alert('获取歌单列表失败：' + error.message);
       }
     },
     async loadFavoriteSongsForCreate() {
@@ -336,6 +369,7 @@ export default {
       return playlist.userId ? `用户${playlist.userId}` : '未知用户';
     },
     goToPlaylist(playlistId) {
+      if (this.offlineSelected) return this.$router.push('/playlist/local');
       this.$router.push(`/playlist/${playlistId}`);
     },
   },

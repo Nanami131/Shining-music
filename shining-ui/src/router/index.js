@@ -1,6 +1,7 @@
 import { createRouter, createWebHistory } from 'vue-router';
 
 import ShiningHome from '../views/ShiningHome.vue';
+import { isAndroidApp } from '../utils/androidServer';
 import Login from '../views/Login.vue';
 import Register from '../views/Register.vue';
 import Profile from '../views/Profile.vue';
@@ -36,6 +37,10 @@ const devGuard = (to, from, next) => {
 };
 
 const routes = [
+    {
+        path: '/offline',
+        redirect: '/my-music',
+    },
     {
         path: '/',
         name: 'shining-home',
@@ -166,6 +171,18 @@ const routes = [
 const router = createRouter({
     history: createWebHistory(),
     routes,
+});
+
+router.beforeEach((to) => {
+    if (!isAndroidApp) return true;
+    let userId = '0';
+    try { userId = String(JSON.parse(localStorage.getItem('userBase') || '{}').id ?? '0'); } catch { /* guest */ }
+    try {
+        const state = JSON.parse(localStorage.getItem(`shining.offline.state.${userId}`) || '{}');
+        if (state.selectedMode === 'offline' &&
+            !['/my-music', '/playlists', '/playlist/local'].includes(to.path)) return '/my-music';
+    } catch { /* invalid offline state */ }
+    return true;
 });
 
 export default router;

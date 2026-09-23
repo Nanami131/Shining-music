@@ -7,14 +7,15 @@
       <div class="logo" @click="goToDiscover">Shining</div>
     </div>
     <div class="nav">
-      <span class="nav-item" @click="goToDiscover">发现音乐</span>
+      <span v-if="!offlineSelected" class="nav-item" @click="goToDiscover">发现音乐</span>
       <span class="nav-item" @click="goToMyMusic">我的音乐</span>
-      <span class="nav-item" @click="goToForum">讨论区</span>
-      <span class="nav-item" @click="goToSingers">歌手</span>
-      <span class="nav-item" @click="goToSongs">歌曲</span>
-      <span class="nav-item" @click="goToPlaylists">歌单</span>
+      <span v-if="!offlineSelected" class="nav-item" @click="goToForum">讨论区</span>
+      <span v-if="!offlineSelected" class="nav-item" @click="goToSingers">歌手</span>
+      <span v-if="!offlineSelected" class="nav-item" @click="goToSongs">歌曲</span>
+      <span class="nav-item" @click="goToPlaylists">{{ offlineSelected ? '我的歌单' : '歌单' }}</span>
     </div>
-    <div class="actions">
+    <div v-if="offlineSelected" class="actions"><span>离线模式 · 本机资料</span></div>
+    <div v-else class="actions">
       <template v-if="isLoggedIn">
         <img
             :src="userBase.avatarUrl || defaultAvatar"
@@ -36,6 +37,7 @@
 <script>
 import userApi from '@/api/user';
 import defaultAvatar from '@/assets/default-avatar.png';
+import { isOfflineSelected } from '@/offline/localLibrary';
 
 export default {
   name: 'Header',
@@ -43,6 +45,7 @@ export default {
     return {
       userBase: (() => { try { return JSON.parse(localStorage.getItem('userBase') || '{}'); } catch (e) { return {}; } })(),
       isLoggedIn: !!localStorage.getItem('token'),
+      offlineSelected: isOfflineSelected(),
       defaultAvatar,
     };
   },
@@ -55,14 +58,17 @@ export default {
     this.updateLoginState();
     window.addEventListener('storage', this.updateLoginState);
     window.addEventListener('userBaseUpdated', this.updateLoginState);
+    window.addEventListener('offlineModeChanged', this.updateLoginState);
   },
   beforeDestroy() {
     window.removeEventListener('storage', this.updateLoginState);
     window.removeEventListener('userBaseUpdated', this.updateLoginState);
+    window.removeEventListener('offlineModeChanged', this.updateLoginState);
   },
   methods: {
     updateLoginState() {
       this.isLoggedIn = !!localStorage.getItem('token');
+      this.offlineSelected = isOfflineSelected();
       try { this.userBase = JSON.parse(localStorage.getItem('userBase') || '{}'); } catch (e) { this.userBase = {}; }
     },
     // 统一处理接口错误，“登录已过期，请重新登录”只弹一次

@@ -4,12 +4,48 @@
       :class="{ expanded: showLyrics, resizing: isResizingLyrics }"
       :style="bottomBarStyle"
   >
+    <div v-if="isMobileAndroid" class="offline-tools">
+      <button type="button" class="offline-launch" @click="openOfflineLibrary">
+        {{ offlineMode ? '离线模式 · 本地缓存/队列' : '在线模式 · 本地缓存/队列' }}
+      </button>
+      <span class="offline-network">{{ networkOnline ? '网络已连接' : '当前无网络' }}</span>
+      <div v-if="offlineLibraryOpen" class="offline-drawer">
+        <div class="offline-drawer-head">
+          <strong>本地音乐</strong>
+          <button type="button" @click="offlineLibraryOpen = false">关闭</button>
+        </div>
+        <div class="offline-mode-actions">
+          <button type="button" :disabled="offlineMode" @click="switchToOffline">进入离线模式</button>
+          <button type="button" :disabled="!offlineMode" @click="switchToOnline">返回在线模式</button>
+          <button type="button" @click="refreshOfflineLibrary">刷新缓存</button>
+        </div>
+        <p v-if="offlineError" class="offline-error">{{ offlineError }}</p>
+        <p v-if="!offlineCachedSongs.length">当前账号尚无完整缓存歌曲。</p>
+        <ul v-else class="offline-library-list">
+          <li v-for="song in offlineCachedSongs" :key="song.id">
+            <span>{{ song.title }} · {{ song.artistName }} · READY · {{ (Number(song.sizeBytes || 0) / 1048576).toFixed(1) }} MB</span>
+            <button type="button" :disabled="offlineQueue.includes(String(song.id))" @click="addOfflineQueue(song.id)">加入列表</button>
+          </li>
+        </ul>
+        <p>离线列表共 {{ offlineQueue.length }} 首歌曲。缓存库与播放列表独立。</p>
+        <button type="button" :disabled="!offlineQueue.length" @click="clearOfflineQueue">清空离线列表</button>
+        <ol class="offline-library-list">
+          <li v-for="(id, index) in offlineQueue" :key="id">
+            <span>{{ offlineQueueTitle(id) }}</span>
+            <button type="button" :disabled="index === 0" @click="moveOfflineQueue(id, index - 1)">上移</button>
+            <button type="button" :disabled="index === offlineQueue.length - 1" @click="moveOfflineQueue(id, index + 1)">下移</button>
+            <button type="button" @click="removeOfflineQueue(id)">移出</button>
+            <button type="button" :disabled="!offlineMode || !offlineCachedSongs.some(song => String(song.id) === id)" @click="playOfflineSong(id)">播放</button>
+          </li>
+        </ol>
+      </div>
+    </div>
     <div class="fixed-bar">
       <div class="song-info">
         <button
             type="button"
             class="current-song-link"
-            :disabled="!currentSong || !currentSong.id"
+            :disabled="offlineMode || !currentSong || !currentSong.id"
             :title="currentSong && currentSong.id ? '查看歌曲详情' : ''"
             @click="goToSongDetail(currentSong.id)"
         >
@@ -23,6 +59,7 @@
             class="favorite-btn"
             :class="{ active: currentSong && currentSong.favorite }"
             @click.stop="toggleFavoriteFromPlayer"
+            :disabled="offlineMode"
             :title="currentSong && currentSong.favorite ? '取消收藏' : '收藏歌曲'"
         >
           <span class="heart-icon"></span>
@@ -31,7 +68,7 @@
             class="player-share-btn"
             type="button"
             title="分享"
-            :disabled="!currentSong || !currentSong.id"
+            :disabled="offlineMode || !currentSong || !currentSong.id"
             @click.stop="openSongShare"
         >
           ↗
@@ -58,7 +95,7 @@
           <button
               class="icon-btn play-btn"
               @click="togglePlay"
-              :disabled="!audio.src && !(currentSong && currentSong.fileUrl)"
+              :disabled="!selectingSong && !audio.src && !(currentSong && currentSong.fileUrl)"
           >
             <span class="icon" :class="isPlaying ? 'pause' : 'play'"></span>
           </button>
@@ -177,12 +214,12 @@
           <div class="playlist-header">
             <div class="title">当前播放列表</div>
             <div class="playlist-header-right">
-              <div class="subtitle" v-if="userId">
-                共 {{ currentPlaylistSongs.length }} 首
+              <div class="subtitle" v-if="userId || offlineMode">
+                共 {{ offlineMode ? offlineQueue.length : currentPlaylistSongs.length }} 首
               </div>
               <div class="subtitle" v-else>登录后自动保存播放记录</div>
               <button
-                  v-if="userId && currentPlaylistSongs.length > 0"
+                  v-if="(offlineMode && offlineQueue.length) || (!offlineMode && userId && currentPlaylistSongs.length > 0)"
                   class="clear-playlist-btn"
                   @click="clearPlaylist"
               >
@@ -190,9 +227,9 @@
               </button>
             </div>
           </div>
-          <div v-if="userId && currentPlaylistSongs.length" class="playlist-list">
+          <div v-if="(offlineMode && offlineQueue.length) || (!offlineMode && userId && currentPlaylistSongs.length)" class="playlist-list">
             <div
-                v-for="(song, idx) in currentPlaylistSongs"
+                v-for="(song, idx) in offlineMode ? offlineQueueSongs : currentPlaylistSongs"
                 :key="song.id || idx"
                 :class="['playlist-item', { active: currentSong && song.id === currentSong.id }]"
                 @click="playFromCurrentList(idx)"
@@ -203,7 +240,7 @@
                     type="button"
                     class="name song-name-link"
                     :title="song.title || '未知歌曲'"
-                    @click.stop="goToSongDetail(song.id)"
+                    @click.stop="offlineMode ? playOfflineSong(song.id) : goToSongDetail(song.id)"
                 >
                   {{ song.title || '未知歌曲' }}
                 </button>
@@ -211,13 +248,14 @@
               </div>
               <button
                   class="remove-btn"
-                  @click.stop="removeSongFromPlaylist(song.id)"
-                  :disabled="!currentPlaylistId"
+                  @click.stop="offlineMode ? removeOfflineQueue(song.id) : removeSongFromPlaylist(song.id)"
+                  :disabled="!offlineMode && !currentPlaylistId"
               >
                 移除
               </button>
             </div>
           </div>
+          <p v-else-if="offlineMode" class="playlist-empty">离线列表为空，请从本地缓存库加入歌曲。</p>
           <p v-else-if="userId" class="playlist-empty">播放任意歌曲后会自动加入此处～</p>
           <p v-else class="playlist-empty">登录账号后可同步播放列表</p>
         </div>
@@ -291,6 +329,7 @@ import musicApi from '@/api/music';
 import statisticsApi from '@/api/statistics';
 import defaultCover from '@/assets/default-cover.png';
 import { isAndroidApp } from '@/utils/androidServer';
+import { cachePlayedSong, getCachedSong, listCachedSongs, setNativeOfflineMode } from '@/offline/audioCacheService';
 import {
   parseLyrics as parseLrc,
   timeToSeconds,
@@ -343,6 +382,16 @@ export default {
       defaultCover,
       highlightColor: 'pink',
       userId: null,
+      offlineMode: false,
+      offlineLibraryOpen: false,
+      offlineCachedSongs: [],
+      offlineQueue: [],
+      offlineSongId: null,
+      offlineError: '',
+      networkOnline: navigator.onLine,
+      selectingSong: false,
+      playRequested: false,
+      onlineSnapshot: null,
       currentPlaylistId: null,
       currentPlaylistSongs: [],
       playMode: 'sequential', // stop | sequential | single | shuffle
@@ -411,40 +460,60 @@ export default {
     displayLyrics() {
       return this.bilingualMode ? this.bilingualLyrics : this.parsedLyrics;
     },
+    offlineQueueSongs() {
+      return this.offlineQueue.map(id => this.offlineCachedSongs.find(song => String(song.id) === id) ||
+        { id, title: `歌曲 ${id}（缓存不可用）`, artistName: '缓存不可用' });
+    },
   },
   created() {
     this._playSeq = 0;
     this._lastPlaylistLoadId = 0;
+    this._modeSeq = 0;
     this._playlistSetByEvent = false;
     this._saveStateTimer = null;
     let userBase = {};
     try { userBase = JSON.parse(localStorage.getItem('userBase') || '{}'); } catch (e) { /* ignore */ }
     this.userId = userBase.id ?? null;
-    if (this.userId) {
+    this.loadOfflineState();
+    if (this.userId && !this.offlineMode) {
       this.loadCurrentPlaylist();
       this.restorePlaybackState();
+    }
+    if (this.offlineMode) {
+      setNativeOfflineMode(true).then(() => this.restoreOfflineSelection()).catch(error => { this.offlineError = error.message; });
+    } else if (isAndroidApp) {
+      setNativeOfflineMode(false).catch(error => { this.offlineError = error.message; });
     }
     this.audio.addEventListener('timeupdate', this.updateProgress);
     this.audio.addEventListener('loadedmetadata', this.updateDuration);
     this.audio.addEventListener('ended', this.handleEnded);
     this.audio.addEventListener('play', this.syncAudioPlayState);
     this.audio.addEventListener('pause', this.syncAudioPlayState);
+    this.audio.addEventListener('pause', this.saveOfflineOnPause);
     this.audio.addEventListener('error', this.syncAudioPlayState);
     this.$bus.on('playSong', this.handlePlaySongEvent);
+    this.$bus.on('offlineLibrary:request', this.publishOfflineLibrary);
+    this.$bus.on('offlineLibrary:command', this.handleOfflineLibraryCommand);
     this.$bus.on('refreshCurrentPlaylist', this.loadCurrentPlaylist);
     window.addEventListener('userBaseUpdated', this.handleUserStateChange);
     window.addEventListener('beforeunload', this.onBeforeUnload);
+    window.addEventListener('online', this.refreshNetworkHint);
+    window.addEventListener('offline', this.refreshNetworkHint);
   },
   beforeDestroy() {
     this.reportPlayEnd('destroy');
-    this.savePlaybackStateNow();
+    if (this.offlineMode) this.persistOfflineState();
+    else this.savePlaybackStateNow();
     this.audio.removeEventListener('timeupdate', this.updateProgress);
     this.audio.removeEventListener('loadedmetadata', this.updateDuration);
     this.audio.removeEventListener('ended', this.handleEnded);
     this.audio.removeEventListener('play', this.syncAudioPlayState);
     this.audio.removeEventListener('pause', this.syncAudioPlayState);
+    this.audio.removeEventListener('pause', this.saveOfflineOnPause);
     this.audio.removeEventListener('error', this.syncAudioPlayState);
     this.$bus.off('playSong', this.handlePlaySongEvent);
+    this.$bus.off('offlineLibrary:request', this.publishOfflineLibrary);
+    this.$bus.off('offlineLibrary:command', this.handleOfflineLibraryCommand);
     this.$bus.off('refreshCurrentPlaylist', this.loadCurrentPlaylist);
     this.audio.pause();
     this.audio.src = '';
@@ -456,9 +525,372 @@ export default {
     window.removeEventListener('mousemove', this.onLyricsResizing);
     window.removeEventListener('mouseup', this.stopLyricsResize);
     window.removeEventListener('beforeunload', this.onBeforeUnload);
+    window.removeEventListener('online', this.refreshNetworkHint);
+    window.removeEventListener('offline', this.refreshNetworkHint);
     if (this._saveStateTimer) clearTimeout(this._saveStateTimer);
   },
   methods: {
+    refreshNetworkHint() { this.networkOnline = navigator.onLine; },
+    validOnline(playId, accountId, songId) {
+      return !this.offlineMode && this._playSeq === playId &&
+        String(this.userId ?? '0') === String(accountId ?? '0') &&
+        (songId == null || String(this.currentSong?.id) === String(songId));
+    },
+    captureOnlinePrior() {
+      if (this.offlineMode || this._onlinePendingPrior || !this.currentSong?.id || !this.audio.src) return;
+      this._onlinePendingPrior = {
+        song: this.currentSong, src: this.audio.src, position: this.audio.currentTime,
+        session: this.currentPlaySessionId, lyrics: [...this.allLyrics],
+        playlist: [...this.playlist], index: this.currentIndex,
+        shuffleHistory: [...this.shuffleHistory], shuffleHistoryIndex: this.shuffleHistoryIndex,
+      };
+    },
+    clearSource() {
+      this.audio.pause();
+      this.audio.removeAttribute('src');
+      this.audio.load();
+      this.isPlaying = false;
+      this.selectingSong = false;
+      this.playRequested = false;
+      this.currentSong = {};
+      this.currentTime = 0;
+      this.duration = 0;
+      this.allLyrics = [];
+      this.parsedLyrics = [];
+      this.bilingualLyrics = [];
+      this.availableLangs = [];
+      this.selectedLyricId = null;
+    },
+    offlineStateKey() {
+      return `shining.offline.state.${this.userId == null ? '0' : String(this.userId)}`;
+    },
+    loadOfflineState() {
+      if (!isAndroidApp) return;
+      let stored = {};
+      try { stored = JSON.parse(localStorage.getItem(this.offlineStateKey()) || '{}'); } catch { /* ignore invalid state */ }
+      this.offlineQueue = Array.isArray(stored.queue) ? [...new Set(stored.queue.map(String).filter(id => /^[0-9]{1,20}$/.test(id)))] : [];
+      this.offlineSongId = stored.songId && this.offlineQueue.includes(String(stored.songId)) ? String(stored.songId) : null;
+      this._offlineSavedPosition = Number.isFinite(Number(stored.position)) && Number(stored.position) >= 0 ? Number(stored.position) : 0;
+      this._offlineSavedMode = ['single', 'sequential', 'shuffle', 'stop'].includes(stored.playMode) ? stored.playMode : 'sequential';
+      this._offlineSavedVolume = Number.isFinite(Number(stored.volume)) && stored.volume != null ? this.clampVolume(stored.volume) : 1;
+      this._offlineSavedHistory = Array.isArray(stored.shuffleHistory) ? stored.shuffleHistory.map(String).filter(id => this.offlineQueue.includes(id)) : [];
+      this._offlineSavedHistoryIndex = Number.isInteger(stored.shuffleHistoryIndex) && stored.shuffleHistoryIndex >= 0 &&
+        stored.shuffleHistoryIndex < this._offlineSavedHistory.length ? stored.shuffleHistoryIndex : -1;
+      this.offlineMode = stored.selectedMode === 'offline';
+    },
+    persistOfflineState() {
+      if (!isAndroidApp) return;
+      const position = this.offlineMode && this.audio.src ? this.audio.currentTime : (this._offlineSavedPosition || 0);
+      localStorage.setItem(this.offlineStateKey(), JSON.stringify({
+        selectedMode: this.offlineMode ? 'offline' : 'online',
+        queue: [...this.offlineQueue],
+        songId: this.offlineSongId,
+        position: Number.isFinite(position) ? position : 0,
+        playMode: this.offlineMode ? this.playMode : (this._offlineSavedMode || 'sequential'),
+        volume: this.offlineMode ? this.volume : this._offlineSavedVolume,
+        shuffleHistory: this.offlineMode ? this.shuffleHistory.map(String) : (this._offlineSavedHistory || []),
+        shuffleHistoryIndex: this.offlineMode ? this.shuffleHistoryIndex : (this._offlineSavedHistoryIndex ?? -1),
+      }));
+      this.publishOfflineLibrary();
+    },
+    publishOfflineLibrary() {
+      this.$bus.emit('offlineLibrary:state', {
+        accountId: this.userId == null ? null : String(this.userId),
+        offlineMode: this.offlineMode,
+        queue: [...this.offlineQueue],
+        cachedSongs: [...this.offlineCachedSongs],
+        currentSongId: this.offlineSongId,
+        error: this.offlineError,
+      });
+    },
+    async handleOfflineLibraryCommand({ accountId, action, songId, index } = {}) {
+      if (!this.offlineMode || String(this.userId ?? '') !== String(accountId ?? '')) return;
+      switch (action) {
+        case 'refresh': await this.refreshOfflineLibrary(); break;
+        case 'add': await this.addOfflineQueue(songId); break;
+        case 'addAndPlay':
+          await this.addOfflineQueue(songId);
+          if (this.offlineQueue.includes(String(songId))) await this.playOfflineSong(songId);
+          break;
+        case 'remove': this.removeOfflineQueue(songId); break;
+        case 'clear': this.clearOfflineQueue(); break;
+        case 'move': this.moveOfflineQueue(songId, index); break;
+        case 'play': await this.playOfflineSong(songId); break;
+        default: return;
+      }
+      this.publishOfflineLibrary();
+    },
+    saveOfflineOnPause() {
+      if (this.offlineMode) this.persistOfflineState();
+    },
+    async refreshOfflineLibrary() {
+      this.offlineError = '';
+      const accountAtStart = this.userId;
+      try {
+        const songs = await listCachedSongs(accountAtStart);
+        if (String(accountAtStart ?? '0') === String(this.userId ?? '0')) this.offlineCachedSongs = songs;
+      } catch (error) {
+        if (String(accountAtStart ?? '0') === String(this.userId ?? '0')) this.offlineError = error.message;
+      }
+      this.publishOfflineLibrary();
+    },
+    async openOfflineLibrary() {
+      this.offlineLibraryOpen = !this.offlineLibraryOpen;
+      if (this.offlineLibraryOpen) await this.refreshOfflineLibrary();
+    },
+    offlineQueueTitle(songId) {
+      return this.offlineQueueSongs.find(song => String(song.id) === String(songId))?.title || `歌曲 ${songId}`;
+    },
+    async addOfflineQueue(songId) {
+      const id = String(songId);
+      if (this.offlineQueue.includes(id)) return;
+      const accountAtStart = this.userId;
+      try {
+        const cached = await getCachedSong(id, accountAtStart);
+        if (String(this.userId ?? '0') !== String(accountAtStart ?? '0')) return;
+        if (cached.status !== 'READY') throw new Error(`歌曲 ${id} 尚未完成缓存，不能加入离线列表`);
+        if (this.offlineQueue.includes(id)) return;
+        this.offlineQueue.push(id);
+        if (this.offlineMode) this.playlist = [...this.offlineQueue];
+        this.persistOfflineState();
+      } catch (error) { this.offlineError = error.message; }
+    },
+    resetOfflineCurrent() {
+      ++this._playSeq;
+      this.audio.pause();
+      this.audio.removeAttribute('src');
+      this.audio.load();
+      this.isPlaying = false;
+      this.currentSong = {};
+      this.currentTime = 0;
+      this.duration = 0;
+      this.offlineSongId = null;
+      this._offlineSavedPosition = 0;
+      this.allLyrics = [];
+      this.parsedLyrics = [];
+      this.bilingualLyrics = [];
+      this.currentIndex = -1;
+    },
+    removeOfflineQueue(songId) {
+      const id = String(songId);
+      if (!this.offlineQueue.includes(id)) return;
+      this.offlineQueue = this.offlineQueue.filter(item => item !== id);
+      this.shuffleHistory = this.shuffleHistory.filter(item => String(item) !== id);
+      this.shuffleHistoryIndex = Math.min(this.shuffleHistoryIndex, this.shuffleHistory.length - 1);
+      this._offlineSavedHistory = (this._offlineSavedHistory || []).filter(item => item !== id);
+      this._offlineSavedHistoryIndex = Math.min(this._offlineSavedHistoryIndex ?? -1, this._offlineSavedHistory.length - 1);
+      if (id === this.offlineSongId) {
+        if (this.offlineMode) this.resetOfflineCurrent();
+        else { this.offlineSongId = null; this._offlineSavedPosition = 0; }
+      }
+      if (this.offlineMode) {
+        this.playlist = [...this.offlineQueue];
+        this.currentIndex = this.playlist.indexOf(this.offlineSongId);
+      }
+      this.persistOfflineState();
+    },
+    moveOfflineQueue(songId, toIndex) {
+      const fromIndex = this.offlineQueue.indexOf(String(songId));
+      if (fromIndex < 0 || !Number.isInteger(toIndex) || toIndex < 0 || toIndex >= this.offlineQueue.length) return;
+      const queue = [...this.offlineQueue];
+      queue.splice(fromIndex, 1);
+      queue.splice(toIndex, 0, String(songId));
+      this.offlineQueue = queue;
+      if (this.offlineMode) { this.playlist = [...queue]; this.currentIndex = queue.indexOf(this.offlineSongId); }
+      this.persistOfflineState();
+    },
+    clearOfflineQueue() {
+      if (!this.offlineQueue.length) return;
+      if (this.offlineMode) this.resetOfflineCurrent();
+      else { this.offlineSongId = null; this._offlineSavedPosition = 0; }
+      this.offlineQueue = [];
+      this.playlist = this.offlineMode ? [] : this.playlist;
+      this.shuffleHistory = this.offlineMode ? [] : this.shuffleHistory;
+      this.shuffleHistoryIndex = this.offlineMode ? -1 : this.shuffleHistoryIndex;
+      this._offlineSavedHistory = [];
+      this._offlineSavedHistoryIndex = -1;
+      this.persistOfflineState();
+    },
+    async restoreOfflineSelection() {
+      const modeSeq = this._modeSeq;
+      const account = this.userId;
+      this.playMode = this._offlineSavedMode || 'sequential';
+      this.applyVolume(this._offlineSavedVolume ?? 1);
+      this.shuffleHistory = [...(this._offlineSavedHistory || [])];
+      this.shuffleHistoryIndex = this._offlineSavedHistoryIndex ?? -1;
+      this.playlist = [...this.offlineQueue];
+      this.currentIndex = this.playlist.indexOf(this.offlineSongId);
+      await this.refreshOfflineLibrary();
+      if (!this.offlineMode || modeSeq !== this._modeSeq || String(account ?? '0') !== String(this.userId ?? '0')) return;
+      if (this.currentIndex !== -1) await this.playOfflineSong(this.offlineSongId, false);
+    },
+    async switchToOffline() {
+      if (this.offlineMode) return;
+      const switchId = ++this._modeSeq;
+      this._onlineRoute = this.$route.path;
+      ++this._playSeq;
+      ++this._lastPlaylistLoadId;
+      if (this._saveStateTimer) clearTimeout(this._saveStateTimer);
+      this.savePlaybackStateNow();
+      this.reportPlayEnd('switch');
+      const previous = this._onlinePendingPrior;
+      this.onlineSnapshot = {
+        song: previous?.song || this.currentSong,
+        src: previous?.src || this.audio.src,
+        position: previous?.position ?? this.audio.currentTime,
+        playlist: previous?.playlist || [...this.playlist], index: previous?.index ?? this.currentIndex, playMode: this.playMode,
+        session: previous?.session ?? this.currentPlaySessionId,
+        lyrics: previous?.lyrics || [...this.allLyrics], volume: this.volume,
+        shuffleHistory: previous?.shuffleHistory || [...this.shuffleHistory],
+        shuffleHistoryIndex: previous?.shuffleHistoryIndex ?? this.shuffleHistoryIndex,
+      };
+      this._onlinePendingPrior = null;
+      this.audio.pause();
+      this.offlineMode = true;
+      this.clearSource();
+      this.currentPlaySessionId = null;
+      this.persistOfflineState();
+      window.dispatchEvent(new Event('offlineModeChanged'));
+      if (!['/my-music', '/playlists', '/playlist/local'].includes(this.$route.path)) await this.$router.replace('/my-music');
+      if (switchId !== this._modeSeq || !this.offlineMode) return;
+      try { await setNativeOfflineMode(true); } catch (error) { this.offlineError = error.message; }
+      if (switchId !== this._modeSeq || !this.offlineMode) return;
+      await this.restoreOfflineSelection();
+      if (switchId !== this._modeSeq || !this.offlineMode) return;
+      this.persistOfflineState();
+    },
+    async switchToOnline() {
+      if (!this.offlineMode) return;
+      const switchId = ++this._modeSeq;
+      ++this._playSeq;
+      this._offlineSavedPosition = this.audio.currentTime;
+      this._offlineSavedMode = this.playMode;
+      this._offlineSavedVolume = this.volume;
+      this._offlineSavedHistory = this.shuffleHistory.map(String);
+      this._offlineSavedHistoryIndex = this.shuffleHistoryIndex;
+      this.persistOfflineState();
+      this.offlineMode = false;
+      this.clearSource();
+      this.persistOfflineState();
+      window.dispatchEvent(new Event('offlineModeChanged'));
+      try { await setNativeOfflineMode(false); } catch (error) { this.offlineError = error.message; }
+      if (switchId !== this._modeSeq || this.offlineMode) return;
+      if (this.onlineSnapshot) {
+        const prior = this.onlineSnapshot;
+        this.currentSong = prior.song;
+        this.currentPlaySessionId = prior.session;
+        this.playlist = prior.playlist;
+        this.currentIndex = prior.index;
+        this.playMode = prior.playMode;
+        this.applyVolume(prior.volume);
+        this.shuffleHistory = prior.shuffleHistory;
+        this.shuffleHistoryIndex = prior.shuffleHistoryIndex;
+        if (prior.src) {
+          this.audio.src = prior.src;
+          try { await this.waitForAudioMetadata(); }
+          catch (error) {
+            if (switchId === this._modeSeq && !this.offlineMode) {
+              this.clearSource();
+              this.offlineError = `在线播放音源不可用：${error.message}`;
+            }
+          }
+          if (switchId !== this._modeSeq || this.offlineMode) return;
+          if (this.audio.src) {
+            this.audio.currentTime = Math.min(prior.position || 0, Math.max(0, this.audio.duration - 0.1));
+            this.currentTime = this.audio.currentTime;
+            this.audio.pause();
+          }
+        }
+        if (this.audio.src) {
+          this.allLyrics = prior.lyrics;
+          this.selectedLyricId = this.allLyrics[0]?.id ?? null;
+          this.loadSelectedLyrics();
+        }
+        this.onlineSnapshot = null;
+      } else if (this.userId) {
+        await Promise.all([this.loadCurrentPlaylist(), this.restorePlaybackState()]);
+      }
+      if (switchId !== this._modeSeq || this.offlineMode) return;
+      this.persistOfflineState();
+      if (this.$route.path === '/playlist/local') await this.$router.replace(this._onlineRoute || '/my-music');
+    },
+    waitForAudioMetadata() {
+      return new Promise((resolve, reject) => {
+        let timeout;
+        const cleanup = () => {
+          clearTimeout(timeout);
+          this.audio.removeEventListener('loadedmetadata', loaded);
+          this.audio.removeEventListener('error', failed);
+        };
+        const loaded = () => { cleanup(); resolve(); };
+        const failed = () => { cleanup(); reject(new Error('音频文件不可播放')); };
+        timeout = setTimeout(() => { cleanup(); reject(new Error('音频元信息读取超时')); }, 12000);
+        this.audio.addEventListener('loadedmetadata', loaded);
+        this.audio.addEventListener('error', failed);
+        if (this.audio.readyState >= 1) loaded();
+      });
+    },
+    async playOfflineSong(songId, startPlaying = true) {
+      if (!this.offlineMode) return;
+      const playId = ++this._playSeq;
+      const accountAtStart = this.userId;
+      this.offlineError = '';
+      this.selectingSong = true;
+      this.playRequested = startPlaying;
+      try {
+        if (!this.offlineQueue.includes(String(songId))) throw new Error(`歌曲 ${songId} 不在离线列表中`);
+        const cached = await getCachedSong(songId, accountAtStart);
+        if (this._playSeq !== playId || !this.offlineMode || String(this.userId ?? '0') !== String(accountAtStart ?? '0')) return;
+        if (cached.status !== 'READY') throw new Error(cached.status === 'MISSING' ? `歌曲 ${songId} 的本地文件不存在或已损坏` : `歌曲 ${songId} 不可离线播放（${cached.status}）`);
+        const resumePosition = !startPlaying && String(songId) === this.offlineSongId ? this._offlineSavedPosition : 0;
+        this.audio.pause();
+        // Pause and source changes may dispatch timeupdate; do not persist a stale position.
+        this._offlineSavedPosition = resumePosition || 0;
+        this.audio.src = cached.audioUri;
+        this.offlineSongId = String(songId);
+        this.currentSong = { ...cached.metadata, id: songId, fileUrl: cached.audioUri,
+          coverUrl: cached.coverUri || null };
+        if (this.currentSong.artistId != null) {
+          this.artistNameCache[this.currentSong.artistId] = cached.metadata.artistName;
+        }
+        this.currentPlaySessionId = null;
+        this.actualListenedTime = 0;
+        this.lastKnownAudioTime = 0;
+        this.allLyrics = cached.lyrics;
+        this.selectedLyricId = this.allLyrics[0]?.id ?? null;
+        if (this.allLyrics[0]?.languageMsg) this.selectedLang = normalizeLyricLang(this.allLyrics[0].languageMsg);
+        this.loadSelectedLyrics();
+        this.playlist = [...this.offlineQueue];
+        this.currentIndex = this.playlist.indexOf(String(songId));
+        this.currentTime = 0;
+        this.duration = cached.metadata.duration || 0;
+        this.audio.load();
+        await this.waitForAudioMetadata();
+        if (this._playSeq !== playId || !this.offlineMode || String(this.userId ?? '0') !== String(accountAtStart ?? '0')) return;
+        if (resumePosition > 0) {
+          this.audio.currentTime = Math.min(resumePosition, Math.max(0, this.audio.duration - 0.1));
+          this.currentTime = this.audio.currentTime;
+        }
+        this.isPlaying = false;
+        this.persistOfflineState();
+        this.selectingSong = false;
+        if (startPlaying && this.playRequested) {
+          this.ensureAudioContext();
+          this.applyVolumeGain(cached.metadata);
+          if (this.audioContext?.state === 'suspended') await this.audioContext.resume();
+          if (this._playSeq !== playId || !this.offlineMode || !this.playRequested) return;
+          await this.audio.play();
+          if (!this.playRequested) this.audio.pause();
+        }
+        this.persistOfflineState();
+      } catch (error) {
+        if (this._playSeq === playId && this.offlineMode) {
+          this.resetOfflineCurrent();
+          this.offlineError = error.message;
+          this.persistOfflineState();
+        }
+      }
+    },
     syncAudioPlayState() {
       this.isPlaying = !this.audio.paused && !this.audio.ended && !this.audio.error;
     },
@@ -475,9 +907,12 @@ export default {
       this.$bus.emit('playbackStateChanged', state);
     },
     async restorePlaybackState() {
-      if (!this.userId) return;
+      if (!this.userId || this.offlineMode) return;
+      const playId = this._playSeq;
+      const account = this.userId;
       try {
-        const res = await musicApi.getPlaybackState(this.userId);
+        const res = await musicApi.getPlaybackState(account);
+        if (!this.validOnline(playId, account) || this.selectingSong) return;
         if (res.data && res.data.passed && res.data.data) {
           const state = res.data.data;
           if (state.playMode) {
@@ -489,14 +924,24 @@ export default {
           if (state.lastSongId) {
             const songId = parseInt(state.lastSongId);
             if (songId > 0) {
-              this._restoredPosition = state.lastPosition ? parseFloat(state.lastPosition) : 0;
-              await this.playSong(songId);
+              // Loading the last selection must not create a play record or start downloading.
+              const detail = await musicApi.getSongDetailsInfo(songId, account);
+              if (!this.validOnline(playId, account) || this.selectingSong) return;
+              const song = detail.data?.passed && detail.data.data;
+              if (!song?.fileUrl) return;
+              this.currentSong = song;
+              this.audio.src = song.fileUrl;
+              await this.waitForAudioMetadata();
+              if (!this.validOnline(playId, account, songId)) return;
+              const position = Math.max(0, Number(state.lastPosition) || 0);
+              this.audio.currentTime = Math.min(position, Math.max(0, this.audio.duration - 0.1));
+              this.currentTime = this.audio.currentTime;
               this.audio.pause();
               this.isPlaying = false;
-              if (this._restoredPosition > 0) {
-                this.audio.currentTime = this._restoredPosition;
-                this.currentTime = this._restoredPosition;
-              }
+              this.allLyrics = Array.isArray(song.allLyrics) ? song.allLyrics : [];
+              this.selectedLyricId = this.allLyrics[0]?.id ?? null;
+              this.loadSelectedLyrics();
+              this.ensureArtistNameLoaded(song.artistId, playId, account);
             }
           }
         }
@@ -507,19 +952,26 @@ export default {
       this._saveStateTimer = setTimeout(() => this.savePlaybackStateNow(), 500);
     },
     savePlaybackStateNow() {
+      if (this.offlineMode) {
+        this.persistOfflineState();
+        return;
+      }
       if (!this.userId) return;
+      const previous = this.selectingSong && this._onlinePendingPrior;
       const state = {
         playMode: this.playMode,
-        lastSongId: this.currentSong?.id ? String(this.currentSong.id) : '',
-        lastPosition: String(this.audio.currentTime || 0),
+        lastSongId: previous?.song?.id ? String(previous.song.id) : (this.currentSong?.id ? String(this.currentSong.id) : ''),
+        lastPosition: String(previous?.position ?? (this.audio.currentTime || 0)),
         volume: String(this.volume),
       };
       musicApi.savePlaybackState(this.userId, state).catch(() => {});
     },
     onBeforeUnload() {
-      this.savePlaybackStateNow();
+      if (this.offlineMode) this.persistOfflineState();
+      else this.savePlaybackStateNow();
     },
     showApiError(message, prefix = '') {
+      if (this.offlineMode) return;
       const loginExpiredText = '登录已过期，请重新登录';
       const msg = message || '';
       const fullMessage = prefix ? prefix + msg : msg;
@@ -534,19 +986,20 @@ export default {
         alert(fullMessage || prefix || '未知错误');
       }
     },
-    async ensureArtistNameLoaded(artistId) {
+    async ensureArtistNameLoaded(artistId, playId = this._playSeq, account = this.userId) {
       if (!artistId || this.artistNameCache[artistId]) {
         return;
       }
       try {
         const res = await musicApi.getSingerBaseInfo(artistId);
+        if (!this.validOnline(playId, account)) return;
         const name =
             res.data && res.data.passed && res.data.data && res.data.data.name
                 ? res.data.data.name
                 : `歌手 ${artistId}`;
         this.artistNameCache[artistId] = name;
       } catch (error) {
-        this.artistNameCache[artistId] = `歌手 ${artistId}`;
+        if (this.validOnline(playId, account)) this.artistNameCache[artistId] = `歌手 ${artistId}`;
       }
     },
     async ensureArtistNames(songs) {
@@ -563,6 +1016,12 @@ export default {
       await Promise.all(ids.map(id => this.ensureArtistNameLoaded(id)));
     },
     getArtistName(artistId) {
+      if (this.offlineMode && this.currentSong?.artistId === artistId && this.currentSong?.artistName) {
+        return this.currentSong.artistName;
+      }
+      if (this.offlineMode) {
+        return this.offlineCachedSongs.find(song => String(song.artistId) === String(artistId))?.artistName || '未知歌手';
+      }
       if (!artistId) {
         return '未知歌手';
       }
@@ -575,12 +1034,44 @@ export default {
       try { userBase = JSON.parse(localStorage.getItem('userBase') || '{}'); } catch (e) { /* ignore */ }
       const newUserId = userBase.id ?? null;
 
+      if (String(this.userId ?? '0') !== String(newUserId ?? '0') && this.offlineMode) {
+        ++this._modeSeq;
+        ++this._playSeq;
+        this.audio.pause();
+        this.audio.removeAttribute('src');
+        this.audio.load();
+        this.persistOfflineState();
+        this.offlineMode = false;
+        this.onlineSnapshot = null;
+        this.currentSong = {};
+        this.currentTime = 0;
+        this.duration = 0;
+        this.offlineLibraryOpen = false;
+      }
+
+      if (String(this.userId ?? '0') !== String(newUserId ?? '0')) {
+        ++this._playSeq;
+        ++this._modeSeq;
+        ++this._lastPlaylistLoadId;
+        this.offlineCachedSongs = [];
+        this.offlineError = '';
+        this.playlist = [];
+        this.currentIndex = -1;
+        this.shuffleHistory = [];
+        this.shuffleHistoryIndex = -1;
+        this.onlineSnapshot = null;
+      }
+
       if (token && newUserId) {
         this.userId = newUserId;
+        this.loadOfflineState();
+        this.offlineMode = false;
         await this.loadCurrentPlaylist();
       } else {
         this.reportPlayEnd('logout');
         this.userId = null;
+        this.loadOfflineState();
+        this.offlineMode = false;
         this.currentPlaylistId = null;
         this.currentPlaylistSongs = [];
         this.playlist = [];
@@ -595,10 +1086,18 @@ export default {
     },
 
     async handlePlaySongEvent({ songId, playlist, index, source, skipServerSync }) {
+      if (this.offlineMode) {
+        if (source === 'offline' && this.offlineQueue.includes(String(songId))) await this.playOfflineSong(songId);
+        return;
+      }
+      this.captureOnlinePrior();
+      const eventId = ++this._playSeq;
+      const account = this.userId;
       this.playSource = source || 'unknown';
       if (this.userId) {
         await this.ensureCurrentPlaylistReady();
       }
+      if (!this.validOnline(eventId, account)) return;
       if (Array.isArray(playlist) && playlist.length) {
         this._playlistSetByEvent = true;
         this.playlist = playlist;
@@ -626,56 +1125,93 @@ export default {
       }
     },
     async playSong(songId) {
+      if (this.offlineMode) return this.playOfflineSong(songId);
+      this.captureOnlinePrior();
       const playId = ++this._playSeq;
+      const account = this.userId;
+      this.selectingSong = true;
+      this.playRequested = true;
       this.reportPlayEnd('switch');
       this.audio.pause();
-      this.audio.src = '';
+      this.audio.removeAttribute('src');
+      this.audio.load();
+      this.currentSong = {};
+      this.allLyrics = [];
+      this.parsedLyrics = [];
+      this.bilingualLyrics = [];
       this.currentTime = 0;
       this.actualListenedTime = 0;
       this.lastKnownAudioTime = 0;
       this.isPlaying = false;
 
       try {
-        const response = await musicApi.playSong(songId, this.userId);
-        if (this._playSeq !== playId) return;
+        const response = await musicApi.playSong(songId, account);
+        if (!this.validOnline(playId, account)) return;
         if (response.data && response.data.passed) {
           this.currentSong = response.data.data;
           this.currentPlaySessionId = this.currentSong?.playSessionId || null;
-          await this.ensureArtistNameLoaded(this.currentSong.artistId);
-          if (this._playSeq !== playId) return;
+          await this.ensureArtistNameLoaded(this.currentSong.artistId, playId, account);
+          if (!this.validOnline(playId, account, songId)) return;
           if (this.userId) {
             await this.ensureCurrentPlaylistReady();
-            await this.addSongToCurrentPlaylist(this.currentSong);
+            if (!this.validOnline(playId, account, songId)) return;
+            await this.addSongToCurrentPlaylist(this.currentSong, playId, account);
           }
-          if (this._playSeq !== playId) return;
+          if (!this.validOnline(playId, account, songId)) return;
           const url = this.currentSong.fileUrl || '';
           if (!url) return;
           this.audio.src = url;
+          this._onlinePendingPrior = null;
           this.ensureAudioContext();
           this.applyVolumeGain(this.currentSong);
+          this.selectingSong = false;
           try {
+            if (!this.playRequested) return;
             await this.audio.play();
-            if (this._playSeq !== playId) return;
+            if (!this.validOnline(playId, account, songId)) return;
+            if (!this.playRequested) { this.audio.pause(); return; }
             this.isPlaying = true;
             this.debounceSavePlaybackState();
+            // Cache the DTO from this actual playback, never start a second online play.
+            this.cacheCurrentOnlineSong();
           } catch (playErr) {
             if (this._playSeq === playId) {
               this.isPlaying = false;
               console.warn('Audio play blocked:', playErr.message);
             }
           }
-          this.loadAllLyrics(songId);
+          if (this.validOnline(playId, account, songId)) this.loadAllLyrics(songId, playId, account);
         } else {
           this.showApiError(response.data ? response.data.message : '未知错误', '获取歌曲信息失败：');
         }
       } catch (error) {
-        if (this._playSeq === playId) {
+        if (this.validOnline(playId, account)) {
           this.showApiError(error.message, '播放歌曲失败：');
         }
+      } finally {
+        if (this.validOnline(playId, account)) this.selectingSong = false;
       }
+    },
+    cacheCurrentOnlineSong() {
+      if (this.offlineMode || this.audio.paused || !this.currentSong?.id || !this.currentSong.fileUrl) return;
+      const playId = this._playSeq;
+      const account = this.userId;
+      const songId = this.currentSong.id;
+      const duration = Number(this.currentSong.duration) > 0
+        ? Number(this.currentSong.duration) : this.audio.duration;
+      // Some sources report duration only after loadedmetadata/durationchange.
+      // updateDuration retries once the full duration becomes available.
+      if (!Number.isFinite(duration) || duration <= 0) return;
+      cachePlayedSong({ ...this.currentSong, duration }, account,
+        () => this.validOnline(playId, account, songId)).catch(error => {
+        if (!this.validOnline(playId, account, songId)) return;
+        this.offlineError = `歌曲缓存未完成：${error.message}`;
+        console.warn('[OfflineAudio] 歌曲缓存未完成:', error.message);
+      });
     },
     playPrev() {
       if (!this.hasPrev) return;
+      this.captureOnlinePrior();
       this.playSource = 'prev';
       if (this.playMode === 'shuffle') {
         if (this.shuffleHistoryIndex > 0) {
@@ -695,6 +1231,7 @@ export default {
           this.currentIndex = prevIndex;
           const prevId = this.playlist[prevIndex];
           this.shuffleHistory.unshift(prevId);
+          this.shuffleHistoryIndex = 0;
           if (prevId != null) this.playSong(prevId);
         }
       } else {
@@ -705,6 +1242,7 @@ export default {
     },
     playNext() {
       if (!this.hasNext) return;
+      this.captureOnlinePrior();
       this.playSource = 'next';
       if (this.playMode === 'shuffle') {
         if (this.shuffleHistoryIndex < this.shuffleHistory.length - 1) {
@@ -741,6 +1279,12 @@ export default {
       this.reportPlayEnd('ended');
       this.playSource = 'auto';
       const mode = this.playMode;
+      if (this.offlineMode && mode === 'stop') {
+        this.isPlaying = false;
+        this.currentTime = 0;
+        this.persistOfflineState();
+        return;
+      }
       if (mode === 'single') {
         if (this.currentSong && this.currentSong.id) {
           this.playSong(this.currentSong.id);
@@ -795,7 +1339,8 @@ export default {
           this.shuffleHistory = [this.currentSong.id];
           this.shuffleHistoryIndex = 0;
         }
-        this.debounceSavePlaybackState();
+        if (this.offlineMode) this.persistOfflineState();
+        else this.debounceSavePlaybackState();
       }
       this.showPlayModeMenu = false;
     },
@@ -814,7 +1359,8 @@ export default {
     },
     setVolume(value) {
       this.applyVolume(value);
-      this.debounceSavePlaybackState();
+      if (this.offlineMode) this.persistOfflineState();
+      else this.debounceSavePlaybackState();
     },
     toggleMute() {
       if (this.volume > 0) {
@@ -823,7 +1369,8 @@ export default {
         this.applyVolume(this.lastNonZeroVolume || 1);
       }
       this.showVolumePanel = true;
-      this.debounceSavePlaybackState();
+      if (this.offlineMode) this.persistOfflineState();
+      else this.debounceSavePlaybackState();
     },
     hideVolumePanel(event) {
       if (event && event.currentTarget && event.relatedTarget && event.currentTarget.contains(event.relatedTarget)) {
@@ -832,23 +1379,25 @@ export default {
       this.showVolumePanel = false;
     },
     async loadCurrentPlaylist() {
+      if (this.offlineMode) return;
       if (!this.userId) {
         this.currentPlaylistId = null;
         this.currentPlaylistSongs = [];
         this.syncPlaylistQueue();
         return;
       }
-      const loadId = Date.now();
-      this._lastPlaylistLoadId = loadId;
+      const loadId = ++this._lastPlaylistLoadId;
+      const account = this.userId;
+      const modeSeq = this._modeSeq;
       try {
-        const response = await musicApi.getCurrentPlaylist(this.userId);
-        if (this._lastPlaylistLoadId !== loadId) return;
+        const response = await musicApi.getCurrentPlaylist(account);
+        if (this.offlineMode || this._lastPlaylistLoadId !== loadId || this._modeSeq !== modeSeq || String(this.userId) !== String(account)) return;
         if (response.data && response.data.passed) {
           const data = response.data.data || {};
           this.currentPlaylistId = data.id || null;
           this.currentPlaylistSongs = Array.isArray(data.songs) ? data.songs : [];
           await this.ensureArtistNames(this.currentPlaylistSongs);
-          if (this._lastPlaylistLoadId !== loadId) return;
+          if (this.offlineMode || this._lastPlaylistLoadId !== loadId || this._modeSeq !== modeSeq || String(this.userId) !== String(account)) return;
           this.syncPlaylistQueue();
           this.syncCurrentSongFromPlaylist();
         }
@@ -866,6 +1415,7 @@ export default {
       await this.loadCurrentPlaylist();
     },
     syncPlaylistQueue() {
+      if (this.offlineMode) return;
       if (this.userId && !this._playlistSetByEvent) {
         this.playlist = this.currentPlaylistSongs.map(song => song.id);
         if (this.currentSong && this.currentSong.id) {
@@ -899,13 +1449,15 @@ export default {
         this.duration = 0;
       }
     },
-    async addSongToCurrentPlaylist(song) {
+    async addSongToCurrentPlaylist(song, playId = this._playSeq, account = this.userId) {
+      if (!this.validOnline(playId, account, song?.id)) return;
       if (!this.userId || !this.currentPlaylistId || !song || !song.id) {
         return;
       }
       const exists = this.currentPlaylistSongs.some(item => item.id === song.id);
       if (!exists) {
         await this.ensureArtistNameLoaded(song.artistId);
+        if (!this.validOnline(playId, account, song.id)) return;
         this.currentPlaylistSongs.push({
           id: song.id,
           title: song.title,
@@ -924,6 +1476,7 @@ export default {
             throw new Error(response.data ? response.data.message : '未知错误');
           }
         } catch (error) {
+          if (!this.validOnline(playId, account, song.id)) return;
           console.error('添加歌曲到播放列表失败', error);
           await this.loadCurrentPlaylist();
         }
@@ -932,6 +1485,7 @@ export default {
       }
     },
     async removeSongFromPlaylist(songId) {
+      if (this.offlineMode) { this.removeOfflineQueue(songId); return; }
       if (!this.userId || !this.currentPlaylistId) {
         return;
       }
@@ -970,6 +1524,7 @@ export default {
       }
     },
     async clearPlaylist() {
+      if (this.offlineMode) { this.clearOfflineQueue(); return; }
       if (!this.userId || !this.currentPlaylistId || !this.currentPlaylistSongs.length) {
         return;
       }
@@ -1001,14 +1556,19 @@ export default {
       }
     },
     async batchLoadEventPlaylist(songIds) {
+      if (this.offlineMode) return;
+      const playId = this._playSeq;
+      const account = this.userId;
+      const playlistId = this.currentPlaylistId;
       const existingIds = new Set(this.currentPlaylistSongs.map(s => s.id));
       const toLoad = songIds.filter(id => !existingIds.has(id));
       if (!toLoad.length) return;
       const results = await Promise.all(
           toLoad.map(id =>
-              musicApi.getSongBaseInfo(id, this.userId).catch(() => null)
+              musicApi.getSongBaseInfo(id, account).catch(() => null)
           )
       );
+      if (!this.validOnline(playId, account) || this.currentPlaylistId !== playlistId) return;
       const newSongs = [];
       for (const res of results) {
         const song = res?.data?.passed ? res.data.data : null;
@@ -1025,6 +1585,7 @@ export default {
       }
       if (newSongs.length) {
         await this.ensureArtistNames(newSongs);
+        if (!this.validOnline(playId, account) || this.currentPlaylistId !== playlistId) return;
         if (this.currentPlaylistId) {
           for (const song of newSongs) {
             musicApi.managePlaylistSong({
@@ -1037,10 +1598,16 @@ export default {
       }
     },
     playFromCurrentList(index) {
+      if (this.offlineMode) {
+        const id = this.offlineQueue[index];
+        if (id) this.playOfflineSong(id);
+        return;
+      }
       const song = this.currentPlaylistSongs[index];
       if (!song) {
         return;
       }
+      this.captureOnlinePrior();
       this.playSource = 'currentList';
       this._playlistSetByEvent = false;
       this.playlist = this.currentPlaylistSongs.map(s => s.id);
@@ -1048,12 +1615,13 @@ export default {
       this.playSong(song.id);
     },
     goToSongDetail(songId) {
-      if (!songId) {
+      if (this.offlineMode || !songId) {
         return;
       }
       this.$router.push({ name: 'song-detail', params: { id: songId } });
     },
     openSongShare() {
+      if (this.offlineMode) return;
       if (!this.currentSong?.id) return;
       this.$bus.emit('openSongShare', {
         songId: this.currentSong.id,
@@ -1062,6 +1630,7 @@ export default {
       });
     },
     async toggleFavoriteFromPlayer() {
+      if (this.offlineMode) return;
       if (!this.currentSong || !this.currentSong.id) {
         return;
       }
@@ -1069,11 +1638,15 @@ export default {
         alert('请先登录再收藏歌曲');
         return;
       }
+      const playId = this._playSeq;
+      const account = this.userId;
+      const songId = this.currentSong.id;
       try {
         const response = await musicApi.toggleFavoriteSong({
           userId: this.userId,
           songId: this.currentSong.id
         });
+        if (!this.validOnline(playId, account, songId)) return;
         if (response.data && response.data.passed) {
           const favorite = response.data.data?.favorite ?? false;
           this.currentSong.favorite = favorite;
@@ -1089,10 +1662,11 @@ export default {
           this.showApiError(msg, '更新收藏状态失败：');
         }
       } catch (error) {
-        this.showApiError(error.message, '更新收藏状态失败：');
+        if (this.validOnline(playId, account, songId)) this.showApiError(error.message, '更新收藏状态失败：');
       }
     },
-    async loadAllLyrics(songId) {
+    async loadAllLyrics(songId, playId = this._playSeq, account = this.userId) {
+      if (this.offlineMode) return;
       this.allLyrics = [];
       this.selectedLyricId = null;
       this.parsedLyrics = [];
@@ -1100,6 +1674,7 @@ export default {
       this.availableLangs = [];
       try {
         const response = await musicApi.getAllLyrics(songId);
+        if (!this.validOnline(playId, account, songId)) return;
         if (response.data.passed && Array.isArray(response.data.data) && response.data.data.length > 0) {
           this.allLyrics = response.data.data;
           this.selectedLyricId = this.allLyrics[0].id;
@@ -1181,18 +1756,41 @@ export default {
       }
     },
     async togglePlay() {
+      if (this.selectingSong) {
+        this.playRequested = !this.playRequested;
+        if (!this.playRequested) this.audio.pause();
+        return;
+      }
       if (this.isPlaying) {
+        this.playRequested = false;
         this.audio.pause();
       } else {
+        if (this.offlineMode && (!this.offlineSongId || !this.offlineQueue.includes(this.offlineSongId))) return;
         if (!this.audio.src && this.currentSong && this.currentSong.fileUrl) {
+          if (this.offlineMode) return;
           this.audio.src = this.currentSong.fileUrl;
         }
         if (!this.audio.src) {
           return;
         }
+        this.playRequested = true;
+        const playId = this._playSeq;
+        const account = this.userId;
         this.ensureAudioContext();
+        if (this.offlineMode) this.applyVolumeGain(this.currentSong);
         try {
+          if (this.audioContext?.state === 'suspended') await this.audioContext.resume();
+          if (!this.playRequested || this._playSeq !== playId || String(account ?? '0') !== String(this.userId ?? '0')) return;
           await this.audio.play();
+          if (!this.playRequested || this._playSeq !== playId || String(account ?? '0') !== String(this.userId ?? '0')) { this.audio.pause(); return; }
+          if (!this.offlineMode) {
+            if (!this.currentPlaySessionId && this.userId && this.currentSong?.id) {
+              const session = window.crypto.randomUUID();
+              this.currentPlaySessionId = session;
+              musicApi.reportPlayStart({ songId: this.currentSong.id, playSessionId: session }).catch(() => {});
+            }
+            this.cacheCurrentOnlineSong();
+          }
         } catch (error) {
           console.warn('Audio play blocked:', error.message);
         }
@@ -1207,15 +1805,18 @@ export default {
       }
       this.lastKnownAudioTime = now;
       this.currentTime = now;
+      if (this.offlineMode && this.audio.readyState >= 1 && this.offlineSongId) this.persistOfflineState();
     },
     updateDuration() {
       this.duration = this.audio.duration || 0;
-      if (this.currentSong?.id && this.duration > 0 && !this.currentSong.duration) {
+      if (!this.offlineMode && !this.audio.paused) this.cacheCurrentOnlineSong();
+      if (!this.offlineMode && this.currentSong?.id && this.duration > 0 && !this.currentSong.duration) {
         const dur = Math.round(this.duration);
         musicApi.updateSongDuration(this.currentSong.id, dur).catch(() => {});
       }
     },
     reportPlayEnd(reason) {
+      if (this.offlineMode) return;
       if (!this.currentSong?.id || !this.userId || this.currentTime <= 1) return;
       const payload = {
         userId: this.userId,
@@ -1235,6 +1836,7 @@ export default {
       if (this.audio.src) {
         this.audio.currentTime = this.currentTime;
         this.lastKnownAudioTime = this.currentTime;
+        if (this.offlineMode) this.persistOfflineState();
       }
     },
     toggleLyrics() {
@@ -1331,6 +1933,64 @@ export default {
 </script>
 
 <style scoped>
+.offline-tools {
+  position: fixed;
+  right: 12px;
+  bottom: 166px;
+  z-index: 10002;
+  font-family: inherit;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 3px;
+}
+.offline-network { font-size: 11px; color: #334155; background: #ffffffea; border-radius: 9px; padding: 2px 7px; }
+.offline-launch {
+  border: 1px solid #8b9dc2;
+  border-radius: 22px;
+  background: #fff;
+  color: #334155;
+  padding: 7px 12px;
+  font-size: 13px;
+  box-shadow: 0 3px 12px #0002;
+}
+.offline-drawer {
+  position: absolute;
+  bottom: calc(100% + 8px);
+  right: 0;
+  width: min(360px, calc(100vw - 24px));
+  max-height: calc(100dvh - 230px);
+  overflow: auto;
+  box-sizing: border-box;
+  padding: 14px;
+  border-radius: 16px;
+  background: #fff;
+  color: #334155;
+  box-shadow: 0 10px 36px #0004;
+  font-size: 13px;
+}
+.offline-drawer-head,
+.offline-mode-actions,
+.offline-library-list li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  justify-content: space-between;
+}
+.offline-drawer button {
+  border: 1px solid #cbd5e1;
+  border-radius: 10px;
+  background: #f8fafc;
+  color: #334155;
+  padding: 6px;
+}
+.offline-drawer button:disabled { opacity: 0.4; }
+.offline-mode-actions { justify-content: flex-start; margin: 12px 0; }
+.offline-library-list { padding: 0; margin: 8px 0; list-style: none; }
+.offline-library-list li { padding: 8px 0; border-bottom: 1px solid #e2e8f0; }
+.offline-library-list li span { flex: 1 1 100%; overflow-wrap: anywhere; }
+.offline-error { color: #b91c1c; }
 .bottom-bar {
   position: fixed;
   bottom: 0;

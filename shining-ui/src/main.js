@@ -4,6 +4,7 @@ import router from './router';
 import mitt from 'mitt';
 import { App as CapacitorApp } from '@capacitor/app';
 import { isAndroidApp } from './utils/androidServer';
+import { isOfflineSelected } from './offline/localLibrary';
 function applyCustomCursors() {
   if (typeof document === 'undefined') return;
 
@@ -63,6 +64,10 @@ app.use(router).mount('#app');
 
 if (isAndroidApp) {
   CapacitorApp.addListener('backButton', () => {
+    if (router.currentRoute.value.path === '/my-music' && isOfflineSelected()) {
+      CapacitorApp.minimizeApp();
+      return;
+    }
     if (router.currentRoute.value.path === '/') {
       CapacitorApp.minimizeApp();
     } else if (router.options.history.state.back) {

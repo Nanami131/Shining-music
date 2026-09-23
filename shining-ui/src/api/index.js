@@ -1,5 +1,5 @@
 import axios from 'axios';
-import { getAndroidServer } from '@/utils/androidServer';
+import { getAndroidServer, isAndroidApp } from '@/utils/androidServer';
 
 const androidServer = getAndroidServer();
 const api = axios.create({
@@ -8,6 +8,16 @@ const api = axios.create({
 });
 
 const LOGIN_EXPIRED_TEXT = '登录已过期，请重新登录';
+
+// A delayed online 401 must not destroy a deliberately selected local session.
+function isOfflineSelected() {
+    if (!isAndroidApp) return false;
+    try {
+        const id = JSON.parse(localStorage.getItem('userBase') || '{}').id;
+        if (id == null) return false;
+        return JSON.parse(localStorage.getItem(`shining.offline.state.${id}`) || '{}').selectedMode === 'offline';
+    } catch { return false; }
+}
 
 // MinIO 地址统一替换：兼容宿主机和 Docker 内部返回的地址
 const MINIO_SOURCE_PREFIXES = ['http://localhost:9000', 'http://minio:9000'];
@@ -83,7 +93,7 @@ api.interceptors.response.use(
     },
     (error) => {
         // 未登录访问受保护接口时不应被误判为已登录会话过期。
-        if (error.response?.status === 401 && localStorage.getItem('token')) {
+        if (error.response?.status === 401 && localStorage.getItem('token') && !isOfflineSelected()) {
             handleLoginExpiredOnce();
         }
         return Promise.reject(error);

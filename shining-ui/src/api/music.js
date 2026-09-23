@@ -206,6 +206,9 @@ export default {
     reportPlayEnd(data) {
         return api.post('/music/play/end', data);
     },
+    reportPlayStart(data) {
+        return api.post('/music/play/start', data);
+    },
     getPlaybackState(userId) {
         return api.get('/music/playback-state', { params: { userId } });
     },
