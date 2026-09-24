@@ -42,7 +42,7 @@
       <section class="comment-section">
         <h2 class="section-title">
           <span class="title-icon">💬</span>
-          评论 <span class="comment-count" v-if="comments.length">({{ comments.length }})</span>
+          评论 <span class="comment-count" v-if="commentPage.total">({{ commentPage.total }})</span>
         </h2>
 
         <!-- Comment Input -->
@@ -81,7 +81,7 @@
             :key="c.id"
             class="comment-card"
           >
-            <div class="comment-floor">#{{ c.floorNo || idx + 1 }}</div>
+            <div class="comment-floor">#{{ c.floorNo || idx + 1 + (commentPage.size > 0 ? (commentPage.page - 1) * commentPage.size : 0) }}</div>
             <div class="comment-body">
               <div class="comment-head">
                 <span class="commenter-link" @click.stop="goUser(c.userId)">
@@ -170,6 +170,7 @@
             </div>
           </div>
         </div>
+        <WebListPager v-bind="commentPage" @change="changeCommentPage" />
       </section>
     </template>
   </div>
@@ -180,14 +181,19 @@ import communityApi from '@/api/community';
 import userApi from '@/api/user';
 import DOMPurify from 'dompurify';
 import defaultAvatar from '@/assets/default-avatar.png';
+import WebListPager from '@/components/WebListPager.vue';
+import { initialPage, pageParams, pageItems, pageTotal } from '@/utils/listPagination';
 
 export default {
   name: 'PostDetail',
+  components: { WebListPager },
   data() {
     return {
       postId: null,
       post: null,
       comments: [],
+      commentPage: initialPage(),
+      commentsRequest: 0,
       loading: false,
       userId: null,
       newComment: '',
@@ -211,6 +217,7 @@ export default {
   watch: {
     '$route.params.id'(newId) {
       this.postId = Number(newId);
+      this.commentPage.page = 1;
       this.loadDetails();
     },
   },
@@ -225,6 +232,10 @@ export default {
     },
   },
   methods: {
+    changeCommentPage(next) {
+      this.commentPage = { ...this.commentPage, ...next };
+      this.refreshComments();
+    },
     loadUser() {
       try {
         const raw = localStorage.getItem('userBase') || '{}';
@@ -237,9 +248,11 @@ export default {
     },
     async loadDetails() {
       if (!this.postId) return;
+      const request = ++this.commentsRequest;
       this.loading = true;
       try {
-        const res = await communityApi.getPostDetails(this.postId);
+        const res = await communityApi.getPostDetails(this.postId, pageParams(this.commentPage));
+        if (request !== this.commentsRequest) return;
         if (res && res.data && res.data.passed) {
           const data = res.data.data || {};
           this.post = {
@@ -253,15 +266,17 @@ export default {
             createdAt: data.createdAt,
           };
           this.comments = this.normalizeComments(data.comments || []);
+          this.commentPage.total = data.commentsTotal ?? this.comments.length;
           await this.resolveNickNames();
         } else {
           const msg = res && res.data ? res.data.message : '未知错误';
           alert('获取帖子详情失败：' + msg);
         }
       } catch (e) {
+        if (request !== this.commentsRequest) return;
         alert('获取帖子详情失败：' + e.message);
       } finally {
-        this.loading = false;
+        if (request === this.commentsRequest) this.loading = false;
       }
     },
     async resolveNickNames() {
@@ -359,10 +374,14 @@ export default {
     },
     async refreshComments() {
       if (!this.postId) return;
+      const request = ++this.commentsRequest;
       try {
-        const res = await communityApi.listComments(this.postId);
+        const res = await communityApi.listComments(this.postId, pageParams(this.commentPage));
+        if (request !== this.commentsRequest) return;
         if (res && res.data && res.data.passed) {
-          this.comments = this.normalizeComments(res.data.data || []);
+          this.comments = this.normalizeComments(pageItems(res));
+          this.commentPage.total = pageTotal(res);
+          await this.resolveNickNames();
         }
       } catch {
         // 忽略异常

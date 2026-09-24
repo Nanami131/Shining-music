@@ -44,14 +44,33 @@ public class PostController {
         return communityAppService.deletePost(id);
     }
 
+    public R listPosts(Long userId) { return listPosts(userId, null, null); }
+
     @GetMapping("/posts")
-    public R listPosts(@RequestParam(value = "userId", required = false) Long userId) {
-        return communityAppService.listPosts(userId);
+    public R listPosts(@RequestParam(value = "userId", required = false) Long userId,
+                       @RequestParam(value = "page", required = false) Integer page,
+                       @RequestParam(value = "size", required = false) Integer size) {
+        if ((page != null || size != null) &&
+                (page == null || size == null || page < 1 || size < 0 || (size == 0 && page != 1))) {
+            return R.error("分页参数无效");
+        }
+        if (page != null && size != null && page > 0 && size > 0) {
+            R result = communityAppService.listPostsPage(userId, ((long) page - 1L) * size, size);
+            return org.L2.common.ListPagination.fromPage(result, communityAppService.countPosts(userId), page, size);
+        }
+        return org.L2.common.ListPagination.apply(communityAppService.listPosts(userId), page, size);
     }
 
+    public R getPostDetails(Long id) { return getPostDetails(id, null, null); }
+
     @GetMapping("/post/{id}")
-    public R getPostDetails(@PathVariable("id") Long id) {
-        return communityAppService.getPostDetails(id);
+    public R getPostDetails(@PathVariable("id") Long id,
+                            @RequestParam(value = "page", required = false) Integer page,
+                            @RequestParam(value = "size", required = false) Integer size) {
+        if (page == null && size == null) return communityAppService.getPostDetails(id);
+        if (page == null || size == null || page < 1 || size < 0 || (size == 0 && page != 1))
+            return R.error("分页参数无效");
+        return communityAppService.getPostDetails(id, page, size);
     }
 
     // -------- 评论 --------
@@ -61,9 +80,13 @@ public class PostController {
         return communityAppService.createComment(request);
     }
 
+    public R listComments(Long postId) { return listComments(postId, null, null); }
+
     @GetMapping("/post/{postId}/comments")
-    public R listComments(@PathVariable("postId") Long postId) {
-        return communityAppService.listComments(postId);
+    public R listComments(@PathVariable("postId") Long postId,
+                          @RequestParam(value = "page", required = false) Integer page,
+                          @RequestParam(value = "size", required = false) Integer size) {
+        return org.L2.common.ListPagination.apply(communityAppService.listComments(postId), page, size);
     }
 
     @GetMapping("/user/{userId}/recent-comments")

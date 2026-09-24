@@ -107,6 +107,7 @@
             </div>
           </article>
         </div>
+        <WebListPager v-bind="postPage" @change="changePostPage" />
       </div>
     </section>
   </div>
@@ -117,13 +118,18 @@ import communityApi from '@/api/community';
 import statisticsApi from '@/api/statistics';
 import musicApi from '@/api/music';
 import userApi from '@/api/user';
+import WebListPager from '@/components/WebListPager.vue';
+import { initialPage, pageParams, pageItems, pageTotal } from '@/utils/listPagination';
 
 export default {
   name: 'Forum',
+  components: { WebListPager },
   data() {
     return {
       userId: null,
       posts: [],
+      postPage: initialPage(),
+      postsRequest: 0,
       loading: false,
       focusSongs: [],
       totalPlays: '--',
@@ -134,7 +140,7 @@ export default {
   computed: {
     heroStats() {
       return [
-        { value: `${this.posts.length || 0}`, label: '实时帖子' },
+        { value: `${this.postPage.total || 0}`, label: '实时帖子' },
         { value: this.totalPlays, label: '我的播放量' },
       ];
     },
@@ -145,6 +151,10 @@ export default {
     this.loadFocusSongs();
   },
   methods: {
+    changePostPage(next) {
+      this.postPage = { ...this.postPage, ...next };
+      this.loadPosts();
+    },
     loadUser() {
       try {
         const raw = localStorage.getItem('userBase') || '{}';
@@ -156,11 +166,14 @@ export default {
       }
     },
     async loadPosts() {
+      const request = ++this.postsRequest;
       this.loading = true;
       try {
-        const res = await communityApi.listPosts();
+        const res = await communityApi.listPosts(pageParams(this.postPage));
+        if (request !== this.postsRequest) return;
         if (res && res.data && res.data.passed) {
-          this.posts = res.data.data || [];
+          this.posts = pageItems(res, this.postPage);
+          this.postPage.total = pageTotal(res);
           await this.resolvePostAuthors();
         } else {
           const msg = res && res.data ? res.data.message : '未知错误';
@@ -169,7 +182,7 @@ export default {
       } catch (e) {
         alert('获取帖子列表失败：' + e.message);
       } finally {
-        this.loading = false;
+        if (request === this.postsRequest) this.loading = false;
       }
     },
     async resolvePostAuthors() {

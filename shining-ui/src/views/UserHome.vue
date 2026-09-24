@@ -59,7 +59,7 @@
             <div class="stat-label">最爱歌手</div>
           </div>
           <div class="stat-card">
-            <div class="stat-value">{{ posts.length }}</div>
+            <div class="stat-value">{{ postsTotal }}</div>
             <div class="stat-label">帖子</div>
           </div>
         </div>
@@ -133,8 +133,8 @@
           <div v-if="topSongsLoading" class="empty">加载中...</div>
           <div v-else-if="topSongs.length === 0" class="empty">暂无播放数据</div>
           <ul v-else class="song-list">
-            <li v-for="(item, idx) in topSongs" :key="item.songId" class="song-item" @click="goSong(item.songId)">
-              <div class="song-rank" :class="{ gold: idx === 0, silver: idx === 1, bronze: idx === 2 }">{{ idx + 1 }}</div>
+            <li v-for="(item, idx) in tabItems(topSongs)" :key="item.songId" class="song-item" @click="goSong(item.songId)">
+              <div class="song-rank" :class="{ gold: tabRank(idx) === 1, silver: tabRank(idx) === 2, bronze: tabRank(idx) === 3 }">{{ tabRank(idx) }}</div>
               <img :src="item.song.coverUrl || defaultCover" class="song-cover" alt="" />
               <div class="song-info">
                 <p class="song-title">{{ item.song.title || `歌曲 ${item.songId}` }}</p>
@@ -151,12 +151,12 @@
           <div v-else-if="topSingers.length === 0" class="empty">暂无数据</div>
           <div v-else class="singer-grid">
             <div
-              v-for="(s, idx) in topSingers"
+              v-for="(s, idx) in tabItems(topSingers)"
               :key="s.singerId"
               class="singer-card"
               @click="goSinger(s.singerId)"
             >
-              <div class="singer-rank">{{ idx + 1 }}</div>
+              <div class="singer-rank">{{ tabRank(idx) }}</div>
               <img :src="s.avatarUrl || defaultAvatar" class="singer-avatar" alt="" />
               <p class="singer-name">{{ s.name || `歌手 ${s.singerId}` }}</p>
               <p class="singer-plays">播放 {{ s.playCount }} 次</p>
@@ -172,7 +172,7 @@
           </div>
           <div v-if="posts.length" class="activity-list">
             <article
-              v-for="post in posts.slice(0, 10)"
+              v-for="post in tabItems(posts)"
               :key="'p' + post.id"
               class="activity-card"
               @click="goPostDetail(post.id)"
@@ -212,10 +212,10 @@
         <!-- Tab: Playlists -->
         <div v-if="activeTab === 'playlists'">
           <div v-if="playlistsLoading" class="empty">加载中...</div>
-          <div v-else-if="playlists.length === 0" class="empty">暂无公开歌单</div>
+          <div v-else-if="playlists.length === 0" class="empty">{{ isSelf ? '暂无歌单' : '暂无公开歌单' }}</div>
           <div v-else class="playlist-grid">
             <div
-              v-for="pl in playlists"
+              v-for="pl in tabItems(playlists)"
               :key="pl.id"
               class="playlist-card"
               @click="goPlaylist(pl.id)"
@@ -232,7 +232,7 @@
           <div v-if="followingList.length === 0" class="empty">暂未关注任何人</div>
           <div v-else class="user-list">
             <div
-              v-for="uid in followingList"
+              v-for="uid in tabItems(followingList)"
               :key="'fg' + uid"
               class="user-list-item"
               @click="$router.push({ name: 'user-home', params: { id: uid } })"
@@ -251,7 +251,7 @@
           <div v-if="followersList.length === 0" class="empty">暂无粉丝</div>
           <div v-else class="user-list">
             <div
-              v-for="uid in followersList"
+              v-for="uid in tabItems(followersList)"
               :key="'fr' + uid"
               class="user-list-item"
               @click="$router.push({ name: 'user-home', params: { id: uid } })"
@@ -264,6 +264,7 @@
             </div>
           </div>
         </div>
+        <WebListPager v-bind="tabPage" :total="tabTotal" @change="changeTabPage" />
       </section>
     </template>
   </div>
@@ -277,9 +278,12 @@ import musicApi from '@/api/music';
 import recommendApi from '@/api/recommend';
 import defaultAvatar from '@/assets/default-avatar.png';
 import defaultCover from '@/assets/default-cover.png';
+import WebListPager from '@/components/WebListPager.vue';
+import { initialPage, pageParams, pageItems, pageTotal } from '@/utils/listPagination';
 
 export default {
   name: 'UserHome',
+  components: { WebListPager },
   data() {
     return {
       targetUserId: null,
@@ -293,6 +297,7 @@ export default {
       topSingerName: null,
 
       activeTab: 'topSongs',
+      tabPage: initialPage(),
       tabs: [
         { key: 'topSongs', label: '最爱歌曲' },
         { key: 'topSingers', label: '最爱歌手' },
@@ -309,29 +314,51 @@ export default {
       ],
       selectedDimension: 'TOTAL',
       topSongs: [],
+      topSongsTotal: 0,
+      topSongsRequest: 0,
       topSongsLoading: false,
       artistNameMap: {},
 
       topSingers: [],
+      topSingersTotal: 0,
+      topSingersRequest: 0,
       topSingersLoading: false,
 
       posts: [],
+      postsTotal: 0,
+      profileRequest: 0,
+      postsRequest: 0,
       recentComments: [],
       postTitleMap: {},
 
       playlists: [],
+      playlistsTotal: 0,
+      playlistsRequest: 0,
       playlistsLoading: false,
 
       followStatus: 'NONE',
       followCount: { following: 0, followers: 0 },
       followingList: [],
       followersList: [],
+      followingRequest: 0,
+      followersRequest: 0,
       followingUsers: {},
       followersUsers: {},
       prefTags: [],
     };
   },
   computed: {
+    tabTotal() {
+      if (this.activeTab === 'topSongs') return this.topSongsTotal;
+      if (this.activeTab === 'topSingers') return this.topSingersTotal;
+      if (this.activeTab === 'playlists') return this.playlistsTotal;
+      if (this.activeTab === 'posts') return this.postsTotal;
+      if (this.activeTab === 'following') return this.followCount.following || 0;
+      if (this.activeTab === 'followers') return this.followCount.followers || 0;
+      const lists = { topSongs: this.topSongs, topSingers: this.topSingers, posts: this.posts,
+        playlists: this.playlists, following: this.followingList, followers: this.followersList };
+      return lists[this.activeTab]?.length || 0;
+    },
     isSelf() {
       return this.currentUserId != null && this.currentUserId === this.targetUserId;
     },
@@ -350,37 +377,83 @@ export default {
     this.loadAll();
   },
   watch: {
+    activeTab(tab) {
+      this.tabPage.page = 1;
+      if (tab === 'topSongs') this.loadTopSongs();
+      if (tab === 'topSingers') this.loadTopSingers();
+      if (tab === 'playlists') this.loadPlaylists();
+      if (tab === 'posts') this.loadUserPosts();
+      if (tab === 'following') this.loadFollowingList();
+      if (tab === 'followers') this.loadFollowersList();
+    },
     '$route.params.id'(newId) {
       this.targetUserId = Number(newId);
+      this.tabPage.page = 1;
       this.loadAll();
     },
   },
   methods: {
+    tabRank(index) {
+      return index + 1 + (this.tabPage.size > 0 ? (this.tabPage.page - 1) * this.tabPage.size : 0);
+    },
+    tabItems(items) {
+      return items;
+    },
+    changeTabPage(next) {
+      this.tabPage = { ...this.tabPage, ...next };
+      if (this.activeTab === 'topSongs') this.loadTopSongs();
+      if (this.activeTab === 'topSingers') this.loadTopSingers();
+      if (this.activeTab === 'playlists') this.loadPlaylists();
+      if (this.activeTab === 'posts') this.loadUserPosts();
+      if (this.activeTab === 'following') this.loadFollowingList();
+      if (this.activeTab === 'followers') this.loadFollowersList();
+    },
     async loadAll() {
+      const request = ++this.profileRequest;
+      const userId = this.targetUserId;
       this.loading = true;
       try {
         const [userRes, postsRes] = await Promise.all([
-          userApi.getUserDetailsInfo(this.targetUserId),
-          communityApi.listPosts({ userId: this.targetUserId }),
+          userApi.getUserDetailsInfo(userId),
+          communityApi.listPosts({ userId, page: 1, size: 1 }),
         ]);
+        if (request !== this.profileRequest || userId !== this.targetUserId) return;
         this.userInfo = userRes?.data?.passed ? userRes.data.data : null;
-        this.posts = postsRes?.data?.passed ? (postsRes.data.data || []) : [];
+        this.postsTotal = postsRes?.data?.passed ? pageTotal(postsRes) : 0;
+        if (this.activeTab === 'posts') this.loadUserPosts();
       } catch {
+        if (request !== this.profileRequest) return;
         this.userInfo = null;
         this.posts = [];
+        this.postsTotal = 0;
       } finally {
-        this.loading = false;
+        if (request === this.profileRequest) this.loading = false;
       }
 
       if (this.userInfo) {
         this.loadUserProfile();
-        this.loadTopSongs();
-        this.loadTopSingers();
-        this.loadPlaylists();
+        if (this.activeTab === 'topSongs') this.loadTopSongs();
+        if (this.activeTab === 'topSingers') this.loadTopSingers();
+        if (this.activeTab === 'playlists') this.loadPlaylists();
         this.loadRecentComments();
         this.loadFollowData();
         this.loadPrefTags();
       }
+    },
+
+    async loadUserPosts() {
+      const request = ++this.postsRequest;
+      const userId = this.targetUserId;
+      const params = pageParams(this.tabPage);
+      try {
+        const response = await communityApi.listPosts({ userId, ...params });
+        if (request !== this.postsRequest || userId !== this.targetUserId || this.activeTab !== 'posts' ||
+            params.page !== pageParams(this.tabPage).page || params.size !== pageParams(this.tabPage).size) return;
+        if (response.data?.passed) {
+          this.posts = pageItems(response, this.tabPage);
+          this.postsTotal = response.data.data?.total ?? this.posts.length;
+        }
+      } catch { /* keep last loaded list */ }
     },
 
     async loadUserProfile() {
@@ -407,56 +480,69 @@ export default {
     },
 
     async loadTopSongs() {
+      const request = ++this.topSongsRequest;
+      const userId = this.targetUserId;
+      const params = pageParams(this.tabPage);
       this.topSongsLoading = true;
       try {
-        const res = await statisticsApi.getUserTopSongs(this.targetUserId, {
+        const res = await statisticsApi.getUserTopSongs(userId, {
           dimension: this.selectedDimension,
-          limit: 10,
+          ...params,
         });
+        if (request !== this.topSongsRequest || userId !== this.targetUserId) return;
         if (res.data?.passed) {
-          const list = res.data.data || [];
+          const list = pageItems(res);
+          this.topSongsTotal = pageTotal(res);
           const enriched = await Promise.all(
             list.map(async item => {
               const songInfo = await this.fetchSongInfo(item.songId);
               return { songId: item.songId, playCount: item.playCount, song: songInfo };
             })
           );
-          this.topSongs = enriched;
+          if (request === this.topSongsRequest && userId === this.targetUserId) this.topSongs = enriched;
         }
-      } catch { this.topSongs = []; }
-      finally { this.topSongsLoading = false; }
+      } catch { if (request === this.topSongsRequest) this.topSongs = []; }
+      finally { if (request === this.topSongsRequest) this.topSongsLoading = false; }
     },
 
     changeDimension(val) {
       if (this.selectedDimension === val) return;
       this.selectedDimension = val;
+      this.tabPage.page = 1;
       this.loadTopSongs();
     },
 
     async loadTopSingers() {
+      const request = ++this.topSingersRequest;
+      const userId = this.targetUserId;
+      const params = pageParams(this.tabPage);
       this.topSingersLoading = true;
       try {
-        const res = await statisticsApi.getUserTopSingers(this.targetUserId, 10);
+        const res = await statisticsApi.getUserTopSingers(userId, 0, params);
+        if (request !== this.topSingersRequest || userId !== this.targetUserId) return;
         if (res.data?.passed) {
-          const list = res.data.data || [];
+          const list = pageItems(res);
+          this.topSingersTotal = pageTotal(res);
           const enriched = await Promise.all(
             list.map(async item => {
               const info = await this.fetchSingerInfo(item.singerId);
               return { ...item, ...info };
             })
           );
-          this.topSingers = enriched;
+          if (request === this.topSingersRequest && userId === this.targetUserId) this.topSingers = enriched;
         }
-      } catch { this.topSingers = []; }
-      finally { this.topSingersLoading = false; }
+      } catch { if (request === this.topSingersRequest) this.topSingers = []; }
+      finally { if (request === this.topSingersRequest) this.topSingersLoading = false; }
     },
 
     async loadFollowData() {
+      const userId = this.targetUserId;
       try {
         const [countRes, statusRes] = await Promise.all([
-          communityApi.getFollowCount(this.targetUserId),
-          this.currentUserId ? communityApi.getFollowStatus(this.targetUserId) : null,
+          communityApi.getFollowCount(userId),
+          this.currentUserId ? communityApi.getFollowStatus(userId) : null,
         ]);
+        if (userId !== this.targetUserId) return;
         if (countRes?.data?.passed) {
           this.followCount = countRes.data.data;
         }
@@ -464,29 +550,42 @@ export default {
           this.followStatus = statusRes.data.data;
         }
       } catch { /* silent */ }
+      if (userId !== this.targetUserId) return;
 
-      this.loadFollowingList();
-      this.loadFollowersList();
+      if (this.activeTab === 'following') this.loadFollowingList();
+      if (this.activeTab === 'followers') this.loadFollowersList();
     },
 
     async loadFollowingList() {
+      const request = ++this.followingRequest;
+      const userId = this.targetUserId;
+      const params = pageParams(this.tabPage);
       try {
-        const res = await communityApi.getFollowing(this.targetUserId, 1, 50);
+        const res = await communityApi.getFollowing(userId, params.page, params.size);
+        if (request !== this.followingRequest || userId !== this.targetUserId ||
+            this.activeTab !== 'following' || params.page !== pageParams(this.tabPage).page ||
+            params.size !== pageParams(this.tabPage).size) return;
         if (res.data?.passed) {
           this.followingList = res.data.data || [];
           await this.resolveUserInfos(this.followingList, this.followingUsers);
         }
-      } catch { this.followingList = []; }
+      } catch { if (request === this.followingRequest && userId === this.targetUserId) this.followingList = []; }
     },
 
     async loadFollowersList() {
+      const request = ++this.followersRequest;
+      const userId = this.targetUserId;
+      const params = pageParams(this.tabPage);
       try {
-        const res = await communityApi.getFollowers(this.targetUserId, 1, 50);
+        const res = await communityApi.getFollowers(userId, params.page, params.size);
+        if (request !== this.followersRequest || userId !== this.targetUserId ||
+            this.activeTab !== 'followers' || params.page !== pageParams(this.tabPage).page ||
+            params.size !== pageParams(this.tabPage).size) return;
         if (res.data?.passed) {
           this.followersList = res.data.data || [];
           await this.resolveUserInfos(this.followersList, this.followersUsers);
         }
-      } catch { this.followersList = []; }
+      } catch { if (request === this.followersRequest && userId === this.targetUserId) this.followersList = []; }
     },
 
     async resolveUserInfos(ids, cache) {
@@ -532,15 +631,21 @@ export default {
     },
 
     async loadPlaylists() {
+      const request = ++this.playlistsRequest;
+      const userId = this.targetUserId;
+      const params = pageParams(this.tabPage);
       this.playlistsLoading = true;
       try {
-        const res = await musicApi.discoverPlaylists(this.targetUserId);
+        const res = this.isSelf
+          ? await musicApi.discoverPlaylists(userId, { ...params, ownerOnly: true })
+          : await musicApi.publicPlaylistsByCreator(userId, params);
+        if (request !== this.playlistsRequest || userId !== this.targetUserId) return;
         if (res.data?.passed) {
-          const all = res.data.data || [];
-          this.playlists = all.filter(p => p.userId === this.targetUserId);
+          this.playlists = pageItems(res);
+          this.playlistsTotal = pageTotal(res);
         }
-      } catch { this.playlists = []; }
-      finally { this.playlistsLoading = false; }
+      } catch { if (request === this.playlistsRequest) this.playlists = []; }
+      finally { if (request === this.playlistsRequest) this.playlistsLoading = false; }
     },
 
     async fetchSongInfo(songId) {

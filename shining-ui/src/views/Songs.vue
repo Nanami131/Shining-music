@@ -76,6 +76,7 @@
             </div>
           </div>
           <p v-else class="placeholder-text">没有找到相关结果</p>
+          <WebListPager v-bind="searchPage" @change="changeSearchPage" />
         </section>
 
         <section v-if="searchResults === null && recommendedSongs.length" class="section section-recommend">
@@ -189,6 +190,7 @@
               </button>
             </div>
           </div>
+          <WebListPager v-bind="songPage" @change="changeSongPage" />
         </section>
       </div>
     </div>
@@ -201,15 +203,19 @@ import statisticsApi from '@/api/statistics';
 import defaultCover from '@/assets/default-cover.png';
 import DOMPurify from 'dompurify';
 import StormFrontRain from '@/components/StormFrontRain.vue';
+import WebListPager from '@/components/WebListPager.vue';
+import { initialPage, pageParams, pageItems, pageTotal, paginateLocal } from '@/utils/listPagination';
 
 export default {
   name: 'Songs',
   components: {
-    StormFrontRain,
+    StormFrontRain, WebListPager,
   },
   data() {
     return {
       songs: [],
+      songPage: initialPage(),
+      songsRequest: 0,
       recommendedSongs: [],
       defaultCover,
       userId: null,
@@ -217,6 +223,9 @@ export default {
       songOperating: false,
       searchKeyword: '',
       searchResults: null,
+      lastSearchKeyword: '',
+      searchPage: initialPage(),
+      searchRequest: 0,
       searchHistory: [],
       showHistory: false,
       currentPlaylistId: null,
@@ -242,6 +251,14 @@ export default {
     this.$bus.off('refreshCurrentPlaylist', this.handlePlaylistRefresh);
   },
   methods: {
+    changeSongPage(next) {
+      this.songPage = { ...this.songPage, ...next };
+      this.loadSongs();
+    },
+    changeSearchPage(next) {
+      this.searchPage = { ...this.searchPage, ...next };
+      this.handleSearch(false);
+    },
     handlePlaylistRefresh() {
       if (!this.userId) {
         this.currentPlaylistId = null;
@@ -387,10 +404,13 @@ export default {
       } catch (e) { /* silent */ }
     },
     async loadSongs() {
+      const request = ++this.songsRequest;
       try {
-        const response = await musicApi.getSongs(this.userId);
+        const response = await musicApi.getSongs(this.userId, pageParams(this.songPage));
+        if (request !== this.songsRequest) return;
         if (response.data && response.data.passed) {
-          this.songs = response.data.data || [];
+          this.songs = pageItems(response, this.songPage);
+          this.songPage.total = pageTotal(response);
           await this.loadArtistNames();
         } else {
           const msg = response.data ? response.data.message : '未知错误';
@@ -467,7 +487,18 @@ export default {
         alert('当前没有可播放歌曲');
         return;
       }
-      const songIds = this.songs
+      let allSongs = this.songs;
+      if (this.songPage.size > 0) {
+        try {
+          const result = await musicApi.getSongs(this.userId, { page: 1, size: 0 });
+          if (!result.data?.passed) throw new Error(result.data?.message || '获取完整歌曲列表失败');
+          allSongs = pageItems(result);
+        } catch (error) {
+          alert('播放全部失败：' + error.message);
+          return;
+        }
+      }
+      const songIds = allSongs
         .filter(song => this.isRandomEnabled(song))
         .map(song => Number(song.id))
         .filter(id => !Number.isNaN(id) && id > 0);
@@ -533,18 +564,29 @@ export default {
     hideHistoryDelayed() {
       setTimeout(() => { this.showHistory = false; }, 200);
     },
-    async handleSearch() {
+    async handleSearch(recordSearch = true) {
+      const request = ++this.searchRequest;
       this.showHistory = false;
       const kw = this.searchKeyword.trim();
       if (!kw) {
         this.searchResults = null;
+        this.lastSearchKeyword = '';
         return;
       }
+      if (kw !== this.lastSearchKeyword) {
+        this.searchPage.page = 1;
+        this.lastSearchKeyword = kw;
+      }
       try {
-        const response = await musicApi.search(kw);
+        const params = pageParams(this.searchPage);
+        const response = await musicApi.search(kw, params.page, params.size);
+        if (request !== this.searchRequest) return;
         if (response.data && response.data.passed) {
-          this.searchResults = response.data.data || [];
-          if (this.userId) {
+          this.searchResults = Array.isArray(response.data.data)
+            ? paginateLocal(pageItems(response), this.searchPage)
+            : pageItems(response, this.searchPage);
+          this.searchPage.total = pageTotal(response);
+          if (this.userId && recordSearch) {
             statisticsApi.reportEvent({
               userId: this.userId,
               eventType: 'SEARCH',
@@ -560,8 +602,12 @@ export default {
       }
     },
     clearSearch() {
+      ++this.searchRequest;
       this.searchKeyword = '';
       this.searchResults = null;
+      this.lastSearchKeyword = '';
+      this.searchPage.page = 1;
+      this.searchPage.total = 0;
     },
     sanitizeHighlight(html) {
       return DOMPurify.sanitize(html, { ALLOWED_TAGS: ['em'] });

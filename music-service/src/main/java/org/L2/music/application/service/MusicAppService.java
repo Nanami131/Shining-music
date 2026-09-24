@@ -164,7 +164,16 @@ public class MusicAppService {
     }
 
     public R listSongs(Long userId) {
-        List<Song> songs = songService.listSongs();
+        return songListResult(songService.listSongs(), userId);
+    }
+
+    public R listSongsPage(Long userId, long offset, int size) {
+        return songListResult(songService.listSongsPage(offset, size), userId);
+    }
+
+    public long countActiveSongs() { return songService.countActiveSongs(); }
+
+    private R songListResult(List<Song> songs, Long userId) {
         Set<Long> favoriteSongIds = userId == null ? Set.of() : playlistService.getFavoriteSongIds(userId);
         if (favoriteSongIds == null) {
             favoriteSongIds = Set.of();
@@ -391,16 +400,23 @@ public class MusicAppService {
     }
 
     public R getPlaylistDetailsInfo(Long playlistId) {
+        return getPlaylistDetailsInfo(playlistId, 1, 0);
+    }
+
+    public R getPlaylistDetailsInfo(Long playlistId, int page, int size) {
         R result = playlistService.getPlaylistInfo(playlistId);
         if (!result.getPassed()) {
             return result;
         }
         PlaylistDetailsDTO playlistDetailsDTO = new PlaylistDetailsDTO();
         BeanUtils.copyProperties(result.getData(), playlistDetailsDTO);
-        R songs = songService.getPlaylistSongs(playlistId);
+        R songs = size > 0 ? songService.getPlaylistSongsPage(playlistId, ((long) page - 1L) * size, size)
+                : songService.getPlaylistSongs(playlistId);
+        if (!Boolean.TRUE.equals(songs.getPassed())) return songs;
         @SuppressWarnings("unchecked")
         List<SongBaseDTO> songList = (List<SongBaseDTO>) songs.getData();
         playlistDetailsDTO.setSongs(songList);
+        playlistDetailsDTO.setSongsTotal(size > 0 ? songService.countPlaylistSongs(playlistId) : (long) songList.size());
         playlistDetailsDTO.setNickName(resolveNickname(playlistDetailsDTO.getUserId(), null));
         return R.success("获取成功", playlistDetailsDTO);
     }
@@ -473,6 +489,38 @@ public class MusicAppService {
         }
         @SuppressWarnings("unchecked")
         List<Playlist> playlists = (List<Playlist>) result.getData();
+        return playlistListResult(playlists);
+    }
+
+    public R discoverPlaylistsPage(Long userId, long offset, int size) {
+        return playlistListResult(playlistService.listVisiblePage(userId, true, offset, size));
+    }
+
+    public long countDiscoverPlaylists(Long userId) {
+        return playlistService.countVisible(userId, true);
+    }
+
+    public R discoverOwnPlaylists(Long userId) {
+        return playlistListResult(playlistService.listOwn(userId));
+    }
+
+    public R discoverOwnPlaylistsPage(Long userId, long offset, int size) {
+        return playlistListResult(playlistService.listOwnPage(userId, offset, size));
+    }
+
+    public long countOwnPlaylists(Long userId) {
+        return playlistService.countOwn(userId);
+    }
+
+    public R publicPlaylistsByCreator(Long creatorId, long offset, Integer size) {
+        return playlistListResult(playlistService.listPublicOwnerPage(creatorId, offset, size));
+    }
+
+    public long countPublicPlaylistsByCreator(Long creatorId) {
+        return playlistService.countPublicOwner(creatorId);
+    }
+
+    private R playlistListResult(List<Playlist> playlists) {
         List<PlaylistBaseDTO> dtoList = new ArrayList<>();
         Map<Long, String> nicknameCache = new HashMap<>();
         for (Playlist playlist : playlists) {
@@ -485,16 +533,23 @@ public class MusicAppService {
     }
 
     public R listPlaylists(Long userId) {
-        List<Playlist> playlists = playlistService.listOfficialAndMine(userId);
-        List<PlaylistBaseDTO> dtoList = new ArrayList<>();
-        Map<Long, String> nicknameCache = new HashMap<>();
-        for (Playlist playlist : playlists) {
-            PlaylistBaseDTO dto = new PlaylistBaseDTO();
-            BeanUtils.copyProperties(playlist, dto);
-            dto.setNickName(resolveNickname(playlist.getUserId(), nicknameCache));
-            dtoList.add(dto);
-        }
-        return R.success("获取歌单列表成功", dtoList);
+        return playlistListResult(playlistService.listOfficialAndMine(userId));
+    }
+
+    public R listPlaylistsPage(Long userId, long offset, int size) {
+        return playlistListResult(playlistService.listVisiblePage(userId, false, offset, size));
+    }
+
+    public long countPlaylists(Long userId) {
+        return playlistService.countVisible(userId, false);
+    }
+
+    public R searchPlaylists(Long userId, String search, long offset, Integer size) {
+        return playlistListResult(playlistService.searchVisible(userId, search, offset, size));
+    }
+
+    public long countPlaylists(Long userId, String search) {
+        return playlistService.countVisible(userId, search);
     }
 
     /*
@@ -541,21 +596,43 @@ public class MusicAppService {
     }
 
     public R getSingerDetailsInfo(Long singerId) {
+        return getSingerDetailsInfo(singerId, 1, 0);
+    }
+
+    public R getSingerDetailsInfo(Long singerId, int page, int size) {
         R result = singerService.getSingerInfo(singerId);
         if (!result.getPassed()) {
             return result;
         }
         SingerDetailsDTO singerDetailsDTO = new SingerDetailsDTO();
         BeanUtils.copyProperties(result.getData(), singerDetailsDTO);
-        R songs = songService.getSingerSongs(singerId);
+        R songs = size > 0 ? songService.getSingerSongsPage(singerId, ((long) page - 1L) * size, size)
+                : songService.getSingerSongs(singerId);
+        if (!Boolean.TRUE.equals(songs.getPassed())) return songs;
         @SuppressWarnings("unchecked")
         List<SongBaseDTO> songList = (List<SongBaseDTO>) songs.getData();
         singerDetailsDTO.setSongs(songList);
+        singerDetailsDTO.setSongsTotal(size > 0 ? songService.countSingerSongs(singerId) : (long) songList.size());
         return R.success("获取成功", singerDetailsDTO);
     }
 
     public R listSingers() {
-        List<Singer> singers = singerService.listSingers();
+        return singerListResult(singerService.listSingers());
+    }
+
+    public R listSingersPage(long offset, int size) {
+        return singerListResult(singerService.listSingersPage(offset, size));
+    }
+
+    public long countSingers() { return singerService.countSingers(); }
+
+    public R searchSingers(String search, long offset, Integer size) {
+        return singerListResult(singerService.searchSingers(offset, size, search));
+    }
+
+    public long countSingers(String search) { return singerService.countSingers(search); }
+
+    private R singerListResult(List<Singer> singers) {
         List<SingerBaseDTO> dtoList = new ArrayList<>();
         for (Singer singer : singers) {
             SingerBaseDTO dto = new SingerBaseDTO();
@@ -666,6 +743,30 @@ public class MusicAppService {
         return R.success("获取收藏歌曲成功", dtoList);
     }
 
+    public R getUserFavoriteSongsPage(Long userId, long offset, int size) {
+        if (userId == null) return R.error("用户不能为空");
+        Playlist favorite = playlistService.ensureFavoritePlaylist(userId);
+        if (favorite == null) return R.error("初始化收藏歌单失败");
+        R result = songService.getPlaylistSongsPage(favorite.getId(), offset, size);
+        if (!result.getPassed()) return result;
+        @SuppressWarnings("unchecked")
+        List<Song> songs = (List<Song>) result.getData();
+        List<SongBaseDTO> dtoList = new ArrayList<>();
+        for (Song song : songs) {
+            SongBaseDTO dto = new SongBaseDTO();
+            BeanUtils.copyProperties(song, dto);
+            dto.setFavorite(true);
+            dtoList.add(dto);
+        }
+        return R.success("获取收藏歌曲成功", dtoList);
+    }
+
+    public long countUserFavoriteSongs(Long userId) {
+        if (userId == null) return 0L;
+        Playlist favorite = playlistService.ensureFavoritePlaylist(userId);
+        return favorite == null ? 0L : songService.countPlaylistSongs(favorite.getId());
+    }
+
     /*
      * 搜索模块
      */
@@ -674,6 +775,27 @@ public class MusicAppService {
             int from = Math.max(page, 0) * size;
             var results = searchService.search(keyword, from, size);
             return R.success("搜索成功", results);
+        } catch (Exception e) {
+            log.error("Search failed for keyword={}", keyword, e);
+            return R.error("搜索失败: " + e.getMessage());
+        }
+    }
+
+    public R searchPage(String keyword, int offset, int size, int page) {
+        try {
+            var results = searchService.search(keyword, offset, size);
+            long total = searchService.countMatches(keyword);
+            return org.L2.common.ListPagination.fromPage(R.success("搜索成功", results), total, page, size);
+        } catch (Exception e) {
+            log.error("Search page failed for keyword={}", keyword, e);
+            return R.error("搜索失败: " + e.getMessage());
+        }
+    }
+
+
+    public R searchAll(String keyword) {
+        try {
+            return R.success("搜索成功", searchService.searchAll(keyword));
         } catch (Exception e) {
             log.error("Search failed for keyword={}", keyword, e);
             return R.error("搜索失败: " + e.getMessage());

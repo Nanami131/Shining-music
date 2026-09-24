@@ -291,6 +291,7 @@ export default {
       this.ripples.forEach((ripple) => {
         const progress = ripple.age / ripple.life;
         const radius = ripple.max * progress;
+        if (radius <= 0) return;
         this.ctx.strokeStyle = this.rgba(ripple.color, ripple.alpha * (1 - progress));
         this.ctx.lineWidth = 1.1;
         this.ctx.beginPath();
@@ -322,7 +323,7 @@ export default {
       this.ctx.restore();
     },
     animate(now) {
-      const dt = Math.min((now - this.lastTime) / 1000, 0.033);
+      const dt = Math.max(0, Math.min((now - this.lastTime) / 1000, 0.033));
       this.lastTime = now;
       this.update(dt);
       this.drawBackdrop();

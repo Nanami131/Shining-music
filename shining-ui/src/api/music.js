@@ -1,4 +1,5 @@
 import api from './index';
+import { legacyListResult } from '@/utils/listPagination';
 
 export default {
     createSong(data) {
@@ -56,25 +57,28 @@ export default {
     getSongShareInfo(songId) {
         return api.get(`/music/share/song/${songId}`);
     },
-    getSongs(userId) {
+    getSongs(userId, pagination) {
         const params = {};
         if (userId !== null && userId !== undefined) {
             params.userId = userId;
         }
-        return api.get('/music/songs', { params });
+        return api.get('/music/songs', { params: { ...params, page: 1, size: 0, ...pagination } })
+            .then(response => pagination ? response : legacyListResult(response));
     },
     getRandomSongs(limit = 20) {
         return api.get('/music/songs/random', { params: { limit } });
     },
-    getSingers() {
-        return api.get('/music/singers');
+    getSingers(pagination) {
+        return api.get('/music/singers', { params: { page: 1, size: 0, ...pagination } })
+            .then(response => pagination ? response : legacyListResult(response));
     },
-    getPlaylists(userId) {
+    getPlaylists(userId, pagination) {
         const params = {};
         if (userId !== null && userId !== undefined) {
             params.userId = userId;
         }
-        return api.get('/music/playlists', { params });
+        return api.get('/music/playlists', { params: { ...params, page: 1, size: 0, ...pagination } })
+            .then(response => pagination ? response : legacyListResult(response));
     },
     playSong(songId, userId) {
         const params = {};
@@ -101,16 +105,19 @@ export default {
     managePlaylistSong(data) {
         return api.post('/music/playlist/song', data);
     },
-    discoverPlaylists(userId) {
+    discoverPlaylists(userId, pagination) {
         return api.get('/music/discover/playlists', {
-            params: { userId },
-        });
+            params: { userId, page: 1, size: 0, ...pagination },
+        }).then(response => pagination ? response : legacyListResult(response));
+    },
+    publicPlaylistsByCreator(creatorId, pagination = { page: 1, size: 0 }) {
+        return api.get('/music/user/' + creatorId + '/playlists/public', { params: pagination });
     },
     getPlaylistBaseInfo(playlistId) {
         return api.get(`/music/info/playlist/${playlistId}`);
     },
-    getPlaylistDetailsInfo(playlistId) {
-        return api.get(`/music/details/playlist/${playlistId}`);
+    getPlaylistDetailsInfo(playlistId, pagination = { page: 1, size: 0 }) {
+        return api.get(`/music/details/playlist/${playlistId}`, { params: pagination });
     },
     getCurrentPlaylist(userId) {
         return api.get('/music/playlist/current', {
@@ -156,16 +163,16 @@ export default {
     getSingerBaseInfo(singerId) {
         return api.get(`/music/info/player/${singerId}`);
     },
-    getSingerDetailsInfo(singerId) {
-        return api.get(`/music/details/player/${singerId}`);
+    getSingerDetailsInfo(singerId, pagination = { page: 1, size: 0 }) {
+        return api.get(`/music/details/player/${singerId}`, { params: pagination });
     },
     toggleFavoriteSong(data) {
         return api.post('/music/song/favorite', data);
     },
-    getUserFavoriteSongs(userId) {
+    getUserFavoriteSongs(userId, pagination) {
         return api.get('/music/user/favorite/songs', {
-            params: { userId },
-        });
+            params: { userId, page: 1, size: 0, ...pagination },
+        }).then(response => pagination ? response : legacyListResult(response));
     },
     uploadVideo(singerId, title, videoFile, md5) {
         const formData = new FormData();
@@ -185,8 +192,9 @@ export default {
     getVideoInfo(videoId) {
         return api.get(`/music/video/${videoId}`);
     },
-    listVideos() {
-        return api.get('/music/videos');
+    listVideos(pagination) {
+        return api.get('/music/videos', { params: { page: 1, size: 0, ...pagination } })
+            .then(response => pagination ? response : legacyListResult(response));
     },
     deleteVideo(videoId) {
         return api.delete(`/music/video/${videoId}`);

@@ -20,6 +20,15 @@ public interface SongMapper {
 
     List<Song> query(Song song);
 
+    List<Song> selectPageActive(@Param("offset") long offset, @Param("size") int size);
+
+    List<Song> selectSingerSongsPage(@Param("singerId") Long singerId,
+                                     @Param("offset") long offset, @Param("size") int size);
+
+    long countSingerSongs(@Param("singerId") Long singerId);
+
+    long countActive();
+
     void deleteBySingerId(Long singerId);
 
     Float selectAvgLufs();

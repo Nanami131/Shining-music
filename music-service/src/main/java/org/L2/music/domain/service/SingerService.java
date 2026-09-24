@@ -141,5 +141,20 @@ public class SingerService {
     public List<Singer> listSingers() {
         return singerMapper.query(new Singer());
     }
-}
 
+    public List<Singer> listSingersPage(long offset, int size) {
+        return singerMapper.selectPage(offset, size, null);
+    }
+
+    public List<Singer> searchSingers(long offset, Integer size, String search) {
+        return singerMapper.selectPage(offset, size, search);
+    }
+
+    public long countSingers(String search) {
+        return singerMapper.countAll(search);
+    }
+
+    public long countSingers() {
+        return singerMapper.countAll(null);
+    }
+}

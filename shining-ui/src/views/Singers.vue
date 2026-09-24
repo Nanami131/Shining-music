@@ -44,6 +44,7 @@
               </div>
             </div>
           </div>
+          <WebListPager v-bind="singerPage" @change="changeSingerPage" />
         </section>
       </div>
     </div>
@@ -55,15 +56,19 @@ import musicApi from '@/api/music';
 import statisticsApi from '@/api/statistics';
 import defaultAvatar from '@/assets/default-avatar.png';
 import StormFrontRain from '@/components/StormFrontRain.vue';
+import WebListPager from '@/components/WebListPager.vue';
+import { initialPage, pageParams, pageItems, pageTotal } from '@/utils/listPagination';
 
 export default {
   name: 'Singers',
   components: {
-    StormFrontRain,
+    StormFrontRain, WebListPager,
   },
   data() {
     return {
       singers: [],
+      singerPage: initialPage(),
+      singersRequest: 0,
       hotSingers: [],
       defaultAvatar,
       userId: null,
@@ -81,6 +86,12 @@ export default {
       );
     },
   },
+  watch: {
+    searchQuery() {
+      this.singerPage.page = 1;
+      this.loadSingers();
+    },
+  },
   created() {
     let userBase = {};
     try { userBase = JSON.parse(localStorage.getItem('userBase') || '{}'); } catch (e) { /* ignore */ }
@@ -89,11 +100,18 @@ export default {
     this.loadHotSingers();
   },
   methods: {
+    changeSingerPage(next) {
+      this.singerPage = { ...this.singerPage, ...next };
+      this.loadSingers();
+    },
     async loadSingers() {
+      const request = ++this.singersRequest;
       try {
-        const response = await musicApi.getSingers();
+        const response = await musicApi.getSingers({ ...pageParams(this.singerPage), search: this.searchQuery.trim() });
+        if (request !== this.singersRequest) return;
         if (response.data && response.data.passed) {
-          this.singers = response.data.data || [];
+          this.singers = pageItems(response, this.singerPage);
+          this.singerPage.total = pageTotal(response);
         } else {
           const msg = response.data ? response.data.message : '未知错误';
           alert('获取歌手列表失败：' + msg);

@@ -69,9 +69,17 @@ public class MusicController {
         return musicAppService.uploadSongAvatar(id, avatarFile, md5);
     }
 
+    public R listSongs(Long userId) { return listSongs(userId, null, null); }
+
     @GetMapping("/songs")
-    public R listSongs(@RequestParam(value = "userId", required = false) Long userId) {
-        return musicAppService.listSongs(userId);
+    public R listSongs(@RequestParam(value = "userId", required = false) Long userId,
+                       @RequestParam(value = "page", required = false) Integer page,
+                       @RequestParam(value = "size", required = false) Integer size) {
+        if (page != null && size != null && page > 0 && size > 0) {
+            R pageResult = musicAppService.listSongsPage(userId, ((long) page - 1L) * size, size);
+            return org.L2.common.ListPagination.fromPage(pageResult, musicAppService.countActiveSongs(), page, size);
+        }
+        return org.L2.common.ListPagination.apply(musicAppService.listSongs(userId), page, size);
     }
 
     @GetMapping("/songs/random")
@@ -167,13 +175,23 @@ public class MusicController {
     /**
      * 获取用户收藏歌曲
      */
+    public R getUserFavoriteSongs(Long userId) { return getUserFavoriteSongs(userId, null, null); }
+
     @GetMapping("/user/favorite/songs")
-    public R getUserFavoriteSongs(@RequestParam("userId") Long userId) {
+    public R getUserFavoriteSongs(@RequestParam("userId") Long userId,
+                                  @RequestParam(value = "page", required = false) Integer page,
+                                  @RequestParam(value = "size", required = false) Integer size) {
         Long trustedUserId = UserContext.getUserId();
         if (trustedUserId != null) {
             userId = trustedUserId;
         }
-        return musicAppService.getUserFavoriteSongs(userId);
+        if (page != null && size != null && page > 0 && size > 0) {
+            R favorites = musicAppService.getUserFavoriteSongsPage(userId, ((long) page - 1L) * size, size);
+            if (!Boolean.TRUE.equals(favorites.getPassed())) return favorites;
+            return org.L2.common.ListPagination.fromPage(favorites,
+                    musicAppService.countUserFavoriteSongs(userId), page, size);
+        }
+        return org.L2.common.ListPagination.apply(musicAppService.getUserFavoriteSongs(userId), page, size);
     }
 
     /**
@@ -304,9 +322,16 @@ public class MusicController {
      * @param playlistId 歌单ID
      * @return 歌单详细信息
      */
+    public R getPlaylistDetailsInfo(Long playlistId) { return getPlaylistDetailsInfo(playlistId, null, null); }
+
     @GetMapping("/details/playlist/{playlistId}")
-    public R getPlaylistDetailsInfo(@PathVariable("playlistId") Long playlistId) {
-        return musicAppService.getPlaylistDetailsInfo(playlistId);
+    public R getPlaylistDetailsInfo(@PathVariable("playlistId") Long playlistId,
+                                    @RequestParam(value = "page", required = false) Integer page,
+                                    @RequestParam(value = "size", required = false) Integer size) {
+        if (page == null && size == null) return musicAppService.getPlaylistDetailsInfo(playlistId);
+        if (page == null || size == null || page < 1 || size < 0 || (size == 0 && page != 1))
+            return R.error("分页参数无效");
+        return musicAppService.getPlaylistDetailsInfo(playlistId, page, size);
     }
 
     /**
@@ -314,14 +339,68 @@ public class MusicController {
      * @param userId 当前用户 ID，可选
      * @return 符合条件的歌单列表
      */
-    @GetMapping("/discover/playlists")
-    public R discoverPlaylists(@RequestParam(value = "userId", required = false) Long userId) {
-        return musicAppService.discoverPlaylists(userId);
+    public R discoverPlaylists(Long userId) { return discoverPlaylists(userId, null, null); }
+
+    public R discoverPlaylists(Long userId, Integer page, Integer size) {
+        return discoverPlaylists(userId, page, size, false);
     }
 
+    @GetMapping("/discover/playlists")
+    public R discoverPlaylists(@RequestParam(value = "userId", required = false) Long userId,
+                               @RequestParam(value = "page", required = false) Integer page,
+                               @RequestParam(value = "size", required = false) Integer size,
+                               @RequestParam(value = "ownerOnly", defaultValue = "false") boolean ownerOnly) {
+        Long trustedUserId = UserContext.getUserId();
+        if (ownerOnly && (trustedUserId == null || !trustedUserId.equals(userId))) {
+            return R.error("只能查看自己的私人歌单");
+        }
+        // A supplied userId must not grant access to another user's private playlists.
+        userId = trustedUserId;
+        if (page != null && size != null && page > 0 && size > 0) {
+            if (ownerOnly) {
+                R owned = musicAppService.discoverOwnPlaylistsPage(userId, ((long) page - 1L) * size, size);
+                return org.L2.common.ListPagination.fromPage(owned, musicAppService.countOwnPlaylists(userId), page, size);
+            }
+            R pageResult = musicAppService.discoverPlaylistsPage(userId, ((long) page - 1L) * size, size);
+            return org.L2.common.ListPagination.fromPage(pageResult, musicAppService.countDiscoverPlaylists(userId), page, size);
+        }
+        if (ownerOnly) return org.L2.common.ListPagination.apply(musicAppService.discoverOwnPlaylists(userId), page, size);
+        return org.L2.common.ListPagination.apply(musicAppService.discoverPlaylists(userId), page, size);
+    }
+
+    public R listPlaylists(Long userId) { return listPlaylists(userId, null, null, null); }
+
     @GetMapping("/playlists")
-    public R listPlaylists(@RequestParam(value = "userId", required = false) Long userId) {
-        return musicAppService.listPlaylists(userId);
+    public R listPlaylists(@RequestParam(value = "userId", required = false) Long userId,
+                           @RequestParam(value = "page", required = false) Integer page,
+                           @RequestParam(value = "size", required = false) Integer size,
+                           @RequestParam(value = "search", required = false) String search) {
+        if (search != null && !search.isBlank()) {
+            if (page == null || size == null || page < 1 || size < 0 || (size == 0 && page != 1))
+                return R.error("分页参数无效");
+            String keyword = search.trim();
+            R result = musicAppService.searchPlaylists(userId, keyword, size == 0 ? 0 : ((long) page - 1L) * size,
+                    size == 0 ? null : size);
+            return size == 0 ? org.L2.common.ListPagination.apply(result, page, size)
+                    : org.L2.common.ListPagination.fromPage(result, musicAppService.countPlaylists(userId, keyword), page, size);
+        }
+        if (page != null && size != null && page > 0 && size > 0) {
+            R pageResult = musicAppService.listPlaylistsPage(userId, ((long) page - 1L) * size, size);
+            return org.L2.common.ListPagination.fromPage(pageResult, musicAppService.countPlaylists(userId), page, size);
+        }
+        return org.L2.common.ListPagination.apply(musicAppService.listPlaylists(userId), page, size);
+    }
+
+    @GetMapping("/user/{creatorId}/playlists/public")
+    public R publicPlaylistsByCreator(@PathVariable("creatorId") Long creatorId,
+                                      @RequestParam("page") Integer page, @RequestParam("size") Integer size) {
+        if (page == null || size == null || page < 1 || size < 0 || (size == 0 && page != 1))
+            return R.error("分页参数无效");
+        R result = musicAppService.publicPlaylistsByCreator(creatorId,
+                size == 0 ? 0 : ((long) page - 1L) * size, size == 0 ? null : size);
+        if (size == 0) return org.L2.common.ListPagination.apply(result, page, size);
+        return org.L2.common.ListPagination.fromPage(result,
+                musicAppService.countPublicPlaylistsByCreator(creatorId), page, size);
     }
 
     /**
@@ -385,9 +464,26 @@ public class MusicController {
         return musicAppService.updateSingerAvatar(id, avatarFile, md5);
     }
 
+    public R listSingers() { return listSingers(null, null, null); }
+
     @GetMapping("/singers")
-    public R listSingers() {
-        return musicAppService.listSingers();
+    public R listSingers(@RequestParam(value = "page", required = false) Integer page,
+                         @RequestParam(value = "size", required = false) Integer size,
+                         @RequestParam(value = "search", required = false) String search) {
+        if (search != null && !search.isBlank()) {
+            if (page == null || size == null || page < 1 || size < 0 || (size == 0 && page != 1))
+                return R.error("分页参数无效");
+            String keyword = search.trim();
+            R result = musicAppService.searchSingers(keyword, size == 0 ? 0 : ((long) page - 1L) * size,
+                    size == 0 ? null : size);
+            return size == 0 ? org.L2.common.ListPagination.apply(result, page, size)
+                    : org.L2.common.ListPagination.fromPage(result, musicAppService.countSingers(keyword), page, size);
+        }
+        if (page != null && size != null && page > 0 && size > 0) {
+            R pageResult = musicAppService.listSingersPage(((long) page - 1L) * size, size);
+            return org.L2.common.ListPagination.fromPage(pageResult, musicAppService.countSingers(), page, size);
+        }
+        return org.L2.common.ListPagination.apply(musicAppService.listSingers(), page, size);
     }
 
     /**
@@ -405,9 +501,16 @@ public class MusicController {
      * @param singerId 歌手ID
      * @return 歌手详细信息
      */
+    public R getSingerDetailsInfo(Long singerId) { return getSingerDetailsInfo(singerId, null, null); }
+
     @GetMapping("/details/player/{singerId}")
-    public R getSingerDetailsInfo(@PathVariable("singerId") Long singerId) {
-        return musicAppService.getSingerDetailsInfo(singerId);
+    public R getSingerDetailsInfo(@PathVariable("singerId") Long singerId,
+                                  @RequestParam(value = "page", required = false) Integer page,
+                                  @RequestParam(value = "size", required = false) Integer size) {
+        if (page == null && size == null) return musicAppService.getSingerDetailsInfo(singerId);
+        if (page == null || size == null || page < 1 || size < 0 || (size == 0 && page != 1))
+            return R.error("分页参数无效");
+        return musicAppService.getSingerDetailsInfo(singerId, page, size);
     }
 
     /*
@@ -418,6 +521,12 @@ public class MusicController {
     public R search(@RequestParam("keyword") String keyword,
                     @RequestParam(value = "page", defaultValue = "0") int page,
                     @RequestParam(value = "size", defaultValue = "10") int size) {
+        if (page >= 1 && size >= 0) {
+            if (size == 0) return org.L2.common.ListPagination.apply(musicAppService.searchAll(keyword), page, size);
+            long end = (long) page * size;
+            if (end > 10000L) return org.L2.common.ListPagination.apply(musicAppService.searchAll(keyword), page, size);
+            return musicAppService.searchPage(keyword, (int) (((long) page - 1L) * size), size, page);
+        }
         if (size > 50) size = 50;
         return musicAppService.search(keyword, page, size);
     }
@@ -472,9 +581,12 @@ public class MusicController {
         return musicAppService.getVideoInfo(id);
     }
 
+    public R listVideos() { return listVideos(null, null); }
+
     @GetMapping("/videos")
-    public R listVideos() {
-        return musicAppService.listVideos();
+    public R listVideos(@RequestParam(value = "page", required = false) Integer page,
+                        @RequestParam(value = "size", required = false) Integer size) {
+        return org.L2.common.ListPagination.apply(musicAppService.listVideos(), page, size);
     }
 
     @DeleteMapping("/video/{id}")

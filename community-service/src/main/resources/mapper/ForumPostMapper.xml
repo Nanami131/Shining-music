@@ -114,6 +114,17 @@
                 AND STATUS = #{status}
             </if>
         </where>
-        ORDER BY created_at DESC
+        ORDER BY created_at DESC, id DESC
+    </select>
+
+    <select id="selectPage" resultMap="ForumPostResultMap">
+        SELECT <include refid="Base_Column_List"/> FROM posts
+        <if test="userId != null">WHERE user_id = #{userId}</if>
+        ORDER BY created_at DESC, id DESC LIMIT #{size} OFFSET #{offset}
+    </select>
+
+    <select id="countPosts" resultType="java.lang.Long">
+        SELECT COUNT(*) FROM posts
+        <if test="userId != null">WHERE user_id = #{userId}</if>
     </select>
 </mapper>

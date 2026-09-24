@@ -1,13 +1,17 @@
 import api from './index';
+import { legacyListResult } from '@/utils/listPagination';
 
 export default {
   getUserTopSongs(userId, params = {}) {
     if (!userId) throw new Error('userId is required');
-    return api.get(`/statistics/user/${userId}/plays/top-songs`, { params });
+    return api.get(`/statistics/user/${userId}/plays/top-songs`, { params })
+      .then(response => params.page === undefined && params.size === undefined ? legacyListResult(response) : response);
   },
 
-  getUserTopSingers(userId, limit = 5) {
-    return api.get(`/statistics/user/${userId}/plays/top-singers`, { params: { limit } });
+  getUserTopSingers(userId, limit = 5, pagination) {
+    return api.get(`/statistics/user/${userId}/plays/top-singers`, {
+      params: { limit, ...pagination },
+    }).then(response => pagination ? response : legacyListResult(response));
   },
 
   getUserProfile(userId) {
@@ -34,12 +38,16 @@ export default {
     return api.get(`/statistics/events/search-keywords/${userId}`, { params: { limit } });
   },
 
-  getRecentPlays(userId, limit = 30) {
-    return api.get(`/statistics/user/${userId}/plays/history`, { params: { limit } });
+  getRecentPlays(userId, limit = 30, pagination) {
+    return api.get(`/statistics/user/${userId}/plays/history`, {
+      params: { limit, page: 1, size: limit, ...pagination },
+    }).then(response => pagination ? response : legacyListResult(response));
   },
 
-  getGlobalTopSongs(limit = 20) {
-    return api.get('/statistics/user/ranking/top-songs', { params: { limit } });
+  getGlobalTopSongs(limit = 20, pagination) {
+    return api.get('/statistics/user/ranking/top-songs', {
+      params: { limit, page: 1, size: limit, ...pagination },
+    }).then(response => pagination ? response : legacyListResult(response));
   },
 
   getAnnualReport(userId, year) {

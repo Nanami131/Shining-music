@@ -68,16 +68,52 @@ public class UserPlayStatisticsController {
      * @param limit     返回条数
      * @return 歌曲播放统计
      */
+    public R getUserTopSongs(Long userId, String dimension, Integer limit) {
+        return getUserTopSongs(userId, dimension, limit, null, null);
+    }
+
     @GetMapping("/{userId}/plays/top-songs")
     public R getUserTopSongs(@PathVariable("userId") Long userId,
                              @RequestParam(value = "dimension", required = false) String dimension,
-                             @RequestParam(value = "limit", required = false) Integer limit) {
+                             @RequestParam(value = "limit", required = false) Integer limit,
+                             @RequestParam(value = "page", required = false) Integer page,
+                             @RequestParam(value = "size", required = false) Integer size) {
+        if (page != null && size != null && page > 0 && size > 0) {
+            R result = userPlayStatisticsService.getUserTopSongsPage(userId, dimension,
+                    ((long) page - 1L) * size, size);
+            if (!Boolean.TRUE.equals(result.getPassed())) return result;
+            return org.L2.common.ListPagination.fromPage(result,
+                    userPlayStatisticsService.countUserTopSongs(userId, dimension), page, size);
+        }
+        if (page != null || size != null) {
+            if (page == null || size == null || page != 1 || size != 0) return R.error("分页参数无效");
+            return org.L2.common.ListPagination.apply(
+                    userPlayStatisticsService.getUserTopSongs(userId, dimension, 0), page, size);
+        }
         return userPlayStatisticsService.getUserTopSongs(userId, dimension, limit);
+    }
+
+    public R getUserTopSingers(Long userId, int limit) {
+        return getUserTopSingers(userId, limit, null, null);
     }
 
     @GetMapping("/{userId}/plays/top-singers")
     public R getUserTopSingers(@PathVariable("userId") Long userId,
-                               @RequestParam(value = "limit", defaultValue = "5") int limit) {
+                               @RequestParam(value = "limit", defaultValue = "5") int limit,
+                               @RequestParam(value = "page", required = false) Integer page,
+                               @RequestParam(value = "size", required = false) Integer size) {
+        if (page != null && size != null && page > 0 && size > 0) {
+            R result = userPlayStatisticsService.getUserTopSingersPage(userId,
+                    ((long) page - 1L) * size, size);
+            if (!Boolean.TRUE.equals(result.getPassed())) return result;
+            return org.L2.common.ListPagination.fromPage(result,
+                    userPlayStatisticsService.countUserTopSingers(userId), page, size);
+        }
+        if (page != null || size != null) {
+            if (page == null || size == null || page != 1 || size != 0) return R.error("分页参数无效");
+            return org.L2.common.ListPagination.apply(
+                    userPlayStatisticsService.getUserTopSingers(userId, 0), page, size);
+        }
         return userPlayStatisticsService.getUserTopSingers(userId, limit);
     }
 
@@ -96,10 +132,21 @@ public class UserPlayStatisticsController {
         return userProfileService.refreshAllProfiles();
     }
 
+    public R getRecentPlays(Long userId, int limit) { return getRecentPlays(userId, limit, null, null); }
+
     @GetMapping("/{userId}/plays/history")
     public R getRecentPlays(@PathVariable("userId") Long userId,
-                            @RequestParam(value = "limit", defaultValue = "30") int limit) {
-        return userPlayStatisticsService.getRecentPlays(userId, limit);
+                            @RequestParam(value = "limit", defaultValue = "30") int limit,
+                            @RequestParam(value = "page", required = false) Integer page,
+                            @RequestParam(value = "size", required = false) Integer size) {
+        if (page != null && size != null && page > 0 && size > 0) {
+            if (userId == null) return R.error("用户ID不能为空");
+            R result = userPlayStatisticsService.getRecentPlaysPage(userId, ((long) page - 1L) * size, size);
+            return org.L2.common.ListPagination.fromPage(result,
+                    userPlayStatisticsService.countRecentPlays(userId), page, size);
+        }
+        return org.L2.common.ListPagination.apply(userPlayStatisticsService.getRecentPlays(userId,
+                page != null && size != null ? 0 : limit), page, size);
     }
 
     @GetMapping("/{userId}/plays/song-ids")
@@ -107,9 +154,19 @@ public class UserPlayStatisticsController {
         return userPlayStatisticsService.getDistinctPlayedSongIds(userId);
     }
 
+    public R getGlobalTopSongs(int limit) { return getGlobalTopSongs(limit, null, null); }
+
     @GetMapping("/ranking/top-songs")
-    public R getGlobalTopSongs(@RequestParam(value = "limit", defaultValue = "20") int limit) {
-        return userPlayStatisticsService.getGlobalTopSongs(limit);
+    public R getGlobalTopSongs(@RequestParam(value = "limit", defaultValue = "20") int limit,
+                               @RequestParam(value = "page", required = false) Integer page,
+                               @RequestParam(value = "size", required = false) Integer size) {
+        if (page != null && size != null && page > 0 && size > 0) {
+            R result = userPlayStatisticsService.getGlobalTopSongsPage(((long) page - 1L) * size, size);
+            return org.L2.common.ListPagination.fromPage(result,
+                    userPlayStatisticsService.countGlobalTopSongs(), page, size);
+        }
+        return org.L2.common.ListPagination.apply(userPlayStatisticsService.getGlobalTopSongs(
+                page != null && size != null ? 0 : limit), page, size);
     }
 
     @GetMapping("/interactions/all")

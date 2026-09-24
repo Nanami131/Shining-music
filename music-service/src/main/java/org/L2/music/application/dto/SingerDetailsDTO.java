@@ -21,4 +21,5 @@ public class SingerDetailsDTO {
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
     private List<SongBaseDTO> songs; // 歌手的歌曲列表
+    private Long songsTotal;
 }

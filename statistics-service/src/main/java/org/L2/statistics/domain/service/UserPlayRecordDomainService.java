@@ -68,8 +68,23 @@ public class UserPlayRecordDomainService {
     }
 
     public List<Map<String, Object>> listTopSingersByUser(Long userId, int limit) {
-        return userSongPlayRecordMapper.topSingersByUser(userId, limit);
+        return userSongPlayRecordMapper.topSingersByUser(userId, limit, 0L);
     }
+
+    public List<Map<String, Object>> topSingersPage(Long userId, long offset, int size) {
+        return userSongPlayRecordMapper.topSingersByUser(userId, size, offset);
+    }
+
+    public List<UserTopSong> topSongsPage(Long userId, LocalDateTime start, LocalDateTime end,
+                                          long offset, int size) {
+        return userSongPlayRecordMapper.topSongsPage(userId, start, end, offset, size);
+    }
+
+    public long countTopSongs(Long userId, LocalDateTime start, LocalDateTime end) {
+        return userSongPlayRecordMapper.countTopSongs(userId, start, end);
+    }
+
+    public long countTopSingers(Long userId) { return userSongPlayRecordMapper.countTopSingers(userId); }
 
     public Map<String, Object> getActiveHour(Long userId) {
         return userSongPlayRecordMapper.activeHourByUser(userId);
@@ -99,9 +114,21 @@ public class UserPlayRecordDomainService {
         return userSongPlayRecordMapper.recentPlaysByUser(userId, limit);
     }
 
+    public List<UserSongPlayRecord> recentPlaysPage(Long userId, long offset, int size) {
+        return userSongPlayRecordMapper.recentPlaysPage(userId, offset, size);
+    }
+
+    public long countRecentPlays(Long userId) { return userSongPlayRecordMapper.countRecentPlays(userId); }
+
     public List<java.util.Map<String, Object>> globalTopSongs(int limit) {
         return userSongPlayRecordMapper.globalTopSongs(limit);
     }
+
+    public List<java.util.Map<String, Object>> globalTopSongsPage(long offset, int size) {
+        return userSongPlayRecordMapper.globalTopSongsPage(offset, size);
+    }
+
+    public long countGlobalTopSongs() { return userSongPlayRecordMapper.countGlobalTopSongs(); }
 
     public List<Long> distinctSongIdsByUser(Long userId) {
         return userSongPlayRecordMapper.distinctSongIdsByUser(userId);

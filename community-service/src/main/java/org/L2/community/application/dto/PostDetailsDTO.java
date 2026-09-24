@@ -33,4 +33,5 @@ public class PostDetailsDTO {
      * 一级评论列表，每个 CommentDTO 中再带 replies。
      */
     private List<CommentDTO> comments;
+    private Integer commentsTotal;
 }

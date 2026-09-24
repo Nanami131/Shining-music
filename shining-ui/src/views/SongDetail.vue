@@ -159,9 +159,10 @@
       <!-- 相似歌曲 -->
       <div class="similar-section" v-if="similarSongs.length">
         <h3>相似歌曲</h3>
+        <div class="page-view-toolbar"><WebViewSwitch label="相似歌曲展示方式" /></div>
         <div class="similar-list">
           <div
-            v-for="item in similarSongs"
+            v-for="item in paginateLocal(similarSongs, similarPage)"
             :key="item.songId"
             class="similar-card"
             @click="goToSong(item.songId)"
@@ -180,6 +181,7 @@
             <button class="similar-play" @click.stop="playSimilar(item.songId)" title="播放">▶</button>
           </div>
         </div>
+        <WebListPager v-bind="similarPage" :total="similarSongs.length" @change="similarPage = { ...similarPage, ...$event }" />
       </div>
       <div class="similar-section" v-else-if="isLoaded && similarFetched && !similarSongs.length">
         <h3>相似歌曲</h3>
@@ -198,6 +200,8 @@ import musicApi from '@/api/music';
 import statisticsApi from '@/api/statistics';
 import recommendApi from '@/api/recommend';
 import defaultCover from '@/assets/default-cover.png';
+import WebListPager from '@/components/WebListPager.vue';
+import { initialPage, paginateLocal } from '@/utils/listPagination';
 import {
   parseLyrics as parseLrc,
   timeToSeconds,
@@ -210,6 +214,7 @@ import {
 
 export default {
   name: 'SongDetail',
+  components: { WebListPager },
   data() {
     return {
       song: null,
@@ -231,6 +236,8 @@ export default {
       tagsFetched: false,
       expandedCategories: {},
       similarSongs: [],
+      similarPage: initialPage(),
+      similarRequest: 0,
       similarFetched: false,
       addedToPlaylist: false,
       currentPlaylistId: null,
@@ -296,6 +303,7 @@ export default {
     },
   },
   methods: {
+    paginateLocal,
     toggleCategory(cat) {
       this.expandedCategories[cat] = !this.expandedCategories[cat];
     },
@@ -322,6 +330,9 @@ export default {
       this.tagsFetched = true;
     },
     async fetchSimilarSongs(songId) {
+      if (String(songId) !== String(this.$route.params.id)) return;
+      const request = ++this.similarRequest;
+      this.similarPage.page = 1;
       this.similarSongs = [];
       this.similarFetched = false;
       try {
@@ -353,12 +364,16 @@ export default {
             } catch (_) { /* ignore */ }
             return { songId: item.songId, similarity: item.similarity, title: '未知歌曲', coverUrl: null, artistName: '' };
           }));
-          this.similarSongs = enriched;
+          if (request === this.similarRequest && String(songId) === String(this.$route.params.id)) {
+            this.similarSongs = enriched;
+          }
         }
       } catch (e) {
         console.warn('相似歌曲加载失败', e);
       }
-      this.similarFetched = true;
+      if (request === this.similarRequest && String(songId) === String(this.$route.params.id)) {
+        this.similarFetched = true;
+      }
     },
     goToSong(songId) {
       this.$router.push(`/song/${songId}`);

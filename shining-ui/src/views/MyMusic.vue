@@ -47,7 +47,7 @@
             :class="{ compact: !isAndroidApp && !offlineSelected && favoriteView === 'compact' }"
             @click="goToSong(song.id)"
           >
-            <span v-if="!isAndroidApp && !offlineSelected && favoriteView === 'compact'" class="song-index" aria-hidden="true">{{ index + 1 }}</span>
+            <span v-if="!isAndroidApp && !offlineSelected && favoriteView === 'compact'" class="song-index" aria-hidden="true">{{ index + 1 + (favoritePage.size > 0 ? (favoritePage.page - 1) * favoritePage.size : 0) }}</span>
             <img v-else :src="song.coverUrl || defaultCover" class="song-cover" alt="歌曲封面" />
             <div class="song-info">
               <h3>{{ song.title || '未知歌曲' }}</h3>
@@ -75,6 +75,7 @@
             </button>
           </div>
         </div>
+        <WebListPager v-if="!offlineSelected" v-bind="favoritePage" @change="changeFavoritePage" />
       </section>
 
       <section class="playlists-section">
@@ -109,6 +110,7 @@
           </div>
         </div>
         <p v-if="offlineSelected" class="empty-tip">离线模式只读取本机独立播放列表；原有线上歌单未缓存到手机，不会自动同步。</p>
+        <WebListPager v-if="!offlineSelected" v-bind="myPlaylistPage" @change="changeMyPlaylistPage" />
       </section>
 
       <section v-if="!offlineSelected && userProfile" class="profile-section">
@@ -198,9 +200,12 @@ import defaultCover from '@/assets/default-cover.png';
 import { isOfflineSelected, localQueue, localSongs, localPlaylist } from '@/offline/localLibrary';
 import { isAndroidApp } from '@/utils/androidServer';
 import { webListMode, setWebListMode } from '@/utils/webListMode';
+import WebListPager from '@/components/WebListPager.vue';
+import { initialPage, pageParams, pageItems, pageTotal, paginateLocal } from '@/utils/listPagination';
 
 export default {
   name: 'MyMusic',
+  components: { WebListPager },
   data() {
     return {
       offlineSelected: isOfflineSelected(),
@@ -209,6 +214,10 @@ export default {
       offlineError: '',
       libraryLoadEpoch: 0,
       favorites: [],
+      favoritePage: initialPage(),
+      myPlaylistPage: initialPage(),
+      favoritesRequest: 0,
+      playlistsRequest: 0,
       loading: false,
       userId: null,
       myPlaylists: [],
@@ -257,6 +266,14 @@ export default {
     this.$bus.off('offlineLibrary:state', this.onOfflineLibraryState);
   },
   methods: {
+    changeFavoritePage(next) {
+      this.favoritePage = { ...this.favoritePage, ...next };
+      this.loadFavorites();
+    },
+    changeMyPlaylistPage(next) {
+      this.myPlaylistPage = { ...this.myPlaylistPage, ...next };
+      this.loadMyPlaylists();
+    },
     setFavoriteView(view) {
       setWebListMode(view);
     },
@@ -292,6 +309,7 @@ export default {
         return;
       }
       const epoch = this.libraryLoadEpoch;
+      const request = ++this.favoritesRequest;
       if (this.offlineSelected) {
         this.loading = true;
         this.offlineError = '';
@@ -310,10 +328,11 @@ export default {
       }
       this.loading = true;
       try {
-        const response = await musicApi.getUserFavoriteSongs(this.userId);
-        if (this.offlineSelected || epoch !== this.libraryLoadEpoch) return;
+        const response = await musicApi.getUserFavoriteSongs(this.userId, pageParams(this.favoritePage));
+        if (this.offlineSelected || epoch !== this.libraryLoadEpoch || request !== this.favoritesRequest) return;
         if (response.data && response.data.passed) {
-          this.favorites = response.data.data || [];
+          this.favorites = pageItems(response, this.favoritePage);
+          this.favoritePage.total = pageTotal(response);
           await this.loadFavoriteArtistNames();
         } else {
           const msg = response.data ? response.data.message : '未知错误';
@@ -322,7 +341,7 @@ export default {
       } catch (error) {
         if (!this.offlineSelected && epoch === this.libraryLoadEpoch) alert('获取收藏列表失败：' + error.message);
       } finally {
-        if (epoch === this.libraryLoadEpoch) this.loading = false;
+        if (epoch === this.libraryLoadEpoch && request === this.favoritesRequest) this.loading = false;
       }
     },
     async loadFavoriteArtistNames() {
@@ -351,13 +370,22 @@ export default {
         return;
       }
       const epoch = this.libraryLoadEpoch;
+      const request = ++this.playlistsRequest;
       this.loadingPlaylists = true;
       try {
-        const response = await musicApi.discoverPlaylists(this.userId);
-        if (this.offlineSelected || epoch !== this.libraryLoadEpoch) return;
+        const response = await musicApi.discoverPlaylists(this.userId,
+          { ...pageParams(this.myPlaylistPage), ownerOnly: true });
+        if (this.offlineSelected || epoch !== this.libraryLoadEpoch || request !== this.playlistsRequest) return;
         if (response.data && response.data.passed) {
-          const all = response.data.data || [];
-          this.myPlaylists = all.filter(p => String(p.userId) === String(this.userId));
+          const mine = pageItems(response).filter(p => String(p.userId) === String(this.userId));
+          if (Array.isArray(response.data.data)) {
+            // The currently running backend may still return the legacy array.
+            this.myPlaylistPage.total = mine.length;
+            this.myPlaylists = paginateLocal(mine, this.myPlaylistPage);
+          } else {
+            this.myPlaylistPage.total = pageTotal(response);
+            this.myPlaylists = mine;
+          }
         } else {
           const msg = response.data ? response.data.message : '未知错误';
           alert('获取歌单列表失败：' + msg);
@@ -365,7 +393,7 @@ export default {
       } catch (error) {
         if (!this.offlineSelected && epoch === this.libraryLoadEpoch) alert('获取歌单列表失败：' + error.message);
       } finally {
-        if (epoch === this.libraryLoadEpoch) this.loadingPlaylists = false;
+        if (epoch === this.libraryLoadEpoch && request === this.playlistsRequest) this.loadingPlaylists = false;
       }
     },
     async loadTopSongs() {
@@ -514,6 +542,10 @@ export default {
           song.favorite = favorite;
           if (!favorite) {
             this.favorites = this.favorites.filter(item => item.id !== song.id);
+            if (this.favoritePage.size > 0 && this.favoritePage.page > 1 && !this.favorites.length) {
+              this.favoritePage.page--;
+            }
+            await this.loadFavorites();
           }
           statisticsApi.reportEvent({
             userId: this.userId,

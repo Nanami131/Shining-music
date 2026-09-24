@@ -20,4 +20,5 @@ public class PlaylistDetailsDTO {
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
     private List<SongBaseDTO> songs; // 歌单的歌曲列表
+    private Long songsTotal;
 }

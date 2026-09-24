@@ -197,11 +197,49 @@ public class PlaylistService {
             boolean isOfficial = ownerId != null && ownerId == -1L;
             boolean isPublic = visibility != null && visibility == 0;
             // 私密歌单不参与任何展示（官方歌单除外）
-            if (isOfficial || isPublic) {
+            if ((isOfficial || isPublic) && (visibility == null || visibility != 1)) {
                 result.add(playlist);
             }
         }
         return result;
+    }
+
+    public List<Playlist> listVisiblePage(Long userId, boolean includeOwn, long offset, int size) {
+        return playlistMapper.selectVisiblePage(userId, includeOwn, offset, size, null);
+    }
+
+    public List<Playlist> searchVisible(Long userId, String search, long offset, Integer size) {
+        return playlistMapper.selectVisiblePage(userId, false, offset, size, search);
+    }
+
+    public long countVisible(Long userId, String search) {
+        return playlistMapper.countVisible(userId, false, search);
+    }
+
+    public long countVisible(Long userId, boolean includeOwn) {
+        return playlistMapper.countVisible(userId, includeOwn, null);
+    }
+
+    public List<Playlist> listOwn(Long userId) {
+        if (userId == null) return List.of();
+        return playlistMapper.query(new Playlist().setUserId(userId)).stream()
+                .filter(playlist -> isDisplayType(playlist.getType())).toList();
+    }
+
+    public List<Playlist> listOwnPage(Long userId, long offset, int size) {
+        return userId == null ? List.of() : playlistMapper.selectOwnPage(userId, offset, size);
+    }
+
+    public long countOwn(Long userId) {
+        return userId == null ? 0L : playlistMapper.countOwn(userId);
+    }
+
+    public List<Playlist> listPublicOwnerPage(Long creatorId, long offset, Integer size) {
+        return creatorId == null ? List.of() : playlistMapper.selectPublicOwnerPage(creatorId, offset, size);
+    }
+
+    public long countPublicOwner(Long creatorId) {
+        return creatorId == null ? 0L : playlistMapper.countPublicOwner(creatorId);
     }
 
     private Playlist ensureUserPlaylist(Long userId, byte type) {

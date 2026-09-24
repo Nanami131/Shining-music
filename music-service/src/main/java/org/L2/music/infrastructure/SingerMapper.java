@@ -2,6 +2,7 @@ package org.L2.music.infrastructure;
 
 import org.L2.music.domain.model.Singer;
 import org.apache.ibatis.annotations.Mapper;
+import org.apache.ibatis.annotations.Param;
 
 import java.util.List;
 
@@ -16,4 +17,8 @@ public interface SingerMapper {
     int deleteById(Long id);
 
     List<Singer> query(Singer singer);
+
+    List<Singer> selectPage(@Param("offset") long offset, @Param("size") Integer size, @Param("search") String search);
+
+    long countAll(@Param("search") String search);
 }

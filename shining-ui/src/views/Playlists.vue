@@ -130,6 +130,7 @@
               </div>
             </div>
           </div>
+          <WebListPager v-if="!offlineSelected" v-bind="playlistPage" @change="changePlaylistPage" />
         </section>
       </div>
     </div>
@@ -141,15 +142,18 @@ import musicApi from '@/api/music';
 import defaultCover from '@/assets/default-cover.png';
 import StormFrontRain from '@/components/StormFrontRain.vue';
 import { isOfflineSelected, localPlaylist } from '@/offline/localLibrary';
+import WebListPager from '@/components/WebListPager.vue';
+import { initialPage, pageParams, pageItems, pageTotal } from '@/utils/listPagination';
 
 export default {
   name: 'Playlists',
   components: {
-    StormFrontRain,
+    StormFrontRain, WebListPager,
   },
   data() {
     return {
       playlists: [],
+      playlistPage: initialPage(),
       offlineSelected: isOfflineSelected(),
       libraryLoadEpoch: 0,
       discoverList: [],
@@ -183,6 +187,12 @@ export default {
       );
     },
   },
+  watch: {
+    searchQuery() {
+      this.playlistPage.page = 1;
+      if (!this.offlineSelected) this.loadPlaylists();
+    },
+  },
   created() {
     window.addEventListener('offlineModeChanged', this.onOfflineModeChanged);
     this.$bus.on('offlineLibrary:state', this.onOfflineLibraryState);
@@ -198,6 +208,10 @@ export default {
     this.$bus.off('offlineLibrary:state', this.onOfflineLibraryState);
   },
   methods: {
+    changePlaylistPage(next) {
+      this.playlistPage = { ...this.playlistPage, ...next };
+      this.loadPlaylists();
+    },
     onOfflineModeChanged() {
       this.libraryLoadEpoch++;
       this.offlineSelected = isOfflineSelected();
@@ -228,13 +242,17 @@ export default {
         return;
       }
       const epoch = this.libraryLoadEpoch;
+      const request = this.playlistsRequest = (this.playlistsRequest || 0) + 1;
       try {
-        const response = await musicApi.getPlaylists(this.userId);
-        if (this.offlineSelected || epoch !== this.libraryLoadEpoch) return;
+        const response = await musicApi.getPlaylists(this.userId,
+          { ...pageParams(this.playlistPage), search: this.searchQuery.trim() });
+        if (this.offlineSelected || epoch !== this.libraryLoadEpoch || request !== this.playlistsRequest) return;
         if (response.data && response.data.passed) {
-          const list = response.data.data || [];
+          const list = pageItems(response, this.playlistPage);
           // 兜底：私密歌单（visibility=1）不展示
-          this.playlists = list.filter(item => Number(item?.visibility) !== 1);
+          const visible = list.filter(item => Number(item?.visibility) !== 1);
+          this.playlists = visible;
+          this.playlistPage.total = pageTotal(response);
         } else {
           const msg = response.data ? response.data.message : '未知错误';
           alert('获取歌单列表失败：' + msg);

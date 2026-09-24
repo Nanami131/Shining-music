@@ -33,7 +33,15 @@ public interface UserSongPlayRecordMapper {
                                              @Param("limit") int limit);
 
     List<Map<String, Object>> topSingersByUser(@Param("userId") Long userId,
-                                                @Param("limit") int limit);
+                                                @Param("limit") int limit, @Param("offset") long offset);
+
+    long countTopSingers(@Param("userId") Long userId);
+    long countTopSongs(@Param("userId") Long userId, @Param("start") LocalDateTime start,
+                       @Param("end") LocalDateTime end);
+
+    List<UserTopSong> topSongsPage(@Param("userId") Long userId, @Param("start") LocalDateTime start,
+                                   @Param("end") LocalDateTime end, @Param("offset") long offset,
+                                   @Param("size") int size);
 
     Map<String, Object> activeHourByUser(@Param("userId") Long userId);
 
@@ -50,7 +58,16 @@ public interface UserSongPlayRecordMapper {
     List<UserSongPlayRecord> recentPlaysByUser(@Param("userId") Long userId,
                                                @Param("limit") int limit);
 
+    List<UserSongPlayRecord> recentPlaysPage(@Param("userId") Long userId,
+                                             @Param("offset") long offset, @Param("size") int size);
+
+    long countRecentPlays(@Param("userId") Long userId);
+
     List<Map<String, Object>> globalTopSongs(@Param("limit") int limit);
+
+    List<Map<String, Object>> globalTopSongsPage(@Param("offset") long offset, @Param("size") int size);
+
+    long countGlobalTopSongs();
 
     List<Long> distinctSongIdsByUser(@Param("userId") Long userId);
 

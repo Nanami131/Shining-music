@@ -28,6 +28,15 @@
         </foreach>
     </select>
 
+    <select id="selectSingerSongsPage" resultMap="SongResultMap">
+        SELECT * FROM songs WHERE artist_id = #{singerId}
+        ORDER BY id LIMIT #{size} OFFSET #{offset}
+    </select>
+
+    <select id="countSingerSongs" resultType="java.lang.Long">
+        SELECT COUNT(*) FROM songs WHERE artist_id = #{singerId}
+    </select>
+
     <insert id="insert" parameterType="org.L2.music.domain.model.Song" useGeneratedKeys="true" keyProperty="id">
         INSERT INTO songs (title, artist_id, album_id, file_url, cover_url, duration, status, random_enabled, created_at, updated_at)
         VALUES (#{title}, #{artistId}, #{albumId}, #{fileUrl}, #{coverUrl}, #{duration}, #{status}, #{randomEnabled}, #{createdAt}, #{updatedAt})
@@ -94,6 +103,15 @@
                 AND updated_at >= #{updatedAt}
             </if>
         </where>
+        ORDER BY id
+    </select>
+
+    <select id="selectPageActive" resultMap="SongResultMap">
+        SELECT * FROM songs WHERE status = 1 ORDER BY id LIMIT #{size} OFFSET #{offset}
+    </select>
+
+    <select id="countActive" resultType="java.lang.Long">
+        SELECT COUNT(*) FROM songs WHERE status = 1
     </select>
 
     <select id="selectAvgLufs" resultType="java.lang.Float">

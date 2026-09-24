@@ -112,8 +112,24 @@
             </if>
         </where>
         GROUP BY song_id
-        ORDER BY play_count DESC
+        ORDER BY play_count DESC, song_id ASC
         LIMIT #{limit}
+    </select>
+
+    <select id="topSongsPage" resultMap="UserTopSongMap">
+        SELECT song_id, COUNT(*) AS play_count FROM user_song_play_record
+        WHERE user_id = #{userId}
+        <if test="start != null">AND played_at &gt;= #{start}</if>
+        <if test="end != null">AND played_at &lt; #{end}</if>
+        GROUP BY song_id ORDER BY play_count DESC, song_id ASC
+        LIMIT #{size} OFFSET #{offset}
+    </select>
+
+    <select id="countTopSongs" resultType="java.lang.Long">
+        SELECT COUNT(DISTINCT song_id) FROM user_song_play_record
+        WHERE user_id = #{userId}
+        <if test="start != null">AND played_at &gt;= #{start}</if>
+        <if test="end != null">AND played_at &lt; #{end}</if>
     </select>
 
     <select id="topSingersByUser" resultType="java.util.Map">
@@ -126,8 +142,16 @@
         LEFT JOIN `shining-music`.singers si ON s.artist_id = si.id
         WHERE r.user_id = #{userId}
         GROUP BY s.artist_id, si.name
-        ORDER BY playCount DESC
-        LIMIT #{limit}
+        ORDER BY playCount DESC, s.artist_id ASC
+        LIMIT #{limit} OFFSET #{offset}
+    </select>
+
+    <select id="countTopSingers" resultType="java.lang.Long">
+        SELECT COUNT(*) FROM (
+            SELECT s.artist_id FROM user_song_play_record r
+            JOIN `shining-music`.songs s ON r.song_id = s.id
+            WHERE r.user_id = #{userId} GROUP BY s.artist_id
+        ) AS singer_groups
     </select>
 
     <select id="activeHourByUser" resultType="java.util.Map">
@@ -182,16 +206,37 @@
                duration_sec, total_duration, completed, source
         FROM user_song_play_record
         WHERE user_id = #{userId}
-        ORDER BY played_at DESC
+        ORDER BY played_at DESC, id DESC
         LIMIT #{limit}
+    </select>
+
+    <select id="recentPlaysPage" resultMap="UserSongPlayRecordResultMap">
+        SELECT id, user_id, song_id, play_session_id, played_at,
+               duration_sec, total_duration, completed, source
+        FROM user_song_play_record WHERE user_id = #{userId}
+        ORDER BY played_at DESC, id DESC LIMIT #{size} OFFSET #{offset}
+    </select>
+
+    <select id="countRecentPlays" resultType="java.lang.Long">
+        SELECT COUNT(*) FROM user_song_play_record WHERE user_id = #{userId}
     </select>
 
     <select id="globalTopSongs" resultType="java.util.HashMap">
         SELECT song_id AS songId, COUNT(*) AS playCount
         FROM user_song_play_record
         GROUP BY song_id
-        ORDER BY playCount DESC
+        ORDER BY playCount DESC, song_id ASC
         LIMIT #{limit}
+    </select>
+
+    <select id="globalTopSongsPage" resultType="java.util.HashMap">
+        SELECT song_id AS songId, COUNT(*) AS playCount
+        FROM user_song_play_record GROUP BY song_id
+        ORDER BY playCount DESC, song_id ASC LIMIT #{size} OFFSET #{offset}
+    </select>
+
+    <select id="countGlobalTopSongs" resultType="java.lang.Long">
+        SELECT COUNT(DISTINCT song_id) FROM user_song_play_record
     </select>
 
     <select id="distinctSongIdsByUser" resultType="java.lang.Long">

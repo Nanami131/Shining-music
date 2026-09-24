@@ -60,15 +60,15 @@
         <h3>歌曲列表</h3>
         <div class="page-view-toolbar"><WebViewSwitch label="歌单歌曲列表展示方式" /></div>
         <div class="editor-actions">
-          <button class="btn primary" :disabled="songOperating || !playlistSongs.length" @click="playAllSongs">
+          <button class="btn primary" :disabled="songOperating || !(offlineLocal ? playlistSongs.length : detailPage.total)" @click="playAllSongs">
             播放全部
           </button>
-          <button v-if="isOwner" class="btn danger" :disabled="songOperating || !playlistSongs.length" @click="clearAllSongs">
+          <button v-if="isOwner" class="btn danger" :disabled="songOperating || !(offlineLocal ? playlistSongs.length : detailPage.total)" @click="clearAllSongs">
             清空歌单
           </button>
         </div>
         <div class="songs-list">
-          <div v-for="(song, index) in playlistSongs" :key="song.id" class="song-card">
+          <div v-for="(song, index) in visiblePlaylistSongs" :key="song.id" class="song-card">
             <img :src="song.coverUrl || defaultCover" class="song-cover" alt="歌曲封面" @click="goToSong(song.id)" />
             <div class="song-info">
               <h4 @click="goToSong(song.id)">{{ song.title || '未知歌曲' }}</h4>
@@ -83,6 +83,7 @@
             </button>
           </div>
         </div>
+        <WebListPager v-if="!offlineLocal" v-bind="detailPage" @change="changeDetailPage" />
       </section>
 
       <section v-if="isOwner" class="editor-section">
@@ -153,12 +154,18 @@
 import musicApi from '@/api/music';
 import defaultCover from '@/assets/default-cover.png';
 import { isOfflineSelected, localPlaylist, localQueue, localSongs } from '@/offline/localLibrary';
+import WebListPager from '@/components/WebListPager.vue';
+import { initialPage, pageParams } from '@/utils/listPagination';
 
 export default {
   name: 'PlaylistDetail',
+  components: { WebListPager },
   data() {
     return {
       playlist: null,
+      detailPage: initialPage(),
+      detailsRequest: 0,
+      allPlaylistSongIds: null,
       favoriteSongs: [],
       selectedSongIds: [],
       showSongSelector: false,
@@ -194,8 +201,11 @@ export default {
     playlistSongs() {
       return Array.isArray(this.playlist?.songs) ? this.playlist.songs : [];
     },
+    visiblePlaylistSongs() {
+      return this.playlistSongs;
+    },
     availableSongs() {
-      const inPlaylist = new Set(this.playlistSongs.map(song => String(song.id)));
+      const inPlaylist = this.allPlaylistSongIds || new Set(this.playlistSongs.map(song => String(song.id)));
       return (this.favoriteSongs || []).filter(song => !inPlaylist.has(String(song.id)));
     },
     isAllAvailableSelected() {
@@ -214,15 +224,22 @@ export default {
     if (this.offlineLocal) this.$bus.emit('offlineLibrary:request');
   },
   beforeUnmount() {
+    this.detailsRequest++;
     window.removeEventListener('offlineModeChanged', this.onOfflineModeChanged);
     this.$bus.off('offlineLibrary:state', this.onOfflineLibraryState);
   },
   watch: {
     '$route.params.id'() {
+      this.detailPage.page = 1;
+      this.allPlaylistSongIds = null;
       this.loadPageData();
     },
   },
   methods: {
+    changeDetailPage(next) {
+      this.detailPage = { ...this.detailPage, ...next };
+      this.loadPlaylistDetails().catch(error => alert('获取歌单歌曲失败：' + error.message));
+    },
     onOfflineModeChanged() {
       this.offlineLocal = isOfflineSelected();
       if (!this.offlineLocal && this.$route.params.id === 'local') this.$router.replace('/my-music');
@@ -271,14 +288,26 @@ export default {
     },
     async loadPlaylistDetails() {
       const playlistId = this.$route.params.id;
-      const response = await musicApi.getPlaylistDetailsInfo(playlistId);
+      const request = ++this.detailsRequest;
+      const response = await musicApi.getPlaylistDetailsInfo(playlistId, pageParams(this.detailPage));
+      if (request !== this.detailsRequest || playlistId !== this.$route.params.id || this.offlineLocal) return;
       if (!response.data?.passed) {
         throw new Error(response.data?.message || '获取歌单详情失败');
       }
+      const samePlaylist = this.playlist && String(this.playlist.id) === String(playlistId);
       this.playlist = response.data.data;
-      this.editForm.name = this.playlist.name || '';
-      this.editForm.description = this.playlist.description || '';
-      this.editForm.visibility = this.playlist.visibility ?? 0;
+      this.detailPage.total = this.playlist.songsTotal ?? this.playlistSongs.length;
+      if (this.detailPage.size > 0 && this.detailPage.page > 1 &&
+          (this.detailPage.page - 1) * this.detailPage.size >= this.detailPage.total) {
+        this.detailPage.page = Math.max(1, Math.ceil(this.detailPage.total / this.detailPage.size));
+        return this.loadPlaylistDetails();
+      }
+      this.allPlaylistSongIds = null;
+      if (!samePlaylist) {
+        this.editForm.name = this.playlist.name || '';
+        this.editForm.description = this.playlist.description || '';
+        this.editForm.visibility = this.playlist.visibility ?? 0;
+      }
     },
     async loadFavoriteSongs() {
       if (!this.userId) {
@@ -355,7 +384,17 @@ export default {
         this.uploadingCover = false;
       }
     },
-    toggleSongSelector() {
+    async toggleSongSelector() {
+      if (!this.showSongSelector && !this.offlineLocal) {
+        try {
+          const result = await musicApi.getPlaylistDetailsInfo(this.$route.params.id, { page: 1, size: 0 });
+          if (!result.data?.passed) throw new Error(result.data?.message || '读取歌单失败');
+          this.allPlaylistSongIds = new Set((result.data.data?.songs || []).map(song => String(song.id)));
+        } catch (error) {
+          alert('读取歌单歌曲失败：' + error.message);
+          return;
+        }
+      }
       this.showSongSelector = !this.showSongSelector;
     },
     toggleSelectAllSongs() {
@@ -459,15 +498,22 @@ export default {
         else this.offlineError = '离线播放列表中没有可播放的歌曲';
         return;
       }
-      if (!this.playlistSongs.length) {
+      if (!this.detailPage.total) {
         alert('当前歌单没有歌曲');
         return;
       }
       this.songOperating = true;
       try {
+        let songs = this.playlistSongs;
+        if (this.detailPage.size > 0) {
+          const result = await musicApi.getPlaylistDetailsInfo(this.playlist.id, { page: 1, size: 0 });
+          if (!result.data?.passed) throw new Error(result.data?.message || '读取完整歌单失败');
+          songs = result.data.data?.songs || [];
+        }
+        if (!songs.length) return;
         this.$bus.emit('playSong', {
-          songId: this.playlistSongs[0].id,
-          playlist: this.playlistSongs.map(song => song.id),
+          songId: songs[0].id,
+          playlist: songs.map(song => song.id),
           index: 0,
           source: 'playlistDetail',
         });
@@ -477,7 +523,7 @@ export default {
           const currentResponse = await musicApi.getCurrentPlaylist(this.userId);
           const currentPlaylistId = currentResponse.data?.data?.id;
           if (currentPlaylistId) {
-            for (const song of this.playlistSongs) {
+            for (const song of songs) {
               await musicApi.managePlaylistSong({
                 playlistId: currentPlaylistId,
                 songId: song.id,

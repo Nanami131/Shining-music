@@ -81,5 +81,26 @@
                 AND updated_at >= #{updatedAt}
             </if>
         </where>
+        ORDER BY id
+    </select>
+
+    <select id="selectPage" resultMap="SingerResultMap">
+        SELECT * FROM singers
+        <where>
+            <if test="search != null and search != ''">
+                (name LIKE CONCAT('%', #{search}, '%') OR genre LIKE CONCAT('%', #{search}, '%') OR country LIKE CONCAT('%', #{search}, '%'))
+            </if>
+        </where>
+        ORDER BY id
+        <if test="size != null and size > 0">LIMIT #{size} OFFSET #{offset}</if>
+    </select>
+
+    <select id="countAll" resultType="java.lang.Long">
+        SELECT COUNT(*) FROM singers
+        <where>
+            <if test="search != null and search != ''">
+                (name LIKE CONCAT('%', #{search}, '%') OR genre LIKE CONCAT('%', #{search}, '%') OR country LIKE CONCAT('%', #{search}, '%'))
+            </if>
+        </where>
     </select>
 </mapper>

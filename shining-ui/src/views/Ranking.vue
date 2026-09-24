@@ -19,10 +19,10 @@
         v-for="(item, idx) in songs"
         :key="item.songId"
         class="ranking-item"
-        :class="{ 'top-three': idx < 3 }"
+        :class="{ 'top-three': idx + rankOffset < 3 }"
         @click="goToSong(item.songId)"
       >
-        <span class="rank-number" :class="'rank-' + (idx < 3 ? idx + 1 : 'other')">{{ idx + 1 }}</span>
+        <span class="rank-number" :class="'rank-' + (idx + rankOffset < 3 ? idx + rankOffset + 1 : 'other')">{{ idx + rankOffset + 1 }}</span>
         <img :src="item.coverUrl || defaultCover" class="rank-cover" alt="" />
         <div class="rank-info">
           <h3>{{ item.title || `歌曲 ${item.songId}` }}</h3>
@@ -34,6 +34,7 @@
         <button class="play-btn" title="播放" @click.stop="playSong(item.songId)">&#9654;</button>
       </div>
     </div>
+    <WebListPager v-bind="rankingPage" @change="changeRankingPage" />
   </div>
 </template>
 
@@ -41,12 +42,20 @@
 import statisticsApi from '../api/statistics';
 import musicApi from '../api/music';
 import defaultCover from '../assets/default-cover.png';
+import WebListPager from '@/components/WebListPager.vue';
+import { initialPage, pageParams, pageItems, pageTotal } from '@/utils/listPagination';
 
 export default {
   name: 'Ranking',
+  components: { WebListPager },
+  computed: {
+    rankOffset() { return this.rankingPage.size > 0 ? (this.rankingPage.page - 1) * this.rankingPage.size : 0; },
+  },
   data() {
     return {
       songs: [],
+      rankingPage: initialPage(),
+      rankingRequest: 0,
       loading: true,
       defaultCover,
       userId: null,
@@ -60,11 +69,19 @@ export default {
     this.loadRanking();
   },
   methods: {
+    changeRankingPage(next) {
+      this.rankingPage = { ...this.rankingPage, ...next };
+      this.loadRanking();
+    },
     async loadRanking() {
+      const request = ++this.rankingRequest;
+      this.loading = true;
       try {
-        const res = await statisticsApi.getGlobalTopSongs(30);
-        if (res.data?.passed && Array.isArray(res.data.data)) {
-          const raw = res.data.data;
+        const res = await statisticsApi.getGlobalTopSongs(30, pageParams(this.rankingPage));
+        if (request !== this.rankingRequest) return;
+        if (res.data?.passed) {
+          const raw = pageItems(res, this.rankingPage);
+          this.rankingPage.total = pageTotal(res);
           const enriched = await Promise.all(
             raw.map(async (item) => {
               const out = { songId: item.songId, playCount: item.playCount };
@@ -86,12 +103,12 @@ export default {
               return out;
             })
           );
-          this.songs = enriched;
+          if (request === this.rankingRequest) this.songs = enriched;
         }
       } catch (e) {
         console.error('Failed to load ranking', e);
       } finally {
-        this.loading = false;
+        if (request === this.rankingRequest) this.loading = false;
       }
     },
     goToSong(songId) {
@@ -104,7 +121,21 @@ export default {
       return song?.randomEnabled !== 0 && song?.randomEnabled !== false;
     },
     async playAllSongs() {
-      const songIds = this.songs
+      let allSongs = this.songs;
+      if (this.rankingPage.size > 0) {
+        try {
+          const response = await statisticsApi.getGlobalTopSongs(30, { page: 1, size: 0 });
+          if (!response.data?.passed) throw new Error(response.data?.message || '获取完整榜单失败');
+          allSongs = await Promise.all(pageItems(response).map(async item => {
+            const info = await musicApi.getSongBaseInfo(item.songId, this.userId).catch(() => null);
+            return { ...item, randomEnabled: info?.data?.data?.randomEnabled };
+          }));
+        } catch (error) {
+          alert('播放全部失败：' + error.message);
+          return;
+        }
+      }
+      const songIds = allSongs
         .filter(song => this.isRandomEnabled(song))
         .map(song => Number(song.songId))
         .filter(id => !Number.isNaN(id) && id > 0);

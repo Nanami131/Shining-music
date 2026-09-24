@@ -102,9 +102,6 @@ public class CommunityAppService {
         return result;
     }
 
-    /**
-     * 帖子列表（简单版，不分页）。
-     */
     public R listPosts(Long userId) {
         ForumPost condition = new ForumPost();
         if (userId != null) {
@@ -112,6 +109,16 @@ public class CommunityAppService {
         }
         List<ForumPost> posts = forumPostService.queryPosts(condition);
 
+        return postListResult(posts);
+    }
+
+    public R listPostsPage(Long userId, long offset, int size) {
+        return postListResult(forumPostService.queryPostsPage(userId, offset, size));
+    }
+
+    public long countPosts(Long userId) { return forumPostService.countPosts(userId); }
+
+    private R postListResult(List<ForumPost> posts) {
         List<PostDTO> dtoList = new ArrayList<>();
         if (posts != null) {
             for (ForumPost post : posts) {
@@ -135,6 +142,10 @@ public class CommunityAppService {
      * 帖子详情 + 评论树。
      */
     public R getPostDetails(Long id) {
+        return getPostDetails(id, null, null);
+    }
+
+    public R getPostDetails(Long id, Integer page, Integer size) {
         ForumPost post = forumPostService.getPostById(id);
         if (post == null) {
             return R.error("帖子不存在");
@@ -155,7 +166,15 @@ public class CommunityAppService {
         List<ForumComment> comments = forumCommentService.queryComments(condition);
 
         List<CommentDTO> commentTree = buildCommentTree(comments);
-        details.setComments(commentTree);
+        details.setCommentsTotal(commentTree.size());
+        if (size != null && size > 0) {
+            long start = ((long) page - 1L) * size;
+            int from = (int) Math.min(commentTree.size(), start);
+            int to = (int) Math.min(commentTree.size(), start + size);
+            details.setComments(commentTree.subList(from, to));
+        } else {
+            details.setComments(commentTree);
+        }
 
         return R.success("获取帖子详情成功", details);
     }

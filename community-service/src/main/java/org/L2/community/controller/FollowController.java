@@ -40,7 +40,8 @@ public class FollowController {
     public R getFollowing(@RequestParam("userId") Long userId,
                           @RequestParam(value = "page", defaultValue = "1") int page,
                           @RequestParam(value = "size", defaultValue = "20") int size) {
-        List<UserFollow> list = userFollowService.getFollowingList(userId, page, size);
+        if (page < 1 || size < 0 || (size == 0 && page != 1)) return R.error("分页参数无效");
+        List<UserFollow> list = userFollowService.getFollowingList(userId, page, size == 0 ? Integer.MAX_VALUE : size);
         List<Long> ids = list.stream().map(UserFollow::getFollowingId).toList();
         return R.success("查询成功", ids);
     }
@@ -49,7 +50,8 @@ public class FollowController {
     public R getFollowers(@RequestParam("userId") Long userId,
                           @RequestParam(value = "page", defaultValue = "1") int page,
                           @RequestParam(value = "size", defaultValue = "20") int size) {
-        List<UserFollow> list = userFollowService.getFollowerList(userId, page, size);
+        if (page < 1 || size < 0 || (size == 0 && page != 1)) return R.error("分页参数无效");
+        List<UserFollow> list = userFollowService.getFollowerList(userId, page, size == 0 ? Integer.MAX_VALUE : size);
         List<Long> ids = list.stream().map(UserFollow::getFollowerId).toList();
         return R.success("查询成功", ids);
     }

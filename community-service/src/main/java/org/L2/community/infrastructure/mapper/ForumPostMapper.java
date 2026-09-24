@@ -2,6 +2,7 @@ package org.L2.community.infrastructure.mapper;
 
 import org.L2.community.domain.model.ForumPost;
 import org.apache.ibatis.annotations.Mapper;
+import org.apache.ibatis.annotations.Param;
 
 import java.util.List;
 
@@ -20,4 +21,9 @@ public interface ForumPostMapper {
     void deleteById(Long id);
 
     List<ForumPost> query(ForumPost condition);
+
+    List<ForumPost> selectPage(@Param("userId") Long userId, @Param("offset") long offset,
+                               @Param("size") int size);
+
+    long countPosts(@Param("userId") Long userId);
 }

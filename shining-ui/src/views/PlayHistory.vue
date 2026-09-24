@@ -12,7 +12,7 @@
         class="history-item"
         @click="goToSong(rec.songId)"
       >
-        <span class="history-index">{{ idx + 1 }}</span>
+        <span class="history-index">{{ idx + 1 + (historyPage.size > 0 ? (historyPage.page - 1) * historyPage.size : 0) }}</span>
         <img :src="songInfoMap[rec.songId]?.coverUrl || defaultCover" class="history-cover" alt="" />
         <div class="history-info">
           <h3>{{ songInfoMap[rec.songId]?.title || `歌曲 ${rec.songId}` }}</h3>
@@ -25,6 +25,7 @@
         <button class="play-btn" title="播放" @click.stop="playSong(rec.songId)">&#9654;</button>
       </div>
     </div>
+    <WebListPager v-if="userId" v-bind="historyPage" @change="changeHistoryPage" />
   </div>
 </template>
 
@@ -32,13 +33,18 @@
 import statisticsApi from '../api/statistics';
 import musicApi from '../api/music';
 import defaultCover from '../assets/default-cover.png';
+import WebListPager from '@/components/WebListPager.vue';
+import { initialPage, pageParams, pageItems, pageTotal } from '@/utils/listPagination';
 
 export default {
   name: 'PlayHistory',
+  components: { WebListPager },
   data() {
     return {
       userId: null,
       records: [],
+      historyPage: initialPage(),
+      historyRequest: 0,
       songInfoMap: {},
       singerMap: {},
       loading: true,
@@ -52,21 +58,29 @@ export default {
     this.loadHistory();
   },
   methods: {
+    changeHistoryPage(next) {
+      this.historyPage = { ...this.historyPage, ...next };
+      this.loadHistory();
+    },
     async loadHistory() {
+      const request = ++this.historyRequest;
+      this.loading = true;
       if (!this.userId) {
         this.loading = false;
         return;
       }
       try {
-        const res = await statisticsApi.getRecentPlays(this.userId, 50);
-        if (res.data?.passed && Array.isArray(res.data.data)) {
-          this.records = res.data.data;
+        const res = await statisticsApi.getRecentPlays(this.userId, 50, pageParams(this.historyPage));
+        if (request !== this.historyRequest) return;
+        if (res.data?.passed) {
+          this.records = pageItems(res, this.historyPage);
+          this.historyPage.total = pageTotal(res);
           await this.enrichSongInfo();
         }
       } catch (e) {
         console.error('Failed to load play history', e);
       } finally {
-        this.loading = false;
+        if (request === this.historyRequest) this.loading = false;
       }
     },
     async enrichSongInfo() {

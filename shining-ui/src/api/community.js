@@ -1,4 +1,5 @@
 import api from './index';
+import { legacyListResult } from '@/utils/listPagination';
 
 /**
  * 社区服务相关接口
@@ -33,8 +34,8 @@ export default {
      * 获取帖子详情（包含评论）
      * @param {Number} postId 帖子 ID
      */
-    getPostDetails(postId) {
-        return api.get(`/community/post/${postId}`);
+    getPostDetails(postId, pagination = { page: 1, size: 0 }) {
+        return api.get(`/community/post/${postId}`, { params: pagination });
     },
 
     /**
@@ -43,8 +44,8 @@ export default {
      */
     listPosts(params = {}) {
         return api.get('/community/posts', {
-            params,
-        });
+            params: { page: 1, size: 0, ...params },
+        }).then(response => params.page === undefined && params.size === undefined ? legacyListResult(response) : response);
     },
 
     /**
@@ -60,8 +61,8 @@ export default {
      * 本接口返回的是帖子详情对象，comments 在 data.comments 中
      * @param {Number} postId 帖子 ID
      */
-    listComments(postId) {
-        return api.get(`/community/post/${postId}/comments`);
+    listComments(postId, pagination = { page: 1, size: 0 }) {
+        return api.get(`/community/post/${postId}/comments`, { params: pagination });
     },
 
     getRecentComments(userId, limit = 10) {

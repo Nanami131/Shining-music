@@ -79,4 +79,12 @@ public class ForumPostService {
     public List<ForumPost> queryPosts(ForumPost condition) {
         return forumPostMapper.query(condition);
     }
+
+    public List<ForumPost> queryPostsPage(Long userId, long offset, int size) {
+        return forumPostMapper.selectPage(userId, offset, size);
+    }
+
+    public long countPosts(Long userId) {
+        return forumPostMapper.countPosts(userId);
+    }
 }

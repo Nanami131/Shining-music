@@ -66,6 +66,14 @@ public class SongService {
         }
     }
 
+    public R getSingerSongsPage(Long singerId, long offset, int size) {
+        return R.success("获取歌手歌曲成功", songMapper.selectSingerSongsPage(singerId, offset, size));
+    }
+
+    public long countSingerSongs(Long singerId) {
+        return songMapper.countSingerSongs(singerId);
+    }
+
     public R getPlaylistSongs(Long playlistId) {
         try {
             String key = "playlist:" + playlistId;
@@ -99,6 +107,35 @@ public class SongService {
         } catch (Exception e) {
             return R.error("获取歌单歌曲失败" + e.getMessage());
         }
+    }
+
+    public R getPlaylistSongsPage(Long playlistId, long offset, int size) {
+        try {
+            Set<String> ids = stringRedisTemplate.opsForZSet()
+                    .range("playlist:" + playlistId, offset, offset + size - 1L);
+            if (ids == null || ids.isEmpty()) return R.success("获取歌单歌曲成功", List.of());
+            List<Long> orderedIds = new ArrayList<>();
+            for (String id : ids) {
+                try { orderedIds.add(Long.valueOf(id)); }
+                catch (NumberFormatException ignored) { }
+            }
+            if (orderedIds.isEmpty()) return R.success("获取歌单歌曲成功", List.of());
+            Map<Long, Song> byId = new java.util.HashMap<>();
+            for (Song song : songMapper.selectByIds(orderedIds)) byId.put(song.getId(), song);
+            List<Song> songs = new ArrayList<>();
+            for (Long id : orderedIds) {
+                Song song = byId.get(id);
+                if (song != null) songs.add(song);
+            }
+            return R.success("获取歌单歌曲成功", songs);
+        } catch (Exception e) {
+            return R.error("获取歌单歌曲失败" + e.getMessage());
+        }
+    }
+
+    public long countPlaylistSongs(Long playlistId) {
+        Long count = stringRedisTemplate.opsForZSet().zCard("playlist:" + playlistId);
+        return count == null ? 0L : count;
     }
 
     public R uploadSong(Long id, MultipartFile file) {
@@ -218,6 +255,14 @@ public class SongService {
         Song filter = new Song();
         filter.setStatus((byte) 1);
         return songMapper.query(filter);
+    }
+
+    public List<Song> listSongsPage(long offset, int size) {
+        return songMapper.selectPageActive(offset, size);
+    }
+
+    public long countActiveSongs() {
+        return songMapper.countActive();
     }
 
     public List<Song> listRandomEnabledSongs() {

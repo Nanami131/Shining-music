@@ -15,7 +15,7 @@
       <div class="songs-header">
         <h3>歌曲列表</h3>
         <button
-          v-if="singer.songs && singer.songs.length"
+          v-if="detailPage.total > 0"
           class="play-all-btn"
           :disabled="songOperating"
           @click="playAllSongs"
@@ -26,7 +26,7 @@
       <div class="page-view-toolbar"><WebViewSwitch label="歌手歌曲列表展示方式" /></div>
       <div class="songs-list">
         <div
-          v-for="song in singer.songs"
+          v-for="song in visibleSongs"
           :key="song.id"
           class="song-card"
         >
@@ -47,6 +47,7 @@
           </div>
         </div>
       </div>
+      <WebListPager v-bind="detailPage" @change="changeDetailPage" />
     </div>
     <div v-else-if="hasError">
       <h2>歌手信息加载失败</h2>
@@ -60,12 +61,20 @@ import musicApi from '@/api/music';
 import statisticsApi from '@/api/statistics';
 import defaultAvatar from '@/assets/default-avatar.png';
 import defaultCover from '@/assets/default-cover.png';
+import WebListPager from '@/components/WebListPager.vue';
+import { initialPage, pageParams } from '@/utils/listPagination';
 
 export default {
   name: 'SingerDetail',
+  components: { WebListPager },
+  computed: {
+    visibleSongs() { return this.singer?.songs || []; },
+  },
   data() {
     return {
       singer: null,
+      detailPage: initialPage(),
+      detailsRequest: 0,
       defaultAvatar,
       defaultCover,
       isLoaded: false,
@@ -89,14 +98,20 @@ export default {
     this.$bus.on('refreshCurrentPlaylist', this.handlePlaylistRefresh);
   },
   beforeUnmount() {
+    this.detailsRequest++;
     this.$bus.off('refreshCurrentPlaylist', this.handlePlaylistRefresh);
   },
   watch: {
     '$route.params.id'() {
+      this.detailPage.page = 1;
       this.loadSingerDetails();
     },
   },
   methods: {
+    changeDetailPage(next) {
+      this.detailPage = { ...this.detailPage, ...next };
+      this.loadSingerDetails();
+    },
     handlePlaylistRefresh() {
       if (!this.userId) {
         this.currentPlaylistId = null;
@@ -171,13 +186,16 @@ export default {
       }
     },
     async loadSingerDetails() {
+      const request = ++this.detailsRequest;
       this.isLoaded = false;
       this.hasError = false;
       try {
         const singerId = this.$route.params.id;
-        const response = await musicApi.getSingerDetailsInfo(singerId);
+        const response = await musicApi.getSingerDetailsInfo(singerId, pageParams(this.detailPage));
+        if (request !== this.detailsRequest || singerId !== this.$route.params.id) return;
         if (response.data.passed) {
           this.singer = response.data.data;
+          this.detailPage.total = this.singer.songsTotal ?? this.singer.songs?.length ?? 0;
           this.isLoaded = true;
           if (this.userId) {
             statisticsApi.reportEvent({
@@ -192,6 +210,7 @@ export default {
           alert('获取歌手信息失败：' + response.data.message);
         }
       } catch (error) {
+        if (request !== this.detailsRequest) return;
         this.hasError = true;
         alert('获取歌手信息出错：' + error.message);
       }
@@ -200,11 +219,17 @@ export default {
       this.$router.push(`/song/${songId}`);
     },
     async playAllSongs() {
-      const songs = this.singer?.songs;
-      if (!songs || !songs.length) return;
+      if (!this.detailPage.total) return;
 
       this.songOperating = true;
       try {
+        let songs = this.singer?.songs || [];
+        if (this.detailPage.size > 0) {
+          const all = await musicApi.getSingerDetailsInfo(this.$route.params.id, { page: 1, size: 0 });
+          if (!all.data?.passed) throw new Error(all.data?.message || '获取完整歌曲列表失败');
+          songs = all.data.data?.songs || [];
+        }
+        if (!songs.length) return;
         if (this.userId) {
           const clearResp = await musicApi.clearCurrentPlaylist(this.userId);
           if (!clearResp.data?.passed) {

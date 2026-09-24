@@ -6,6 +6,8 @@ import co.elastic.clients.elasticsearch.core.BulkResponse;
 import co.elastic.clients.elasticsearch.core.SearchResponse;
 import co.elastic.clients.elasticsearch.core.bulk.BulkResponseItem;
 import co.elastic.clients.elasticsearch.core.search.Hit;
+import co.elastic.clients.elasticsearch._types.FieldValue;
+import co.elastic.clients.elasticsearch._types.SortOrder;
 import co.elastic.clients.elasticsearch.indices.CreateIndexResponse;
 import org.L2.music.application.dto.SearchResultDTO;
 import org.L2.music.domain.model.MusicSearchDoc;
@@ -140,6 +142,8 @@ public class SearchService {
                                 .fields("lyricsJa", f -> f.fragmentSize(60).numberOfFragments(3))
                                 .fields("lyricsEn", f -> f.fragmentSize(60).numberOfFragments(3))
                         )
+                        .sort(so -> so.score(sc -> sc.order(SortOrder.Desc)))
+                        .sort(so -> so.field(f -> f.field("songId").order(SortOrder.Asc)))
                         .from(from)
                         .size(size),
                 MusicSearchDoc.class
@@ -159,6 +163,65 @@ public class SearchService {
                     .setScore(hit.score() != null ? hit.score().floatValue() : 0f)
                     .setHighlights(hit.highlight());
             results.add(dto);
+        }
+        return results;
+    }
+
+    public long countMatches(String keyword) throws IOException {
+        if (keyword == null || keyword.isBlank()) return 0L;
+        return esClient.count(c -> c.index(INDEX_NAME)
+                .query(q -> q.bool(b -> b
+                        .should(sh -> sh.match(m -> m.field("title").query(keyword).boost(3.0f)))
+                        .should(sh -> sh.match(m -> m.field("singerName").query(keyword).boost(2.0f)))
+                        .should(sh -> sh.match(m -> m.field("lyricsZh").query(keyword).boost(1.0f)))
+                        .should(sh -> sh.match(m -> m.field("lyricsJa").query(keyword).boost(1.0f)))
+                        .should(sh -> sh.match(m -> m.field("lyricsEn").query(keyword).boost(1.0f)))
+                        .minimumShouldMatch("1")))).count();
+    }
+
+    /** Collect all matching documents with an internal search-after scan, without a result window cap. */
+    public List<SearchResultDTO> searchAll(String keyword) throws IOException {
+        if (keyword == null || keyword.isBlank()) return List.of();
+        List<SearchResultDTO> results = new ArrayList<>();
+        List<FieldValue> after = List.of();
+        while (true) {
+            List<FieldValue> cursor = after;
+            SearchResponse<MusicSearchDoc> response = esClient.search(s -> {
+                var request = s.index(INDEX_NAME)
+                        .query(q -> q.bool(b -> b
+                                .should(sh -> sh.match(m -> m.field("title").query(keyword).boost(3.0f)))
+                                .should(sh -> sh.match(m -> m.field("singerName").query(keyword).boost(2.0f)))
+                                .should(sh -> sh.match(m -> m.field("lyricsZh").query(keyword).boost(1.0f)))
+                                .should(sh -> sh.match(m -> m.field("lyricsJa").query(keyword).boost(1.0f)))
+                                .should(sh -> sh.match(m -> m.field("lyricsEn").query(keyword).boost(1.0f)))
+                                .minimumShouldMatch("1")))
+                        .highlight(h -> h.fields("title", f -> f)
+                                .fields("singerName", f -> f)
+                                .fields("lyricsZh", f -> f.fragmentSize(60).numberOfFragments(3))
+                                .fields("lyricsJa", f -> f.fragmentSize(60).numberOfFragments(3))
+                                .fields("lyricsEn", f -> f.fragmentSize(60).numberOfFragments(3)))
+                        .sort(so -> so.score(sc -> sc.order(SortOrder.Desc)))
+                        .sort(so -> so.field(f -> f.field("songId").order(SortOrder.Asc)))
+                        .size(500);
+                if (!cursor.isEmpty()) request.searchAfter(cursor);
+                return request;
+            }, MusicSearchDoc.class);
+            List<Hit<MusicSearchDoc>> hits = response.hits().hits();
+            for (Hit<MusicSearchDoc> hit : hits) {
+                MusicSearchDoc doc = hit.source();
+                if (doc == null) continue;
+                results.add(new SearchResultDTO()
+                        .setSongId(doc.getSongId()).setTitle(doc.getTitle())
+                        .setSingerId(doc.getSingerId()).setSingerName(doc.getSingerName())
+                        .setCoverUrl(doc.getCoverUrl())
+                        .setScore(hit.score() == null ? 0f : hit.score().floatValue())
+                        .setHighlights(hit.highlight()));
+            }
+            if (hits.size() < 500) break;
+            after = hits.get(hits.size() - 1).sort();
+            if (after == null || after.isEmpty() || after.equals(cursor)) {
+                throw new IOException("搜索结果缺少稳定分页游标");
+            }
         }
         return results;
     }

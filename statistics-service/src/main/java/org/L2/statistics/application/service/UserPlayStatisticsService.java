@@ -153,7 +153,8 @@ public class UserPlayStatisticsService {
             return R.error("用户ID不能为空");
         }
         PlayStatDimension statDimension = PlayStatDimension.from(dimension);
-        int size = (limit == null || limit <= 0) ? DEFAULT_TOP_LIMIT : Math.min(limit, MAX_TOP_LIMIT);
+        int size = limit != null && limit == 0 ? Integer.MAX_VALUE
+                : (limit == null || limit < 0) ? DEFAULT_TOP_LIMIT : Math.min(limit, MAX_TOP_LIMIT);
         LocalDateTime now = LocalDateTime.now();
         LocalDateTime startTime = statDimension.resolveStart(now);
         LocalDateTime endTime = statDimension.resolveEnd(now);
@@ -168,29 +169,70 @@ public class UserPlayStatisticsService {
         return R.success("获取用户常听歌曲成功", dtoList);
     }
 
+    public R getUserTopSongsPage(Long userId, String dimension, long offset, int size) {
+        if (userId == null) return R.error("用户ID不能为空");
+        PlayStatDimension statDimension = PlayStatDimension.from(dimension);
+        LocalDateTime now = LocalDateTime.now();
+        var songs = userPlayRecordDomainService.topSongsPage(userId,
+                statDimension.resolveStart(now), statDimension.resolveEnd(now), offset, size);
+        var dtoList = songs.stream().map(song -> new UserTopSongDTO()
+                .setSongId(song.getSongId()).setPlayCount(song.getPlayCount())).toList();
+        return R.success("获取用户常听歌曲成功", dtoList);
+    }
+
+    public long countUserTopSongs(Long userId, String dimension) {
+        PlayStatDimension statDimension = PlayStatDimension.from(dimension);
+        LocalDateTime now = LocalDateTime.now();
+        return userPlayRecordDomainService.countTopSongs(userId,
+                statDimension.resolveStart(now), statDimension.resolveEnd(now));
+    }
+
     public R getUserTopSingers(Long userId, int limit) {
         if (userId == null) {
             return R.error("用户ID不能为空");
         }
-        int size = Math.min(Math.max(limit, 1), MAX_TOP_LIMIT);
+        int size = limit == 0 ? Integer.MAX_VALUE : Math.min(Math.max(limit, 1), MAX_TOP_LIMIT);
         var singers = userPlayRecordDomainService.listTopSingersByUser(userId, size);
         return R.success("获取用户常听歌手成功", singers);
+    }
+
+    public R getUserTopSingersPage(Long userId, long offset, int size) {
+        if (userId == null) return R.error("用户ID不能为空");
+        return R.success("获取用户常听歌手成功",
+                userPlayRecordDomainService.topSingersPage(userId, offset, size));
+    }
+
+    public long countUserTopSingers(Long userId) {
+        return userPlayRecordDomainService.countTopSingers(userId);
     }
 
     public R getRecentPlays(Long userId, int limit) {
         if (userId == null) {
             return R.error("用户ID不能为空");
         }
-        int size = Math.min(Math.max(limit, 1), 5000);
+        int size = limit == 0 ? Integer.MAX_VALUE : Math.min(Math.max(limit, 1), 5000);
         var records = userPlayRecordDomainService.recentPlaysByUser(userId, size);
         return R.success("获取播放历史成功", records);
     }
 
+    public R getRecentPlaysPage(Long userId, long offset, int size) {
+        if (userId == null) return R.error("用户ID不能为空");
+        return R.success("获取播放历史成功", userPlayRecordDomainService.recentPlaysPage(userId, offset, size));
+    }
+
+    public long countRecentPlays(Long userId) { return userPlayRecordDomainService.countRecentPlays(userId); }
+
     public R getGlobalTopSongs(int limit) {
-        int size = Math.min(Math.max(limit, 1), 50);
+        int size = limit == 0 ? Integer.MAX_VALUE : Math.min(Math.max(limit, 1), 50);
         var songs = userPlayRecordDomainService.globalTopSongs(size);
         return R.success("获取全站热门歌曲成功", songs);
     }
+
+    public R getGlobalTopSongsPage(long offset, int size) {
+        return R.success("获取全站热门歌曲成功", userPlayRecordDomainService.globalTopSongsPage(offset, size));
+    }
+
+    public long countGlobalTopSongs() { return userPlayRecordDomainService.countGlobalTopSongs(); }
 
     public R getDistinctPlayedSongIds(Long userId) {
         if (userId == null) {

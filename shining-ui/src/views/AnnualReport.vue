@@ -74,8 +74,8 @@
       <section class="top-songs-section" v-if="report.topSongs && report.topSongs.length">
         <h2 class="section-title">最爱歌曲 TOP {{ report.topSongs.length }}</h2>
         <ul class="top-list">
-          <li v-for="(song, idx) in report.topSongs" :key="song.songId" class="top-item" @click="goToSong(song.songId)">
-            <div class="top-rank" :class="'rank-' + (idx + 1)">{{ idx + 1 }}</div>
+          <li v-for="(song, idx) in paginateLocal(report.topSongs, songPage)" :key="song.songId" class="top-item" @click="goToSong(song.songId)">
+            <div class="top-rank" :class="'rank-' + (idx + 1 + (songPage.size > 0 ? (songPage.page - 1) * songPage.size : 0))">{{ idx + 1 + (songPage.size > 0 ? (songPage.page - 1) * songPage.size : 0) }}</div>
             <img :src="song.coverUrl || defaultCover" class="top-cover" alt="封面" />
             <div class="top-info">
               <p class="top-name">{{ song.title || '未知歌曲' }}</p>
@@ -83,18 +83,20 @@
             </div>
           </li>
         </ul>
+        <WebListPager v-bind="songPage" :total="report.topSongs.length" @change="songPage = { ...songPage, ...$event }" />
       </section>
 
       <section class="top-singers-section" v-if="report.topSingers && report.topSingers.length">
         <h2 class="section-title">最爱歌手 TOP {{ report.topSingers.length }}</h2>
         <div class="singers-grid">
-          <div v-for="(singer, idx) in report.topSingers" :key="singer.singerId" class="singer-card">
-            <div class="singer-rank">{{ idx + 1 }}</div>
+          <div v-for="(singer, idx) in paginateLocal(report.topSingers, singerPage)" :key="singer.singerId" class="singer-card">
+            <div class="singer-rank">{{ idx + 1 + (singerPage.size > 0 ? (singerPage.page - 1) * singerPage.size : 0) }}</div>
             <img :src="singer.avatarUrl || defaultCover" class="singer-card-avatar" alt="歌手" />
             <p class="singer-card-name">{{ singer.singerName }}</p>
             <p class="singer-card-meta">{{ singer.playCount }} 次 · {{ formatDuration(singer.totalDuration || 0) }}</p>
           </div>
         </div>
+        <WebListPager v-bind="singerPage" :total="report.topSingers.length" @change="singerPage = { ...singerPage, ...$event }" />
       </section>
 
       <section class="charts-section">
@@ -127,17 +129,22 @@
 <script>
 import statisticsApi from '@/api/statistics';
 import defaultCover from '@/assets/default-cover.png';
+import WebListPager from '@/components/WebListPager.vue';
+import { initialPage, paginateLocal } from '@/utils/listPagination';
 
 let echartsModule = null;
 
 export default {
   name: 'AnnualReport',
+  components: { WebListPager },
   data() {
     return {
       userId: null,
       year: new Date().getFullYear(),
       currentYear: new Date().getFullYear(),
       report: null,
+      songPage: initialPage(),
+      singerPage: initialPage(),
       loading: false,
       error: null,
       defaultCover,
@@ -159,6 +166,7 @@ export default {
     this.disposeCharts();
   },
   methods: {
+    paginateLocal,
     async loadEcharts() {
       if (!echartsModule) {
         echartsModule = await import('echarts');

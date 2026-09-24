@@ -72,5 +72,49 @@
                 AND updated_at >= #{updatedAt}
             </if>
         </where>
+        ORDER BY id
+    </select>
+
+    <sql id="visiblePlaylistFilter">
+        type IN (1, 2) AND (user_id = -1 OR visibility = 0
+        <if test="includeOwn and userId != null"> OR user_id = #{userId}</if>
+        )
+        <if test="!includeOwn">AND (visibility IS NULL OR visibility != 1)</if>
+    </sql>
+
+    <select id="selectVisiblePage" resultMap="PlaylistResultMap">
+        SELECT * FROM playlists WHERE <include refid="visiblePlaylistFilter" />
+        <if test="search != null and search != ''">
+            AND (name LIKE CONCAT('%', #{search}, '%') OR description LIKE CONCAT('%', #{search}, '%'))
+        </if>
+        ORDER BY id
+        <if test="size != null and size > 0">LIMIT #{size} OFFSET #{offset}</if>
+    </select>
+
+    <select id="countVisible" resultType="java.lang.Long">
+        SELECT COUNT(*) FROM playlists WHERE <include refid="visiblePlaylistFilter" />
+        <if test="search != null and search != ''">
+            AND (name LIKE CONCAT('%', #{search}, '%') OR description LIKE CONCAT('%', #{search}, '%'))
+        </if>
+    </select>
+
+    <select id="selectPublicOwnerPage" resultMap="PlaylistResultMap">
+        SELECT * FROM playlists WHERE user_id = #{creatorId} AND type IN (1, 2) AND visibility = 0
+        ORDER BY id
+        <if test="size != null and size > 0">LIMIT #{size} OFFSET #{offset}</if>
+    </select>
+
+    <select id="countPublicOwner" resultType="java.lang.Long">
+        SELECT COUNT(*) FROM playlists
+        WHERE user_id = #{creatorId} AND type IN (1, 2) AND visibility = 0
+    </select>
+
+    <select id="selectOwnPage" resultMap="PlaylistResultMap">
+        SELECT * FROM playlists WHERE user_id = #{userId} AND type IN (1, 2)
+        ORDER BY id LIMIT #{size} OFFSET #{offset}
+    </select>
+
+    <select id="countOwn" resultType="java.lang.Long">
+        SELECT COUNT(*) FROM playlists WHERE user_id = #{userId} AND type IN (1, 2)
     </select>
 </mapper>
