@@ -7,6 +7,8 @@
           <input type="text" v-model="searchQuery" placeholder="搜索歌手名称、风格、地区…" />
         </div>
 
+        <div class="page-view-toolbar"><WebViewSwitch label="歌手列表展示方式" /></div>
+
         <section v-if="hotSingers.length" class="section section-recommend">
           <h2>你最爱的歌手</h2>
           <div class="singers-list">

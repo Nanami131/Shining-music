@@ -17,6 +17,8 @@
           </button>
         </div>
 
+        <div class="page-view-toolbar"><WebViewSwitch label="歌单列表展示方式" /></div>
+
         <!-- 创建歌单，仅在点击按钮后展示 -->
         <section class="section section-create" v-if="userId && showCreatePanel && !offlineSelected">
           <h2>创建歌单</h2>

@@ -22,23 +22,33 @@
       <section class="favorites-section">
         <div class="section-header">
           <h3>{{ offlineSelected ? '本机已缓存歌曲' : '我的收藏' }}</h3>
-          <button class="refresh-btn" @click="loadFavorites" :disabled="loading">
-            {{ loading ? '加载中...' : '刷新' }}
-          </button>
+          <div class="favorites-actions">
+            <div v-if="!isAndroidApp && !offlineSelected" class="view-switch" role="group" aria-label="收藏歌曲展示方式">
+              <button type="button" :class="{ active: favoriteView === 'cover' }"
+                :aria-pressed="favoriteView === 'cover'" @click="setFavoriteView('cover')">封面</button>
+              <button type="button" :class="{ active: favoriteView === 'compact' }"
+                :aria-pressed="favoriteView === 'compact'" @click="setFavoriteView('compact')">简洁</button>
+            </div>
+            <button class="refresh-btn" @click="loadFavorites" :disabled="loading">
+              {{ loading ? '加载中...' : '刷新' }}
+            </button>
+          </div>
         </div>
         <div v-if="loading" class="empty-tip">{{ offlineSelected ? '正在读取本机缓存，请稍候' : '正在加载收藏歌曲，请稍候' }}</div>
         <div v-else-if="favorites.length === 0" class="empty-tip">
           {{ offlineSelected ? '当前账户没有完整的本机缓存歌曲' : '你还没有收藏任何歌曲' }}
         </div>
         <p v-if="offlineSelected && offlineError" class="empty-tip" role="alert">{{ offlineError }}</p>
-        <div v-else class="songs-list">
+        <div v-else class="songs-list" :class="{ compact: !isAndroidApp && !offlineSelected && favoriteView === 'compact' }">
           <div
-            v-for="song in favorites"
+            v-for="(song, index) in favorites"
             :key="song.id"
             class="song-card"
+            :class="{ compact: !isAndroidApp && !offlineSelected && favoriteView === 'compact' }"
             @click="goToSong(song.id)"
           >
-            <img :src="song.coverUrl || defaultCover" class="song-cover" alt="歌曲封面" />
+            <span v-if="!isAndroidApp && !offlineSelected && favoriteView === 'compact'" class="song-index" aria-hidden="true">{{ index + 1 }}</span>
+            <img v-else :src="song.coverUrl || defaultCover" class="song-cover" alt="歌曲封面" />
             <div class="song-info">
               <h3>{{ song.title || '未知歌曲' }}</h3>
               <p>
@@ -186,12 +196,15 @@ import musicApi from '@/api/music';
 import statisticsApi from '@/api/statistics';
 import defaultCover from '@/assets/default-cover.png';
 import { isOfflineSelected, localQueue, localSongs, localPlaylist } from '@/offline/localLibrary';
+import { isAndroidApp } from '@/utils/androidServer';
+import { webListMode, setWebListMode } from '@/utils/webListMode';
 
 export default {
   name: 'MyMusic',
   data() {
     return {
       offlineSelected: isOfflineSelected(),
+      isAndroidApp,
       offlineQueue: [],
       offlineError: '',
       libraryLoadEpoch: 0,
@@ -216,6 +229,11 @@ export default {
       topSingerName: null,
     };
   },
+  computed: {
+    favoriteView() {
+      return webListMode.value;
+    },
+  },
   created() {
     window.addEventListener('offlineModeChanged', this.onOfflineModeChanged);
     this.$bus.on('offlineLibrary:state', this.onOfflineLibraryState);
@@ -239,6 +257,9 @@ export default {
     this.$bus.off('offlineLibrary:state', this.onOfflineLibraryState);
   },
   methods: {
+    setFavoriteView(view) {
+      setWebListMode(view);
+    },
     onOfflineLibraryState(state) {
       if (!this.offlineSelected || !state?.offlineMode || String(state.accountId) !== String(this.userId)) return;
       this.offlineQueue = state.queue.map(String);
@@ -545,7 +566,39 @@ h2 {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
   margin-bottom: 16px;
+}
+.favorites-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.view-switch {
+  display: inline-flex;
+  padding: 3px;
+  border: 1px solid #cbd5e1;
+  border-radius: 999px;
+  background: #f1f5f9;
+}
+.view-switch button {
+  border: 0;
+  border-radius: 999px;
+  padding: 5px 12px;
+  background: transparent;
+  color: #475569;
+  cursor: pointer;
+}
+.view-switch button.active {
+  background: #fff;
+  color: #0369a1;
+  box-shadow: 0 1px 4px rgba(15, 23, 42, 0.12);
+}
+.view-switch button:focus-visible {
+  outline: 2px solid #0284c7;
+  outline-offset: 2px;
 }
 .refresh-btn {
   padding: 6px 16px;
@@ -570,6 +623,10 @@ h2 {
   grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
   gap: 20px;
 }
+.songs-list.compact {
+  grid-template-columns: minmax(0, 1fr);
+  gap: 2px;
+}
 .song-card {
   background: #fff;
   border-radius: 12px;
@@ -578,6 +635,67 @@ h2 {
   cursor: pointer;
   transition: transform 0.2s, box-shadow 0.2s;
   position: relative;
+}
+.song-card.compact {
+  display: grid;
+  box-sizing: border-box;
+  grid-template-columns: 24px minmax(0, 1fr) 30px;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  padding: 5px 10px;
+  border-radius: 4px;
+  box-shadow: none;
+}
+.song-card.compact:hover {
+  transform: none;
+  background: #f1f5f9;
+  box-shadow: none;
+}
+.song-index {
+  text-align: center;
+  color: #64748b;
+  font-variant-numeric: tabular-nums;
+}
+.song-card.compact .song-index {
+  font-size: 12px;
+}
+.song-card.compact .song-info {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  min-width: 0;
+}
+.song-card.compact .song-info h3 {
+  flex: 1 1 auto;
+  min-width: 0;
+  font-size: 14px;
+  line-height: 20px;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.song-card.compact .song-info p {
+  flex: 0 1 35%;
+  min-width: 0;
+  margin: 0;
+  font-size: 12px;
+  line-height: 20px;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.song-card.compact .favorite-btn {
+  position: static;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background: #f8fafc;
+  box-shadow: none;
+}
+.song-card.compact .favorite-btn .heart-icon {
+  width: 16px;
+  height: 16px;
 }
 .song-card:hover {
   transform: translateY(-4px);

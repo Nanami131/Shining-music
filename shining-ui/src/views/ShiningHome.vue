@@ -34,6 +34,8 @@
       </div>
     </section>
 
+    <div class="page-view-toolbar"><WebViewSwitch label="发现页列表展示方式" /></div>
+
     <section v-if="dailyRecommendations.length" class="recommend-panel">
       <div class="panel-head">
         <div>

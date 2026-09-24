@@ -29,6 +29,8 @@
           </div>
         </div>
 
+        <div class="page-view-toolbar"><WebViewSwitch label="歌曲列表展示方式" /></div>
+
         <!-- 搜索结果 -->
         <section v-if="searchResults !== null" class="section section-search">
           <h2>搜索结果</h2>

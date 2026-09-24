@@ -69,6 +69,8 @@
         </div>
       </section>
 
+      <div class="page-view-toolbar"><WebViewSwitch label="年度榜单展示方式" /></div>
+
       <section class="top-songs-section" v-if="report.topSongs && report.topSongs.length">
         <h2 class="section-title">最爱歌曲 TOP {{ report.topSongs.length }}</h2>
         <ul class="top-list">

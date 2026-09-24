@@ -23,6 +23,7 @@
           {{ songOperating ? '处理中...' : '播放全部' }}
         </button>
       </div>
+      <div class="page-view-toolbar"><WebViewSwitch label="歌手歌曲列表展示方式" /></div>
       <div class="songs-list">
         <div
           v-for="song in singer.songs"

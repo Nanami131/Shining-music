@@ -1,6 +1,7 @@
 <template>
   <div class="history-container">
     <h1>播放历史</h1>
+    <div class="page-view-toolbar"><WebViewSwitch label="播放历史展示方式" /></div>
     <div v-if="loading" class="loading-text">加载中...</div>
     <div v-else-if="!userId" class="placeholder-text">请先登录查看播放历史</div>
     <div v-else-if="!records.length" class="placeholder-text">暂无播放记录</div>

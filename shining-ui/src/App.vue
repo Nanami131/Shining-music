@@ -1,5 +1,5 @@
 <template>
-  <div id="app" :class="{ 'has-bar': showAppChrome, 'android-app': isAndroidApp }">
+  <div id="app" :class="{ 'has-bar': showAppChrome, 'android-app': isAndroidApp, 'web-compact': !isAndroidApp && webListMode === 'compact' }">
     <CursorTrail />
     <Header v-if="showAppChrome" />
     <router-view />
@@ -16,6 +16,8 @@ import CursorTrail from '@/components/CursorTrail.vue';
 import SongShareDialog from '@/components/SongShareDialog.vue';
 import AndroidServerSettings from '@/components/AndroidServerSettings.vue';
 import { isAndroidApp } from '@/utils/androidServer';
+import { webListMode } from '@/utils/webListMode';
+import '@/styles/webCompact.css';
 
 export default {
   name: 'App',
@@ -27,6 +29,9 @@ export default {
     AndroidServerSettings,
   },
   computed: {
+    webListMode() {
+      return webListMode.value;
+    },
     isAndroidApp() {
       return isAndroidApp;
     },

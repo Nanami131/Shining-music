@@ -117,6 +117,8 @@
           >{{ tab.label }}</span>
         </div>
 
+        <div class="page-view-toolbar"><WebViewSwitch label="用户主页列表展示方式" /></div>
+
         <!-- Tab: Top Songs -->
         <div v-if="activeTab === 'topSongs'">
           <div class="dimension-tabs">

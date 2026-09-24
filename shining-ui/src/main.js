@@ -5,6 +5,7 @@ import mitt from 'mitt';
 import { App as CapacitorApp } from '@capacitor/app';
 import { isAndroidApp } from './utils/androidServer';
 import { isOfflineSelected } from './offline/localLibrary';
+import WebViewSwitch from './components/WebViewSwitch.vue';
 function applyCustomCursors() {
   if (typeof document === 'undefined') return;
 
@@ -58,6 +59,7 @@ function applyCustomCursors() {
 applyCustomCursors();
 
 const app = createApp(App);
+app.component('WebViewSwitch', WebViewSwitch);
 app.config.devtools = false;
 app.config.globalProperties.$bus = mitt();
 app.use(router).mount('#app');

@@ -76,6 +76,8 @@
           </button>
         </header>
 
+        <div class="page-view-toolbar"><WebViewSwitch label="讨论列表展示方式" /></div>
+
         <div v-if="loading" class="state-card">加载中，稍等一下下...</div>
         <div v-else-if="posts.length === 0" class="state-card">
           暂无帖子，成为第一个点亮讨论区的人吧。

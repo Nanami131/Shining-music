@@ -2,6 +2,7 @@
   <div class="ranking-container">
     <h1>热门排行榜</h1>
     <p class="ranking-subtitle">基于全站播放数据实时统计</p>
+    <div class="page-view-toolbar"><WebViewSwitch label="排行榜展示方式" /></div>
 
     <button
       class="play-all-btn"

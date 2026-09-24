@@ -58,6 +58,7 @@
 
       <section>
         <h3>歌曲列表</h3>
+        <div class="page-view-toolbar"><WebViewSwitch label="歌单歌曲列表展示方式" /></div>
         <div class="editor-actions">
           <button class="btn primary" :disabled="songOperating || !playlistSongs.length" @click="playAllSongs">
             播放全部
