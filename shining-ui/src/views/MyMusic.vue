@@ -21,9 +21,9 @@
       </div>
       <section class="favorites-section">
         <div class="section-header">
-          <h3>{{ offlineSelected ? '本机已缓存歌曲' : '我的收藏' }}</h3>
+          <h3>我的收藏</h3>
           <div class="favorites-actions">
-            <div v-if="!isAndroidApp && !offlineSelected" class="view-switch" role="group" aria-label="收藏歌曲展示方式">
+            <div class="view-switch" role="group" aria-label="收藏歌曲展示方式">
               <button type="button" :class="{ active: favoriteView === 'cover' }"
                 :aria-pressed="favoriteView === 'cover'" @click="setFavoriteView('cover')">封面</button>
               <button type="button" :class="{ active: favoriteView === 'compact' }"
@@ -34,20 +34,20 @@
             </button>
           </div>
         </div>
-        <div v-if="loading" class="empty-tip">{{ offlineSelected ? '正在读取本机缓存，请稍候' : '正在加载收藏歌曲，请稍候' }}</div>
+        <div v-if="loading" class="empty-tip">正在加载收藏歌曲，请稍候</div>
         <div v-else-if="favorites.length === 0" class="empty-tip">
-          {{ offlineSelected ? '当前账户没有完整的本机缓存歌曲' : '你还没有收藏任何歌曲' }}
+          你还没有收藏任何歌曲
         </div>
         <p v-if="offlineSelected && offlineError" class="empty-tip" role="alert">{{ offlineError }}</p>
-        <div v-else class="songs-list" :class="{ compact: !isAndroidApp && !offlineSelected && favoriteView === 'compact' }">
+        <div v-else class="songs-list" :class="{ compact: favoriteView === 'compact' }">
           <div
-            v-for="(song, index) in favorites"
+            v-for="(song, index) in visibleFavorites"
             :key="song.id"
             class="song-card"
-            :class="{ compact: !isAndroidApp && !offlineSelected && favoriteView === 'compact' }"
+            :class="{ compact: favoriteView === 'compact' }"
             @click="goToSong(song.id)"
           >
-            <span v-if="!isAndroidApp && !offlineSelected && favoriteView === 'compact'" class="song-index" aria-hidden="true">{{ index + 1 + (favoritePage.size > 0 ? (favoritePage.page - 1) * favoritePage.size : 0) }}</span>
+            <span v-if="favoriteView === 'compact'" class="song-index" aria-hidden="true">{{ index + 1 + (favoritePage.size > 0 ? (favoritePage.page - 1) * favoritePage.size : 0) }}</span>
             <img v-else :src="song.coverUrl || defaultCover" class="song-cover" alt="歌曲封面" />
             <div class="song-info">
               <h3>{{ song.title || '未知歌曲' }}</h3>
@@ -75,7 +75,7 @@
             </button>
           </div>
         </div>
-        <WebListPager v-if="!offlineSelected" v-bind="favoritePage" @change="changeFavoritePage" />
+        <WebListPager v-bind="favoritePage" @change="changeFavoritePage" />
       </section>
 
       <section class="playlists-section">
@@ -89,7 +89,7 @@
           正在加载歌单，请稍候
         </div>
         <div v-else-if="myPlaylists.length === 0" class="empty-tip">
-          {{ offlineSelected ? '本机离线播放列表不可用' : '你还没有创建任何歌单' }}
+          你还没有创建任何歌单
         </div>
         <div v-else class="playlists-list">
           <div
@@ -109,8 +109,7 @@
             </div>
           </div>
         </div>
-        <p v-if="offlineSelected" class="empty-tip">离线模式只读取本机独立播放列表；原有线上歌单未缓存到手机，不会自动同步。</p>
-        <WebListPager v-if="!offlineSelected" v-bind="myPlaylistPage" @change="changeMyPlaylistPage" />
+        <WebListPager v-bind="myPlaylistPage" @change="changeMyPlaylistPage" />
       </section>
 
       <section v-if="!offlineSelected && userProfile" class="profile-section">
@@ -242,6 +241,9 @@ export default {
     favoriteView() {
       return webListMode.value;
     },
+    visibleFavorites() {
+      return this.offlineSelected ? paginateLocal(this.favorites, this.favoritePage) : this.favorites;
+    },
   },
   created() {
     window.addEventListener('offlineModeChanged', this.onOfflineModeChanged);
@@ -268,11 +270,11 @@ export default {
   methods: {
     changeFavoritePage(next) {
       this.favoritePage = { ...this.favoritePage, ...next };
-      this.loadFavorites();
+      if (!this.offlineSelected) this.loadFavorites();
     },
     changeMyPlaylistPage(next) {
       this.myPlaylistPage = { ...this.myPlaylistPage, ...next };
-      this.loadMyPlaylists();
+      if (!this.offlineSelected) this.loadMyPlaylists();
     },
     setFavoriteView(view) {
       setWebListMode(view);
@@ -317,6 +319,8 @@ export default {
           const songs = await localSongs(this.userId);
           if (this.offlineSelected && epoch === this.libraryLoadEpoch) {
             this.favorites = songs;
+            this.favoritePage.total = songs.length;
+            if (this.favoritePage.size > 0) this.favoritePage.page = Math.min(this.favoritePage.page, Math.max(1, Math.ceil(songs.length / this.favoritePage.size)));
             this.artistNameMap = Object.fromEntries(songs.map(song => [song.artistId, song.artistName]));
           }
         } catch (error) {
@@ -367,6 +371,8 @@ export default {
       if (this.offlineSelected) {
         this.offlineQueue = localQueue(this.userId);
         this.myPlaylists = [localPlaylist(this.userId)];
+        this.myPlaylistPage.total = 1;
+        if (this.myPlaylistPage.size > 0) this.myPlaylistPage.page = 1;
         return;
       }
       const epoch = this.libraryLoadEpoch;

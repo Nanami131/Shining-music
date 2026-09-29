@@ -1,5 +1,5 @@
 <template>
-  <div id="app" :class="{ 'has-bar': showAppChrome, 'android-app': isAndroidApp, 'web-compact': !isAndroidApp && webListMode === 'compact' }">
+  <div id="app" :class="{ 'has-bar': showAppChrome, 'android-app': isAndroidApp, 'web-compact': webListMode === 'compact' && $route.name !== 'shining-home' }">
     <CursorTrail />
     <Header v-if="showAppChrome" />
     <router-view />

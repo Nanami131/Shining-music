@@ -1,0 +1,486 @@
+/* All platforms use the list's own toolbar; Discover Music remains excluded. */
+#app .page-view-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  min-width: 0;
+  margin: 10px 0 16px;
+}
+/* List-only compact styling; detail hero, player and editor remain untouched. */
+#app.web-compact :is(.songs-page, .singer-detail-container, .playlist-detail-container, .my-music-container) .songs-list,
+#app.web-compact :is(.playlists-page, .my-music-container) .playlists-list,
+#app.web-compact .singers-page .singers-list,
+#app.web-compact .user-home-shell :is(.singer-grid, .playlist-grid) {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 2px;
+}
+
+#app.web-compact :is(.songs-page, .singer-detail-container, .playlist-detail-container) .songs-list,
+#app.web-compact :is(.playlists-page, .my-music-container) .playlists-list,
+#app.web-compact .singers-page .singers-list {
+  counter-reset: compact-row;
+}
+
+#app.web-compact :is(.songs-page, .singer-detail-container, .playlist-detail-container) .songs-list > .song-card::before,
+#app.web-compact :is(.playlists-page, .my-music-container) .playlists-list > .playlist-card::before,
+#app.web-compact .singers-page .singers-list > .singer-card::before {
+  counter-increment: compact-row;
+  content: counter(compact-row);
+  flex: 0 0 24px;
+  width: 24px;
+  text-align: center;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  color: #64748b;
+}
+
+#app.web-compact :is(.songs-page, .singer-detail-container, .playlist-detail-container, .my-music-container) .songs-list > .song-card,
+#app.web-compact :is(.playlists-page, .my-music-container) .playlists-list > .playlist-card,
+#app.web-compact .singers-page .singers-list > .singer-card {
+  display: flex;
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+  min-height: 44px;
+  align-items: center;
+  gap: 10px;
+  padding: 5px 10px;
+  border-radius: 4px;
+  box-shadow: none;
+  text-align: left;
+  transform: none;
+}
+
+#app.web-compact :is(.songs-page, .singer-detail-container, .playlist-detail-container, .my-music-container) .songs-list > .song-card:hover,
+#app.web-compact :is(.playlists-page, .my-music-container) .playlists-list > .playlist-card:hover,
+#app.web-compact .singers-page .singers-list > .singer-card:hover {
+  transform: none;
+  box-shadow: none;
+  background: #f1f5f9;
+}
+
+#app.web-compact :is(.songs-page, .singer-detail-container, .playlist-detail-container, .my-music-container) .songs-list > .song-card > .song-cover,
+#app.web-compact :is(.playlists-page, .my-music-container) .playlists-list > .playlist-card > .playlist-cover,
+#app.web-compact .singers-page .singers-list > .singer-card > .singer-avatar,
+#app.web-compact :is(.playlists-page, .playlist-detail-container) .favorite-item > :is(.song-cover, .song-cover-mini) {
+  display: none;
+}
+
+#app.web-compact :is(.songs-page, .singer-detail-container, .playlist-detail-container, .my-music-container) .songs-list > .song-card > .song-info,
+#app.web-compact :is(.playlists-page, .my-music-container) .playlists-list > .playlist-card > .playlist-info,
+#app.web-compact .singers-page .singers-list > .singer-card > .singer-info {
+  display: flex;
+  flex: 1 1 auto;
+  min-width: 0;
+  align-items: baseline;
+  gap: 12px;
+}
+
+#app.web-compact :is(.songs-page, .singer-detail-container, .playlist-detail-container, .my-music-container) .songs-list .song-info :is(h3, h4),
+#app.web-compact :is(.playlists-page, .my-music-container) .playlists-list .playlist-info h3,
+#app.web-compact .singers-page .singers-list .singer-info h3 {
+  flex: 1 1 auto;
+  min-width: 0;
+  margin: 0;
+  font-size: 14px;
+  line-height: 20px;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+#app.web-compact :is(.songs-page, .my-music-container) .songs-list .song-info p,
+#app.web-compact :is(.playlists-page, .my-music-container) .playlists-list .playlist-info p,
+#app.web-compact .singers-page .singers-list .singer-info p {
+  flex: 0 1 32%;
+  min-width: 0;
+  margin: 0;
+  font-size: 12px;
+  line-height: 20px;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+#app.web-compact .songs-page .songs-list .lyrics-snippet {
+  flex: 0 1 20%;
+  min-width: 0;
+  max-height: 24px;
+  margin: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  font-size: 12px;
+}
+
+#app.web-compact :is(.songs-page, .singer-detail-container) .songs-list .song-card-actions {
+  position: static;
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 4px;
+  opacity: 1;
+  transform: none;
+}
+
+#app.web-compact :is(.songs-page, .singer-detail-container) .songs-list .song-action-btn,
+#app.web-compact .songs-page .songs-list .favorite-btn,
+#app.web-compact .my-music-container .songs-list .favorite-btn {
+  position: static;
+  flex: 0 0 auto;
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  box-shadow: none;
+  transform: none;
+}
+
+#app.web-compact .songs-page .songs-list .random-status-btn {
+  width: 44px;
+  font-size: 11px;
+}
+
+#app.web-compact .my-music-container .songs-list > .song-card.compact {
+  display: grid;
+  grid-template-columns: 24px minmax(0, 1fr) 30px;
+}
+
+#app.web-compact :is(.playlists-page, .playlist-detail-container) .favorite-songs-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+#app.web-compact :is(.playlists-page, .playlist-detail-container) .favorite-item {
+  display: flex;
+  box-sizing: border-box;
+  min-height: 40px;
+  align-items: center;
+  gap: 10px;
+  padding: 4px 10px;
+}
+#app.web-compact :is(.playlists-page, .playlist-detail-container) .favorite-item .song-info {
+  display: flex;
+  flex: 1;
+  min-width: 0;
+  align-items: baseline;
+  gap: 12px;
+}
+#app.web-compact :is(.playlists-page, .playlist-detail-container) .favorite-item .song-info :is(.title, .sub) {
+  min-width: 0;
+  margin: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+#app.web-compact .playlist-detail-container .songs-list > .song-card .song-info {
+  flex: 1 1 auto;
+}
+#app.web-compact .playlist-detail-container .songs-list > .song-card .btn.mini {
+  flex: 0 0 auto;
+  padding: 4px 8px;
+  font-size: 12px;
+}
+
+/* 播放历史、排行和个人统计原本已是横向行，仅收紧行距并隐藏列表封面。 */
+#app.web-compact :is(.history-list > .history-item, .ranking-list > .ranking-item,
+  .top-song-list > .top-song-item, .song-list > .song-item) {
+  box-sizing: border-box;
+  min-height: 44px;
+  padding: 5px 10px;
+  gap: 8px;
+  border-radius: 4px;
+  box-shadow: none;
+  transform: none;
+}
+#app.web-compact :is(.history-item > .history-cover, .ranking-item > .rank-cover,
+  .top-song-item > .top-song-cover, .song-list > .song-item > .song-cover) {
+  display: none;
+}
+#app.web-compact :is(.history-item > .history-info, .ranking-item > .rank-info,
+  .top-song-item > .top-song-info, .song-list > .song-item > .song-info) {
+  display: flex;
+  flex: 1 1 auto;
+  min-width: 0;
+  flex-direction: row;
+  align-items: baseline;
+  gap: 12px;
+}
+#app.web-compact :is(.history-item > .history-info, .ranking-item > .rank-info,
+  .top-song-item > .top-song-info, .song-list > .song-item > .song-info) > :first-child {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+#app.web-compact :is(.history-item > .history-info, .ranking-item > .rank-info,
+  .top-song-item > .top-song-info, .song-list > .song-item > .song-info) > :nth-child(2) {
+  flex: 0 1 32%;
+  min-width: 0;
+}
+#app.web-compact :is(.history-item, .ranking-item, .top-song-item, .song-list > .song-item) :is(h3, .top-song-title, .song-title) {
+  font-size: 14px;
+  line-height: 20px;
+  margin: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+#app.web-compact :is(.history-item, .ranking-item, .top-song-item, .song-list > .song-item) :is(p, .top-song-meta, .song-meta) {
+  margin: 0;
+  font-size: 12px;
+  line-height: 20px;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+#app.web-compact .top-song-list {
+  gap: 2px;
+}
+#app.web-compact .top-song-index {
+  width: 24px;
+  height: 24px;
+  font-size: 12px;
+}
+
+/* 用户主页的歌手、歌单仍共享全站列表展示偏好。 */
+#app.web-compact .user-home-shell :is(.singer-grid > .singer-card, .playlist-grid > .playlist-card) {
+  box-sizing: border-box;
+  display: flex;
+  min-width: 0;
+  min-height: 44px;
+  align-items: center;
+  gap: 10px;
+  padding: 5px 10px;
+  border-radius: 4px;
+  transform: none;
+}
+#app.web-compact .user-home-shell :is(.singer-grid .singer-avatar, .playlist-grid .playlist-cover) {
+  display: none;
+}
+#app.web-compact .user-home-shell :is(.singer-grid .singer-name, .singer-grid .singer-plays,
+  .playlist-grid .playlist-name, .playlist-grid .playlist-desc) {
+  min-width: 0;
+  margin: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+#app.web-compact .user-home-shell .singer-grid > .singer-card .singer-rank {
+  position: static;
+  flex: 0 0 24px;
+  width: 24px;
+  height: 24px;
+}
+#app.web-compact .user-home-shell :is(.singer-grid .singer-name, .playlist-grid .playlist-name) {
+  flex: 1;
+  font-size: 14px;
+  text-align: left;
+}
+#app.web-compact .user-home-shell :is(.singer-grid .singer-plays, .playlist-grid .playlist-desc) {
+  flex: 0 1 30%;
+  font-size: 12px;
+  text-align: left;
+}
+#app.web-compact .user-home-shell .user-list {
+  gap: 2px;
+}
+#app.web-compact .user-home-shell .user-list > .user-list-item {
+  box-sizing: border-box;
+  min-height: 44px;
+  padding: 5px 10px;
+  border-radius: 4px;
+  transform: none;
+}
+#app.web-compact .user-home-shell .user-list-item > .user-list-avatar {
+  display: none;
+}
+#app.web-compact .user-home-shell .user-list-item .user-list-info {
+  display: flex;
+  flex: 1;
+  min-width: 0;
+  align-items: baseline;
+  gap: 12px;
+}
+#app.web-compact .user-home-shell .user-list-item .user-list-info :is(.user-list-name, .user-list-sig) {
+  min-width: 0;
+  margin: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+#app.web-compact .user-home-shell .user-list-item .user-list-name {
+  flex: 1;
+  font-size: 14px;
+}
+#app.web-compact .user-home-shell .user-list-item .user-list-sig {
+  flex: 0 1 32%;
+  font-size: 12px;
+}
+
+/* 年度报告中的真实曲目/歌手榜单，故事展示和单条主视觉不受影响。 */
+#app.web-compact .annual-report-container .singers-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 2px;
+}
+#app.web-compact .annual-report-container .top-list {
+  gap: 2px;
+}
+#app.web-compact .annual-report-container :is(.top-list > .top-item, .singers-grid > .singer-card) {
+  display: flex;
+  box-sizing: border-box;
+  min-width: 0;
+  min-height: 44px;
+  align-items: center;
+  gap: 10px;
+  padding: 5px 10px;
+  border-radius: 4px;
+  box-shadow: none;
+  transform: none;
+  text-align: left;
+}
+#app.web-compact .annual-report-container :is(.top-item > .top-cover, .singer-card > .singer-card-avatar) {
+  display: none;
+}
+#app.web-compact .annual-report-container .singer-card > .singer-rank {
+  position: static;
+  flex: 0 0 24px;
+  width: 24px;
+  height: 24px;
+}
+#app.web-compact .annual-report-container :is(.singer-card-name, .singer-card-meta) {
+  min-width: 0;
+  margin: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+#app.web-compact .annual-report-container .singer-card-name {
+  flex: 1;
+  font-size: 14px;
+}
+#app.web-compact .annual-report-container .top-info {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+}
+#app.web-compact .annual-report-container .top-info :is(.top-name, .top-meta) {
+  min-width: 0;
+  margin: 0;
+  line-height: 20px;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+#app.web-compact .annual-report-container .top-info .top-name {
+  flex: 1;
+  font-size: 14px;
+}
+#app.web-compact .annual-report-container .top-info .top-meta {
+  flex: 0 1 32%;
+  font-size: 12px;
+}
+#app.web-compact .annual-report-container .singer-card-meta {
+  flex: 0 1 30%;
+  font-size: 12px;
+}
+
+/* 讨论列表可使用相同的紧凑偏好，保留帖子及作者的原有点击入口。 */
+#app.web-compact .forum-shell .post-list {
+  gap: 2px;
+}
+#app.web-compact .forum-shell .post-list > .post-card {
+  display: flex;
+  min-height: 44px;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 10px;
+  border-radius: 4px;
+  transform: none;
+}
+#app.web-compact .forum-shell .post-card-left {
+  display: none;
+}
+#app.web-compact .forum-shell .post-card-body {
+  flex-direction: row;
+  align-items: center;
+  gap: 12px;
+}
+#app.web-compact .forum-shell .post-card-head {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+#app.web-compact .forum-shell .post-card-head h3 {
+  margin: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  font-size: 14px;
+}
+#app.web-compact .forum-shell .post-card-body > .excerpt {
+  display: none;
+}
+#app.web-compact .forum-shell .post-meta {
+  flex: 0 0 auto;
+  font-size: 12px;
+}
+
+#app.web-compact .song-detail-container .similar-list {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 2px;
+}
+#app.web-compact .song-detail-container .similar-card {
+  min-height: 40px;
+  padding: 4px 10px;
+  gap: 10px;
+  border-radius: 4px;
+  transform: none;
+  box-shadow: none;
+}
+#app.web-compact .song-detail-container .similar-cover {
+  display: none;
+}
+#app.web-compact .song-detail-container .similar-info {
+  flex-direction: row;
+  align-items: baseline;
+  gap: 12px;
+}
+#app.web-compact .song-detail-container .similar-title {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+#app.web-compact .song-detail-container .similar-artist {
+  flex: 0 1 30%;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+@media (max-width: 1100px) {
+  #app.has-bar:not(.android-app) > .header {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  #app.has-bar:not(.android-app) > .header .nav {
+    order: 3;
+    width: 100%;
+    min-width: 0;
+    max-width: 100%;
+    overflow-x: auto;
+  }
+  #app.has-bar:not(.android-app) > .header .nav .nav-item {
+    flex: 0 0 auto;
+    white-space: nowrap;
+  }
+}
+@media (max-width: 700px) {
+  #app.web-compact :is(.songs-page, .singer-detail-container) .songs-list .song-card-actions {
+    gap: 2px;
+  }
+  #app.web-compact .songs-page .songs-list .lyrics-snippet,
+  #app.web-compact .forum-shell .post-badges {
+    display: none;
+  }
+}

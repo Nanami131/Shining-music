@@ -5,39 +5,9 @@
       :style="bottomBarStyle"
   >
     <div v-if="isMobileAndroid" class="offline-tools">
-      <button type="button" class="offline-launch" @click="openOfflineLibrary">
-        {{ offlineMode ? '离线模式 · 本地缓存/队列' : '在线模式 · 本地缓存/队列' }}
-      </button>
-      <span class="offline-network">{{ networkOnline ? '网络已连接' : '当前无网络' }}</span>
-      <div v-if="offlineLibraryOpen" class="offline-drawer">
-        <div class="offline-drawer-head">
-          <strong>本地音乐</strong>
-          <button type="button" @click="offlineLibraryOpen = false">关闭</button>
-        </div>
-        <div class="offline-mode-actions">
-          <button type="button" :disabled="offlineMode" @click="switchToOffline">进入离线模式</button>
-          <button type="button" :disabled="!offlineMode" @click="switchToOnline">返回在线模式</button>
-          <button type="button" @click="refreshOfflineLibrary">刷新缓存</button>
-        </div>
-        <p v-if="offlineError" class="offline-error">{{ offlineError }}</p>
-        <p v-if="!offlineCachedSongs.length">当前账号尚无完整缓存歌曲。</p>
-        <ul v-else class="offline-library-list">
-          <li v-for="song in offlineCachedSongs" :key="song.id">
-            <span>{{ song.title }} · {{ song.artistName }} · READY · {{ (Number(song.sizeBytes || 0) / 1048576).toFixed(1) }} MB</span>
-            <button type="button" :disabled="offlineQueue.includes(String(song.id))" @click="addOfflineQueue(song.id)">加入列表</button>
-          </li>
-        </ul>
-        <p>离线列表共 {{ offlineQueue.length }} 首歌曲。缓存库与播放列表独立。</p>
-        <button type="button" :disabled="!offlineQueue.length" @click="clearOfflineQueue">清空离线列表</button>
-        <ol class="offline-library-list">
-          <li v-for="(id, index) in offlineQueue" :key="id">
-            <span>{{ offlineQueueTitle(id) }}</span>
-            <button type="button" :disabled="index === 0" @click="moveOfflineQueue(id, index - 1)">上移</button>
-            <button type="button" :disabled="index === offlineQueue.length - 1" @click="moveOfflineQueue(id, index + 1)">下移</button>
-            <button type="button" @click="removeOfflineQueue(id)">移出</button>
-            <button type="button" :disabled="!offlineMode || !offlineCachedSongs.some(song => String(song.id) === id)" @click="playOfflineSong(id)">播放</button>
-          </li>
-        </ol>
+      <div class="playback-mode-switch" role="group" aria-label="播放模式">
+        <button type="button" :class="{ active: !offlineMode }" :disabled="!offlineMode" @click="switchToOnline">在线</button>
+        <button type="button" :class="{ active: offlineMode }" :disabled="offlineMode" @click="switchToOffline">离线</button>
       </div>
     </div>
     <div class="fixed-bar">
@@ -215,7 +185,7 @@
             <div class="title">当前播放列表</div>
             <div class="playlist-header-right">
               <div class="subtitle" v-if="userId || offlineMode">
-                共 {{ offlineMode ? offlineQueue.length : currentPlaylistSongs.length }} 首
+                共 {{ offlineMode ? offlineQueueSongs.length : currentPlaylistSongs.length }} 首
               </div>
               <div class="subtitle" v-else>登录后自动保存播放记录</div>
               <button
@@ -255,7 +225,7 @@
               </button>
             </div>
           </div>
-          <p v-else-if="offlineMode" class="playlist-empty">离线列表为空，请从本地缓存库加入歌曲。</p>
+          <p v-else-if="offlineMode" class="playlist-empty">播放任意歌曲后会自动加入此处～</p>
           <p v-else-if="userId" class="playlist-empty">播放任意歌曲后会自动加入此处～</p>
           <p v-else class="playlist-empty">登录账号后可同步播放列表</p>
         </div>
@@ -360,6 +330,8 @@ export default {
     },
   },
   data() {
+    const audio = new Audio();
+    if (isAndroidApp) audio.crossOrigin = 'anonymous';
     return {
       currentSong: {},
       currentPlaySessionId: null,
@@ -370,7 +342,7 @@ export default {
       parsedLyrics: [],
       bilingualLyrics: [],
       availableLangs: [],
-      audio: new Audio(),
+      audio,
       isPlaying: false,
       currentTime: 0,
       duration: 0,
@@ -461,8 +433,9 @@ export default {
       return this.bilingualMode ? this.bilingualLyrics : this.parsedLyrics;
     },
     offlineQueueSongs() {
-      return this.offlineQueue.map(id => this.offlineCachedSongs.find(song => String(song.id) === id) ||
-        { id, title: `歌曲 ${id}（缓存不可用）`, artistName: '缓存不可用' });
+      return this.offlineQueue
+        .map(id => this.offlineCachedSongs.find(song => String(song.id) === id))
+        .filter(Boolean);
     },
   },
   created() {
@@ -603,6 +576,13 @@ export default {
         error: this.offlineError,
       });
     },
+    syncOfflinePlaylist() {
+      if (!this.offlineMode) return;
+      this.playlist = this.offlineQueueSongs.map(song => String(song.id));
+      this.currentIndex = this.playlist.indexOf(String(this.offlineSongId));
+      this.shuffleHistory = this.shuffleHistory.map(String).filter(id => this.playlist.includes(id));
+      this.shuffleHistoryIndex = Math.min(this.shuffleHistoryIndex, this.shuffleHistory.length - 1);
+    },
     async handleOfflineLibraryCommand({ accountId, action, songId, index } = {}) {
       if (!this.offlineMode || String(this.userId ?? '') !== String(accountId ?? '')) return;
       switch (action) {
@@ -628,7 +608,10 @@ export default {
       const accountAtStart = this.userId;
       try {
         const songs = await listCachedSongs(accountAtStart);
-        if (String(accountAtStart ?? '0') === String(this.userId ?? '0')) this.offlineCachedSongs = songs;
+        if (String(accountAtStart ?? '0') === String(this.userId ?? '0')) {
+          this.offlineCachedSongs = songs;
+          this.syncOfflinePlaylist();
+        }
       } catch (error) {
         if (String(accountAtStart ?? '0') === String(this.userId ?? '0')) this.offlineError = error.message;
       }
@@ -650,8 +633,11 @@ export default {
         if (String(this.userId ?? '0') !== String(accountAtStart ?? '0')) return;
         if (cached.status !== 'READY') throw new Error(`歌曲 ${id} 尚未完成缓存，不能加入离线列表`);
         if (this.offlineQueue.includes(id)) return;
+        if (!this.offlineCachedSongs.some(song => String(song.id) === id)) {
+          this.offlineCachedSongs.push({ ...cached.metadata, id, sizeBytes: cached.sizeBytes });
+        }
         this.offlineQueue.push(id);
-        if (this.offlineMode) this.playlist = [...this.offlineQueue];
+        this.syncOfflinePlaylist();
         this.persistOfflineState();
       } catch (error) { this.offlineError = error.message; }
     },
@@ -683,20 +669,20 @@ export default {
         if (this.offlineMode) this.resetOfflineCurrent();
         else { this.offlineSongId = null; this._offlineSavedPosition = 0; }
       }
-      if (this.offlineMode) {
-        this.playlist = [...this.offlineQueue];
-        this.currentIndex = this.playlist.indexOf(this.offlineSongId);
-      }
+      this.syncOfflinePlaylist();
       this.persistOfflineState();
     },
     moveOfflineQueue(songId, toIndex) {
-      const fromIndex = this.offlineQueue.indexOf(String(songId));
-      if (fromIndex < 0 || !Number.isInteger(toIndex) || toIndex < 0 || toIndex >= this.offlineQueue.length) return;
-      const queue = [...this.offlineQueue];
-      queue.splice(fromIndex, 1);
-      queue.splice(toIndex, 0, String(songId));
-      this.offlineQueue = queue;
-      if (this.offlineMode) { this.playlist = [...queue]; this.currentIndex = queue.indexOf(this.offlineSongId); }
+      const id = String(songId);
+      const playable = this.offlineQueueSongs.map(song => String(song.id));
+      const fromIndex = playable.indexOf(id);
+      if (fromIndex < 0 || !Number.isInteger(toIndex) || toIndex < 0 || toIndex >= playable.length) return;
+      playable.splice(fromIndex, 1);
+      playable.splice(toIndex, 0, id);
+      const playableSet = new Set(playable);
+      let playableIndex = 0;
+      this.offlineQueue = this.offlineQueue.map(item => playableSet.has(String(item)) ? playable[playableIndex++] : item);
+      this.syncOfflinePlaylist();
       this.persistOfflineState();
     },
     clearOfflineQueue() {
@@ -718,10 +704,9 @@ export default {
       this.applyVolume(this._offlineSavedVolume ?? 1);
       this.shuffleHistory = [...(this._offlineSavedHistory || [])];
       this.shuffleHistoryIndex = this._offlineSavedHistoryIndex ?? -1;
-      this.playlist = [...this.offlineQueue];
-      this.currentIndex = this.playlist.indexOf(this.offlineSongId);
       await this.refreshOfflineLibrary();
       if (!this.offlineMode || modeSeq !== this._modeSeq || String(account ?? '0') !== String(this.userId ?? '0')) return;
+      this.syncOfflinePlaylist();
       if (this.currentIndex !== -1) await this.playOfflineSong(this.offlineSongId, false);
     },
     async switchToOffline() {
@@ -1940,57 +1925,28 @@ export default {
   z-index: 10002;
   font-family: inherit;
   display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: 3px;
+  align-items: center;
 }
-.offline-network { font-size: 11px; color: #334155; background: #ffffffea; border-radius: 9px; padding: 2px 7px; }
-.offline-launch {
-  border: 1px solid #8b9dc2;
-  border-radius: 22px;
-  background: #fff;
-  color: #334155;
-  padding: 7px 12px;
-  font-size: 13px;
+.playback-mode-switch {
+  display: flex;
+  padding: 3px;
+  border: 1px solid #cbd5e1;
+  border-radius: 999px;
+  background: #ffffffea;
   box-shadow: 0 3px 12px #0002;
 }
-.offline-drawer {
-  position: absolute;
-  bottom: calc(100% + 8px);
-  right: 0;
-  width: min(360px, calc(100vw - 24px));
-  max-height: calc(100dvh - 230px);
-  overflow: auto;
-  box-sizing: border-box;
-  padding: 14px;
-  border-radius: 16px;
-  background: #fff;
+.playback-mode-switch button {
+  border: 1px solid #8b9dc2;
+  border-radius: 999px;
+  background: transparent;
   color: #334155;
-  box-shadow: 0 10px 36px #0004;
+  padding: 5px 10px;
   font-size: 13px;
 }
-.offline-drawer-head,
-.offline-mode-actions,
-.offline-library-list li {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 8px;
-  justify-content: space-between;
+.playback-mode-switch button.active {
+  background: #334155;
+  color: #fff;
 }
-.offline-drawer button {
-  border: 1px solid #cbd5e1;
-  border-radius: 10px;
-  background: #f8fafc;
-  color: #334155;
-  padding: 6px;
-}
-.offline-drawer button:disabled { opacity: 0.4; }
-.offline-mode-actions { justify-content: flex-start; margin: 12px 0; }
-.offline-library-list { padding: 0; margin: 8px 0; list-style: none; }
-.offline-library-list li { padding: 8px 0; border-bottom: 1px solid #e2e8f0; }
-.offline-library-list li span { flex: 1 1 100%; overflow-wrap: anywhere; }
-.offline-error { color: #b91c1c; }
 .bottom-bar {
   position: fixed;
   bottom: 0;

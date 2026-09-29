@@ -107,11 +107,10 @@
 
         <!-- 全部歌单 -->
         <section class="section section-more">
-          <h2>{{ offlineSelected ? '我的歌单 · 本机离线列表' : '全部歌单' }}</h2>
-          <p v-if="offlineSelected">此处显示手机上实际保存的离线播放列表。服务器上的其他歌单尚无本机副本，离线时不会请求或自动同步。</p>
+          <h2>全部歌单</h2>
           <div class="playlists-list">
             <div
-              v-for="playlist in filteredPlaylists"
+              v-for="playlist in visiblePlaylists"
               :key="playlist.id"
               class="playlist-card"
               @click="goToPlaylist(playlist.id)"
@@ -130,7 +129,7 @@
               </div>
             </div>
           </div>
-          <WebListPager v-if="!offlineSelected" v-bind="playlistPage" @change="changePlaylistPage" />
+          <WebListPager v-bind="playlistPage" :total="offlineSelected ? filteredPlaylists.length : playlistPage.total" @change="changePlaylistPage" />
         </section>
       </div>
     </div>
@@ -143,7 +142,7 @@ import defaultCover from '@/assets/default-cover.png';
 import StormFrontRain from '@/components/StormFrontRain.vue';
 import { isOfflineSelected, localPlaylist } from '@/offline/localLibrary';
 import WebListPager from '@/components/WebListPager.vue';
-import { initialPage, pageParams, pageItems, pageTotal } from '@/utils/listPagination';
+import { initialPage, pageParams, pageItems, pageTotal, paginateLocal } from '@/utils/listPagination';
 
 export default {
   name: 'Playlists',
@@ -186,6 +185,9 @@ export default {
         (p.description && p.description.toLowerCase().includes(q))
       );
     },
+    visiblePlaylists() {
+      return this.offlineSelected ? paginateLocal(this.filteredPlaylists, this.playlistPage) : this.filteredPlaylists;
+    },
   },
   watch: {
     searchQuery() {
@@ -210,7 +212,7 @@ export default {
   methods: {
     changePlaylistPage(next) {
       this.playlistPage = { ...this.playlistPage, ...next };
-      this.loadPlaylists();
+      if (!this.offlineSelected) this.loadPlaylists();
     },
     onOfflineModeChanged() {
       this.libraryLoadEpoch++;
@@ -223,6 +225,8 @@ export default {
     onOfflineLibraryState(state) {
       if (this.offlineSelected && state?.offlineMode && String(state.accountId) === String(this.userId)) {
         this.playlists = [localPlaylist(this.userId)];
+        this.playlistPage.total = this.playlists.length;
+        if (this.playlistPage.size > 0) this.playlistPage.page = 1;
       }
     },
     async loadDiscover() {
@@ -239,6 +243,8 @@ export default {
     async loadPlaylists() {
       if (this.offlineSelected) {
         this.playlists = this.userId == null ? [] : [localPlaylist(this.userId)];
+        this.playlistPage.total = this.playlists.length;
+        if (this.playlistPage.size > 0) this.playlistPage.page = 1;
         return;
       }
       const epoch = this.libraryLoadEpoch;

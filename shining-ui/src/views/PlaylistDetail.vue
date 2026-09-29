@@ -76,21 +76,21 @@
             <button class="btn primary mini" :disabled="songOperating || (offlineLocal && !favoriteSongs.some(cached => String(cached.id) === String(song.id)))" @click.stop="playSingleSong(song.id)">
               播放
             </button>
-            <button v-if="offlineLocal" class="btn mini" :disabled="songOperating || index === 0" @click.stop="localCommand('move', song.id, index - 1)">上移</button>
-            <button v-if="offlineLocal" class="btn mini" :disabled="songOperating || index === playlistSongs.length - 1" @click.stop="localCommand('move', song.id, index + 1)">下移</button>
+            <button v-if="offlineLocal" class="btn mini" :disabled="songOperating || offlineSongIndex(index) === 0" @click.stop="localCommand('move', song.id, offlineSongIndex(index) - 1)">上移</button>
+            <button v-if="offlineLocal" class="btn mini" :disabled="songOperating || offlineSongIndex(index) === playlistSongs.length - 1" @click.stop="localCommand('move', song.id, offlineSongIndex(index) + 1)">下移</button>
             <button v-if="isOwner" class="btn danger mini" :disabled="songOperating" @click.stop="removeSong(song.id)">
               移除
             </button>
           </div>
         </div>
-        <WebListPager v-if="!offlineLocal" v-bind="detailPage" @change="changeDetailPage" />
+        <WebListPager v-bind="detailPage" :total="offlineLocal ? playlistSongs.length : detailPage.total" @change="changeDetailPage" />
       </section>
 
       <section v-if="isOwner" class="editor-section">
         <h3>添加歌曲到歌单</h3>
         <div class="editor-row favorites-actions">
           <button class="btn" @click="toggleSongSelector">
-            {{ showSongSelector ? '收起可选歌曲' : (offlineLocal ? '从本机已缓存歌曲选择' : '从我喜欢的歌曲选择') }}
+            {{ showSongSelector ? '收起可选歌曲' : '从我喜欢的歌曲选择' }}
           </button>
           <button
             v-if="showSongSelector && availableSongs.length"
@@ -155,7 +155,7 @@ import musicApi from '@/api/music';
 import defaultCover from '@/assets/default-cover.png';
 import { isOfflineSelected, localPlaylist, localQueue, localSongs } from '@/offline/localLibrary';
 import WebListPager from '@/components/WebListPager.vue';
-import { initialPage, pageParams } from '@/utils/listPagination';
+import { initialPage, pageParams, paginateLocal } from '@/utils/listPagination';
 
 export default {
   name: 'PlaylistDetail',
@@ -202,7 +202,7 @@ export default {
       return Array.isArray(this.playlist?.songs) ? this.playlist.songs : [];
     },
     visiblePlaylistSongs() {
-      return this.playlistSongs;
+      return this.offlineLocal ? paginateLocal(this.playlistSongs, this.detailPage) : this.playlistSongs;
     },
     availableSongs() {
       const inPlaylist = this.allPlaylistSongIds || new Set(this.playlistSongs.map(song => String(song.id)));
@@ -238,7 +238,10 @@ export default {
   methods: {
     changeDetailPage(next) {
       this.detailPage = { ...this.detailPage, ...next };
-      this.loadPlaylistDetails().catch(error => alert('获取歌单歌曲失败：' + error.message));
+      if (!this.offlineLocal) this.loadPlaylistDetails().catch(error => alert('获取歌单歌曲失败：' + error.message));
+    },
+    offlineSongIndex(index) {
+      return index + (this.detailPage.size > 0 ? (this.detailPage.page - 1) * this.detailPage.size : 0);
     },
     onOfflineModeChanged() {
       this.offlineLocal = isOfflineSelected();
@@ -250,8 +253,9 @@ export default {
       this.playlist = {
         ...this.playlist,
         description: localPlaylist(this.userId).description,
-        songs: state.queue.map(id => byId.get(String(id)) || { id, title: `歌曲 ${id}（本机缓存不可用）` }),
+        songs: state.queue.map(id => byId.get(String(id))).filter(Boolean),
       };
+      if (this.detailPage.size > 0) this.detailPage.page = Math.min(this.detailPage.page, Math.max(1, Math.ceil(this.playlistSongs.length / this.detailPage.size)));
       if (state.error) this.offlineError = state.error;
     },
     localCommand(action, songId, index) {
@@ -273,7 +277,7 @@ export default {
           this.favoriteSongs = songs;
           const byId = new Map(songs.map(song => [String(song.id), song]));
           this.playlist = { ...localPlaylist(accountId),
-            songs: localQueue(accountId).map(id => byId.get(id) || { id, title: `歌曲 ${id}（本机缓存不可用）` }) };
+            songs: localQueue(accountId).map(id => byId.get(id)).filter(Boolean) };
           this.isLoaded = true;
           this.$bus.emit('offlineLibrary:request');
           return;
