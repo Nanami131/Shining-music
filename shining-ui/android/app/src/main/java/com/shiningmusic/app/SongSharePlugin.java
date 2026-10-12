@@ -1,11 +1,13 @@
 package com.shiningmusic.app;
 
+import android.Manifest;
 import android.content.ContentResolver;
 import android.content.ContentValues;
 import android.content.ClipData;
 import android.content.ClipboardManager;
 import android.content.Context;
 import android.content.Intent;
+import android.media.MediaScannerConnection;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Environment;
@@ -16,14 +18,19 @@ import com.getcapacitor.JSObject;
 import com.getcapacitor.Plugin;
 import com.getcapacitor.PluginCall;
 import com.getcapacitor.PluginMethod;
+import com.getcapacitor.PermissionState;
 import com.getcapacitor.annotation.ActivityCallback;
 import com.getcapacitor.annotation.CapacitorPlugin;
+import com.getcapacitor.annotation.Permission;
+import com.getcapacitor.annotation.PermissionCallback;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
 
-@CapacitorPlugin(name = "SongShare")
+@CapacitorPlugin(name = "SongShare", permissions = {
+    @Permission(alias = "legacyStorage", strings = { Manifest.permission.WRITE_EXTERNAL_STORAGE })
+})
 public class SongSharePlugin extends Plugin {
     @PluginMethod
     public void copyText(PluginCall call) {
@@ -69,12 +76,17 @@ public class SongSharePlugin extends Plugin {
 
     @PluginMethod
     public void saveImage(PluginCall call) {
-        byte[] bytes = decodeImage(call);
-        if (bytes == null) return;
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) {
-            call.reject("保存到相册需要 Android 10 或更高版本");
+            if (getPermissionState("legacyStorage") != PermissionState.GRANTED) {
+                requestPermissionForAlias("legacyStorage", call, "legacyStoragePermission");
+                return;
+            }
+            saveImageLegacy(call);
             return;
         }
+
+        byte[] bytes = decodeImage(call);
+        if (bytes == null) return;
 
         ContentResolver resolver = getContext().getContentResolver();
         ContentValues values = new ContentValues();
@@ -103,6 +115,43 @@ public class SongSharePlugin extends Plugin {
             resolver.delete(uri, null, null);
             call.reject("图片保存失败", error);
         }
+    }
+
+    @PermissionCallback
+    private void legacyStoragePermission(PluginCall call) {
+        if (getPermissionState("legacyStorage") == PermissionState.GRANTED) {
+            saveImageLegacy(call);
+        } else {
+            call.reject("保存到相册需要存储权限");
+        }
+    }
+
+    private void saveImageLegacy(PluginCall call) {
+        byte[] bytes = decodeImage(call);
+        if (bytes == null) return;
+        File directory = new File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_PICTURES), "Shining Music");
+        if (!directory.isDirectory() && !directory.mkdirs()) {
+            call.reject("相册目录创建失败");
+            return;
+        }
+
+        String name = safeName(call);
+        File target = new File(directory, name);
+        for (int index = 1; target.exists(); index++) {
+            target = new File(directory, name.substring(0, name.length() - 4) + " (" + index + ").png");
+        }
+        try (FileOutputStream stream = new FileOutputStream(target)) {
+            stream.write(bytes);
+        } catch (IOException error) {
+            call.reject("图片保存失败", error);
+            return;
+        }
+        MediaScannerConnection.scanFile(getContext(), new String[] { target.getAbsolutePath() },
+            new String[] { "image/png" }, (path, uri) -> {
+                JSObject result = new JSObject();
+                result.put("uri", (uri == null ? Uri.fromFile(new File(path)) : uri).toString());
+                call.resolve(result);
+            });
     }
 
     @PluginMethod

@@ -295,6 +295,7 @@
 </template>
 
 <script>
+import { registerPlugin } from '@capacitor/core';
 import musicApi from '@/api/music';
 import statisticsApi from '@/api/statistics';
 import defaultCover from '@/assets/default-cover.png';
@@ -309,24 +310,33 @@ import {
   orderLyricLangs,
   lyricLangLabel,
 } from '@/utils/lrcParser';
+const systemMedia = isAndroidApp ? registerPlugin('SystemMedia') : null;
 
 export default {
   name: 'BottomBar',
   watch: {
+    playMode(mode) {
+      // Let Android's media element repeat a track without a background JS/API round trip.
+      if (isAndroidApp) this.audio.loop = mode === 'single';
+    },
     currentSong: {
       deep: true,
       handler() {
         this.broadcastPlaybackState();
+        this.syncSystemMediaState(true);
       },
     },
     currentTime() {
       this.broadcastPlaybackState();
+      this.syncSystemMediaState();
     },
     isPlaying() {
       this.broadcastPlaybackState();
+      this.syncSystemMediaState(true);
     },
     duration() {
       this.broadcastPlaybackState();
+      this.syncSystemMediaState(true);
     },
   },
   data() {
@@ -439,6 +449,16 @@ export default {
     },
   },
   created() {
+    this._systemMediaAlive = true;
+    this._systemMediaActive = false;
+    this._systemMediaLastSent = 0;
+    this._systemMediaListener = null;
+    if (systemMedia) {
+      systemMedia.addListener('mediaCommand', this.handleSystemMediaCommand).then(listener => {
+        if (this._systemMediaAlive) this._systemMediaListener = listener;
+        else listener.remove();
+      }).catch(error => console.warn('[SystemMedia] 监听注册失败:', error));
+    }
     this._playSeq = 0;
     this._lastPlaylistLoadId = 0;
     this._modeSeq = 0;
@@ -473,7 +493,10 @@ export default {
     window.addEventListener('online', this.refreshNetworkHint);
     window.addEventListener('offline', this.refreshNetworkHint);
   },
-  beforeDestroy() {
+  beforeUnmount() {
+    this._systemMediaAlive = false;
+    if (this._systemMediaListener) this._systemMediaListener.remove();
+    if (systemMedia) systemMedia.stop().catch(error => console.warn('[SystemMedia] 关闭失败:', error));
     this.reportPlayEnd('destroy');
     if (this.offlineMode) this.persistOfflineState();
     else this.savePlaybackStateNow();
@@ -503,6 +526,43 @@ export default {
     if (this._saveStateTimer) clearTimeout(this._saveStateTimer);
   },
   methods: {
+    handleSystemMediaCommand({ command, positionMs }) {
+      if (!this._systemMediaAlive) return;
+      if (command === 'play' && !this.isPlaying) this.togglePlay();
+      else if (command === 'pause' && this.isPlaying) this.togglePlay();
+      else if (command === 'next') this.playNext();
+      else if (command === 'previous') this.playPrev();
+      else if (command === 'seek' && this.audio.src && Number.isFinite(positionMs)) {
+        this.currentTime = Math.max(0, Math.min(positionMs / 1000, this.audio.duration || 0));
+        this.seek();
+        this.syncSystemMediaState(true);
+      }
+    },
+    syncSystemMediaState(force = false) {
+      if (!systemMedia || !this._systemMediaAlive) return;
+      const song = this.currentSong;
+      if (!song?.id || !this.audio.src) {
+        if (!this.selectingSong && this._systemMediaActive) {
+          this._systemMediaActive = false;
+          systemMedia.stop().catch(error => console.warn('[SystemMedia] 关闭失败:', error));
+        }
+        return;
+      }
+      if (!this.isPlaying && !this._systemMediaActive) return;
+      const now = Date.now();
+      if (!force && now - this._systemMediaLastSent < 3000) return;
+      this._systemMediaLastSent = now;
+      this._systemMediaActive = true;
+      const duration = Number(this.audio.duration) > 0 && Number.isFinite(this.audio.duration)
+        ? this.audio.duration : Number(song.duration) || 0;
+      systemMedia.update({
+        title: song.title || 'Shining Music',
+        artist: song.artistName || this.getArtistName(song.artistId),
+        durationMs: Math.round(Math.max(0, duration) * 1000),
+        positionMs: Math.round(Math.max(0, this.audio.currentTime || 0) * 1000),
+        playing: this.isPlaying,
+      }).catch(error => console.warn('[SystemMedia] 状态同步失败:', error));
+    },
     refreshNetworkHint() { this.networkOnline = navigator.onLine; },
     validOnline(playId, accountId, songId) {
       return !this.offlineMode && this._playSeq === playId &&
@@ -1338,6 +1398,7 @@ export default {
       const nextVolume = this.clampVolume(value);
       this.volume = nextVolume;
       this.audio.volume = nextVolume;
+      if (isAndroidApp) this.applyVolumeGain(this.currentSong);
       if (nextVolume > 0) {
         this.lastNonZeroVolume = nextVolume;
       }
@@ -1864,6 +1925,9 @@ export default {
     },
 
     ensureAudioContext() {
+      // Web Audio can be suspended when Android backgrounds the WebView, silencing
+      // the HTMLAudioElement connected to it even if the next track starts.
+      if (isAndroidApp) return;
       if (this.audioContext) {
         if (this.audioContext.state === 'suspended') {
           this.audioContext.resume();
@@ -1880,6 +1944,14 @@ export default {
       this.audioSourceConnected = true;
     },
     applyVolumeGain(song) {
+      if (isAndroidApp) {
+        // Keep native HTMLAudioElement output active in the background. Its
+        // volume range is 0..1, so positive normalization is capped at 1.
+        const gainDb = Number(song?.volumeGain ?? 0);
+        const linear = Math.pow(10, (Number.isFinite(gainDb) ? gainDb : 0) / 20);
+        this.audio.volume = Math.min(1, this.volume * linear);
+        return;
+      }
       if (!this.gainNode) return;
       const gainDb = (song && song.volumeGain != null) ? song.volumeGain : 0;
       const linear = Math.pow(10, gainDb / 20);

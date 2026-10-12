@@ -60,7 +60,7 @@ export default {
     window.addEventListener('userBaseUpdated', this.updateLoginState);
     window.addEventListener('offlineModeChanged', this.updateLoginState);
   },
-  beforeDestroy() {
+  beforeUnmount() {
     window.removeEventListener('storage', this.updateLoginState);
     window.removeEventListener('userBaseUpdated', this.updateLoginState);
     window.removeEventListener('offlineModeChanged', this.updateLoginState);
